@@ -1,0 +1,73 @@
+<stimulus name="dirtuningbci" repeats="40" ex="ex_SlowDriftBCI" bgColor="0 0 0">
+    <conditions type="movie" runline="movieprefix,suffix numframes dwell startframe centerx centery" movieprefix="ben/natural_flashes/image">
+        <numframes>1000</numframes>
+        <dwell>1000</dwell>
+        <startframe>1</startframe>
+        <centerx>0</centerx>
+        <centery>0</centery>
+        <adeptCloseorFar>[1]</adeptCloseorFar>
+        <distance>10*17</distance>
+        <size>[20]</size>
+        <gratingsordots>[0]</gratingsordots>
+        <gratingsordotsother>[0]</gratingsordotsother>
+        <othercolorflag>[1]</othercolorflag>
+        <suffix>[1]</suffix>
+        <sizeOther>[15]</sizeOther>
+        <noisyFreq1>[10]</noisyFreq1>
+        <noisyFreq2>[10]</noisyFreq2>
+        <fixandMGSFlag>[1]</fixandMGSFlag>
+        <angle>[0 45 90 135 180 225 270 315]</angle>
+    </conditions>
+    <params>
+        <allAngles>[-1]'</allAngles>
+        <delayAngle>[0']</delayAngle>
+        <fixX>0</fixX>
+        <fixY>0</fixY>
+        <fixRad>5</fixRad>
+        <fixColor>[0 0 255]</fixColor>
+        <targetColor>[255 255 255]'</targetColor>
+        <cursorColor>[150 150 150]</cursorColor>
+        <targetColorOther>[60 60 60]'</targetColorOther>
+        <adeptsuffix>[17485 12241 18649 15746 16696 17172 18234 16616]'</adeptsuffix>
+        <indextouse>[3 1 2 4 5 8 6 8]'</indextouse>
+        <targWinRad>150</targWinRad>
+        <timeToFix>1000</timeToFix>
+        <targetDuration>400</targetDuration>
+        <noFixTimeout>1500</noFixTimeout>
+        <targetOnsetDelay>200</targetOnsetDelay>
+        <saccadeInitiate>500</saccadeInitiate>
+        <saccadeTime>200</saccadeTime>
+        <stayOnTarget>150</stayOnTarget>
+        <fixDuration>[850]</fixDuration>
+        <bciTargRadx>80</bciTargRadx>
+        <bciTargRady>40</bciTargRady>
+        <bciCursorEnable>1</bciCursorEnable>
+        <bciEnable>1</bciEnable>
+        <cursorVisible>1</cursorVisible>
+        <bciRewardEnable>0</bciRewardEnable>
+        <updatesOnTarget>2</updatesOnTarget>
+        <cursorSize>50</cursorSize>
+        <bciJuice>2</bciJuice>
+        <saccadeJuice>2</saccadeJuice>
+        <bciSaccadeJuice>2</bciSaccadeJuice>
+        <errorBadHandshakeFlag>1</errorBadHandshakeFlag>
+        <gratingsordots>[0]</gratingsordots>
+        <gratingsordotsother>[0]</gratingsordotsother>
+        <gratori>[0 45 90 135]'</gratori>
+        <gratspatial>0.015</gratspatial>
+        <gratcontrast>1</gratcontrast>
+        <cursorSize>50</cursorSize>
+        <adeptCloseorFar>[1]</adeptCloseorFar>
+        <adeptImageFlag>0</adeptImageFlag>
+        <showDelayTargetFlag>1</showDelayTargetFlag>
+        <lowerboundprop>0.1</lowerboundprop>
+        <annulusSizeAtThresh>0.2</annulusSizeAtThresh>
+        <distfunflag>1</distfunflag>
+        <minRxn>0</minRxn>
+        <miniblocksize>1</miniblocksize>
+        <nCueTrials>1</nCueTrials>   
+    </params>
+    <randoms>
+        <fixDuration>[1800:100:2300]</fixDuration>
+    </randoms>
+</stimulus>                                       

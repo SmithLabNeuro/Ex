@@ -1,0 +1,1182 @@
+<subject name="pepelepew">
+    <globals>
+        <fixWinRad>40</fixWinRad>
+        <recenterFixWin>true</recenterFixWin>
+        <sacWinRad>15</sacWinRad>
+        <targWinRad>70</targWinRad>
+        <size>5</size>
+        <extent>150</extent>
+        <fixpic>0</fixpic>
+        <juiceX>1</juiceX>  
+        <soundEnabled>1</soundEnabled>
+        <sampleFreq>44100</sampleFreq>
+        <outBufferSize>4*44100</outBufferSize>
+    </globals>
+    
+    <experiment name="vgaDots.xml">
+        <params>
+            <sacWinRad>15</sacWinRad>
+            <targWinRad>50</targWinRad>
+            <size>15</size>
+            <timeToFix>1000</timeToFix>
+            <fixRad>10</fixRad>
+        </params>
+    </experiment>
+    
+    
+    <experiment name="cuedAttention_flexPos.xml">
+        <params>           
+            <spatial>0.05</spatial>
+            <temporal>8</temporal>
+            <inx>120</inx>
+            <iny>-120</iny>
+            <outx>120</outx>
+            <outy>120</outy>
+            <radius>120</radius>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>40</stimulusDuration>
+            <maxStims>100</maxStims>
+            <targProb>.4</targProb>
+            <helpFixColor>[0 0 200]'</helpFixColor>
+            <oriTargAmp>[-1,-3,-6,-15,1,3,6,15]'</oriTargAmp>
+            <invalidOriTargAmp>[-3,3]'</invalidOriTargAmp>
+            <xippmexStimChan>[256+[16,92]]</xippmexStimChan>
+            <xippmexStimAmp>[150]</xippmexStimAmp>            
+            <microstimTime>{'pre'}</microstimTime>
+            
+            <fixJuice>0</fixJuice>
+            <rewardHalflife>2</rewardHalflife>
+            <interStimulusInterval>[300:10:500]'</interStimulusInterval>
+            <targetFeature>1</targetFeature>
+        </params>   
+        <randoms>
+            <cue>2</cue>
+            <isValid>[ones(1,8), 0, 0]</isValid>
+            <preCueFix>0</preCueFix>
+            <cueAmplitude>0</cueAmplitude>
+        </randoms>
+    </experiment> 
+    
+    <experiment name="fixAndStim_multichannel_movie.xml">
+        <conditions type="movie" runline="movieprefix,suffix numframes dwell startframe centerx centery" movieprefix="example/natural_">
+            <suffix>11337</suffix>
+            <numframes>150</numframes>
+            <dwell>6</dwell>
+            <startframe>1</startframe>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <xippmexStimChan>[256+[90:96], 0]</xippmexStimChan>
+            <xippmexStimAmp>[50 100 150]</xippmexStimAmp>
+            <stimSource>2</stimSource>
+        </conditions>
+        <params>           
+            <postTrialWait>100</postTrialWait>315
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]</fixColor>            
+            <timeToFix>1000</timeToFix>
+            <saccadeInitiate>200</saccadeInitiate>
+            <saccadeTime>100</saccadeTime>
+            <stayOnTarget>50</stayOnTarget>
+            <noFixTimeout>1000</noFixTimeout>
+            <fixJuice>0</fixJuice>
+        </params>
+        <randoms>
+            <saccadeLength>150</saccadeLength>
+            <preStimFix>500:25:700</preStimFix>
+            <saccadeDir>0:359</saccadeDir>
+        </randoms>
+    </experiment>    
+    
+    <experiment name="cuedAttention.xml">
+        <params>         
+            <contrast>[0.25 1]</contrast>
+            <spatial>0.05</spatial>
+            <temporal>8</temporal>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <radius>120</radius>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>40</stimulusDuration>
+            <maxStims>100</maxStims>
+            <targProb>.3</targProb>
+            <helpFixColor>[0 0 200]'</helpFixColor>
+            <startTargAmp>[-1,-3,-6,-15,1,3,6,15]*10'</startTargAmp>
+            <invalidTargAmp>[-3,3]'</invalidTargAmp>
+            <fixJuice>0</fixJuice>
+            <rewardHalflife>2</rewardHalflife>
+            <interStimulusInterval>[300:10:500]'</interStimulusInterval>
+        </params>   
+        <randoms>
+            <cue>1</cue>
+            <isValid>[ones(1,9), 0]</isValid>
+            <preCueFix>0</preCueFix>
+            <cueAmplitude>0</cueAmplitude>
+        </randoms>
+    </experiment>    
+    
+    <experiment name="cuedAttention_withDots.xml">
+        <params>           
+            <spatial>0.05</spatial>
+            <temporal>8</temporal>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <radius>90</radius>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>40</stimulusDuration>
+            <maxStims>100</maxStims>
+            <targProb>.3</targProb>
+            <helpFixColor>[0 0 200]'</helpFixColor>
+            <startTargAmp>[-25,-16,16,25]'</startTargAmp>
+            <invalidTargAmp>[-3,3]'</invalidTargAmp>
+            <fixJuice>0</fixJuice>
+            <rewardHalflife>2</rewardHalflife>
+            <interStimulusInterval>[300:10:500]'</interStimulusInterval>
+        </params>   
+        <randoms>
+            <cue>1</cue>
+            <isValid>[ones(1,9), 0]</isValid>
+            <preCueFix>0</preCueFix>
+            <cueAmplitude>0</cueAmplitude>
+        </randoms>
+    </experiment> 
+    
+    <experiment name="cuedAttention_withMicrostim.xml">
+        <params>           
+            <spatial>0.05</spatial>
+            <temporal>8</temporal>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <radius>120</radius>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>40</stimulusDuration>
+            <maxStims>100</maxStims>
+            <targProb>.5</targProb>
+            <helpFixColor>[0 0 200]'</helpFixColor>
+            <oriTargAmp>[-1,-3,-6,-15,1,3,6,15]'</oriTargAmp>
+            <invalidOriTargAmp>[-3,3]'</invalidOriTargAmp>
+            <xippmexStimChan>[256+[16]]</xippmexStimChan>
+            <xippmexStimAmp>[10 40 80]</xippmexStimAmp>
+            <fixJuice>0</fixJuice>
+            <rewardHalflife>2</rewardHalflife>
+            <interStimulusInterval>[300:10:500]'</interStimulusInterval>
+            <targetFeature>1</targetFeature>
+        </params>   
+        <randoms>
+            <cue>2</cue>
+            <isValid>[ones(1,9), 0]</isValid>
+            <preCueFix>0</preCueFix>
+            <cueAmplitude>0</cueAmplitude>
+        </randoms>
+    </experiment>   
+    
+    <experiment name="sensoryattentionaxes.xml">
+        <conditions type="movie" runline1="movieprefix1 numframes dwell startframe centerx centery" movieprefix1="sensaxis/original" 
+                    runline2="movieprefix2,suffix numframes dwell startframe centerx centery" movieprefix2="sensaxis/colorscrambled" 
+                    runline3="movieprefix3,suffix numframes dwell startframe centerx centery" movieprefix3="sensaxis/phasescrambled">
+            <suffix>[ 5]</suffix>
+            <numframes>50</numframes>
+            <dwell>6</dwell>
+            <startframe>1</startframe>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+        </conditions>  
+        <params>          
+            <maxStims>3</maxStims>
+            <targProb>.5</targProb>
+            <helpFixColor>[0 0 200]'</helpFixColor>
+            <startTargAmp>[-1,-3,-6,-15,1,3,6,15]'</startTargAmp>
+            <invalidTargAmp>[-3,3]'</invalidTargAmp>
+            <fixJuice>0</fixJuice>
+            <rewardHalflife>2</rewardHalflife>
+            <interStimulusInterval>[300:10:500]'</interStimulusInterval>
+            <noFixTimeout>50</noFixTimeout>
+            <falseAlarmTimeout>50</falseAlarmTimeout>
+            <cueMap>2</cueMap>
+        </params> 
+        <randoms>
+            <cueType>2</cueType>            
+            <cue>2</cue>
+            <isValid>[ones(1,10)]</isValid>
+            <preCueFix>0</preCueFix>
+            <cueAmplitude>0</cueAmplitude>
+        </randoms>
+    </experiment>
+    
+    <experiment name="fixwithimage.xml">
+        <conditions type="movie" runline="movieprefix,sep,suffix,sep,suffix2 numframes dwell startframe centerx centery" movieprefix="sensaxis/meanset/sensaxis" sep="_">
+            <suffix>[1:27]</suffix>
+            <suffix2>[1:11]</suffix2>
+            <numframes>1000</numframes>
+            <dwell>4</dwell>
+            <startframe>1</startframe>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+        </conditions>
+        <params>
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <targX>200</targX>
+            <targY>200</targY>
+            <targRad>50</targRad>
+            <targColor>[255 0 0]'</targColor>
+            <timeToFix>1000</timeToFix>
+            <targDuration>500</targDuration>
+            <preStimDuration>500</preStimDuration>
+            <isiDuration>100</isiDuration>
+        </params>
+    </experiment>
+    
+    <experiment name="realTimeTest.xml">
+        <params>
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <timeToFix>1000</timeToFix>
+            <targDuration>3000</targDuration>
+            <preStimDuration>100</preStimDuration>
+            <isiDuration>500</isiDuration>
+            <targettime>2</targettime>
+            <highfreq>690</highfreq>
+            <lowfreq>425</lowfreq>
+            <inittargetfun>2</inittargetfun> 
+            <fixjuicedur>20</fixjuicedur>
+            <successjuicedur>20</successjuicedur>
+            <juicedur>60</juicedur>
+            <blocksize>100</blocksize>
+            <blocktargetflag>1</blocktargetflag>
+            <targetfreq>600</targetfreq>
+            <freqtolerance>50</freqtolerance>
+        </params>
+    </experiment>
+    
+    <experiment name="fixAndStim_multichannel.xml">
+        <params>
+            <xippmexStimChan>256+[36, 38, 40, 45, 48, 49, 52, 56, 65, 67, 68, 77, 79, 80, 85, 86, 87, 88, 90, 93]</xippmexStimChan>
+            <xippmexStimAmp>[25 50 100 150]</xippmexStimAmp>
+            <stimRewardInterval>1000</stimRewardInterval>
+            <postTrialWait>100</postTrialWait>
+        </params>
+        <randoms>
+            <preStimFix>500:800</preStimFix>
+        </randoms>
+    </experiment>
+    
+    <experiment name="cuedAttention_BCI.xml">
+        <params>           
+            <spatial>0.05</spatial>
+            <temporal>8</temporal>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <radius>120</radius>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>40</stimulusDuration>
+            <maxStims>100</maxStims>
+            <targProb>.3</targProb>
+            <helpFixColor>[0 0 200]'</helpFixColor>
+            <startTargAmp>[-1,-3,-6,-15,1,3,6,15]'</startTargAmp>
+            <invalidTargAmp>[-3,3]'</invalidTargAmp>
+            <fixJuice>0</fixJuice>
+            <rewardHalflife>2</rewardHalflife>
+            <interStimulusInterval>[300:10:500]'</interStimulusInterval>
+            <highfreq>706</highfreq>
+            <targettime>2</targettime>
+        </params>   
+        <randoms>
+            <cue>1</cue>
+            <isValid>[ones(1,9), zeros(1,1)]</isValid>
+            <preCueFix>0</preCueFix>
+            <cueAmplitude>0</cueAmplitude>
+        </randoms>
+    </experiment>   
+    
+    <experiment name="cuedAttention_calibration.xml">
+        <params>           
+            <spatial>0.05</spatial>
+            <temporal>8</temporal>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <radius>120</radius>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>40</stimulusDuration>
+            <maxStims>100</maxStims>
+            <targProb>.3</targProb>
+            <helpFixColor>[0 0 200]'</helpFixColor>
+            <startTargAmp>[-1,-3,-6,-15,1,3,6,15]'</startTargAmp>
+            <invalidTargAmp>[-3,3]'</invalidTargAmp>
+            <fixJuice>0</fixJuice>
+            <rewardHalflife>2</rewardHalflife>
+            <interStimulusInterval>[300:10:500]'</interStimulusInterval>
+        </params>   
+        <randoms>
+            <cue>1</cue>
+            <isValid>[ones(1,9), 0]</isValid>
+            <preCueFix>0</preCueFix>
+            <cueAmplitude>0</cueAmplitude>
+        </randoms>
+    </experiment>  
+    
+    
+    
+    <experiment name="rfMapping.xml">
+        <globals>
+            <targWinRad>35</targWinRad> 
+        </globals>
+        
+        <conditions>
+            <stimLength>15</stimLength>
+            <orientation>[70 160]</orientation>
+            <centerx>-180:20:-20</centerx>
+            <centery>-200:20:-40</centery>
+            <radius>10</radius>
+            <spatial>.05</spatial>
+            <temporal>8</temporal>
+        </conditions>
+        <params>
+            <nStimPerFix>6</nStimPerFix>
+            <interStimInterval>100</interStimInterval>
+        </params>
+    </experiment>
+    
+    <experiment name="rfMapping_fullField.xml">
+        <conditions>
+            <orientation>0</orientation>       
+            <centerx>-360:120:360</centerx>
+            <centery>-240:120:240</centery>
+            <radius>60</radius>
+            <spatial>.0005</spatial>
+            <temporal>0</temporal>
+        </conditions>
+        <params>
+            <nStimPerFix>6</nStimPerFix>
+            <interStimInterval>0</interStimInterval>
+        </params>
+    </experiment>
+    
+    <experiment name="grating.xml">
+        <conditions>
+            <stimLength>50</stimLength>
+            <spatial>0.0235</spatial>
+            <temporal>3</temporal>
+            <radius>60</radius>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+        </conditions>
+    </experiment>
+    
+    <experiment name="rfMapping_oriTuning.xml">
+        <conditions>
+            <orientation>0:10:170</orientation>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <radius>60</radius>
+            <spatial>.05</spatial>
+            <temporal>8</temporal>
+        </conditions>
+        <params>
+            <nStimPerFix>6</nStimPerFix>
+        </params>
+    </experiment>
+    
+    <experiment name="rfMapping_sf.xml">
+        <conditions>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <radius>60</radius>
+            <temporal>8</temporal>
+        </conditions>
+        <params>
+            <nStimPerFix>6</nStimPerFix>
+        </params>
+    </experiment>
+    
+    <experiment name="ampmem_withhelp.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <distance>[50 137 243 354]</distance>
+            <angle>[0:45:315]</angle>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <targetColor>[255 255 255]'</targetColor>
+            <helperTargetColor>[60 60 80]'</helperTargetColor>
+            <timeToFix>1000</timeToFix>
+            <targetDuration>50</targetDuration>
+            <noFixTimeout>1000</noFixTimeout>
+            <targetOnsetDelay>350</targetOnsetDelay>
+            <saccadeInitiate>500</saccadeInitiate>
+            <saccadeTime>200</saccadeTime>
+            <stayOnTarget>200</stayOnTarget>
+            <fixduration>1000</fixduration>
+        </params>        
+    </experiment>
+    
+    <experiment name="ampmem.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <size>15</size>
+            <angle>[135 315]</angle>
+            <distance>[50 137 243]</distance>
+            <fixColor>[0 0 255]'</fixColor>
+            <targetColor>[255 255 255]'</targetColor>
+            <timeToFix>1000</timeToFix>
+            <targetDuration>50</targetDuration>
+            <noFixTimeout>1000</noFixTimeout>
+            <targetOnsetDelay>350</targetOnsetDelay>
+            <saccadeInitiate>500</saccadeInitiate>
+            <saccadeTime>200</saccadeTime>
+            <stayOnTarget>150</stayOnTarget>
+            <InterTrialPause>0</InterTrialPause>
+            <fixDuration>1000</fixDuration>
+        </params> 
+    </experiment> 
+    
+    <experiment name="dirmem.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <distance>17*[6:3:18]</distance>
+            <angle>[0:22.5:359]</angle>
+            <fixColor>[0 0 255]'</fixColor>
+            <targetColor>[255 255 255]'</targetColor>
+            <timeToFix>1000</timeToFix>
+            <targetDuration>100</targetDuration>
+            <noFixTimeout>1000</noFixTimeout>
+            <targetOnsetDelay>200</targetOnsetDelay>
+            <saccadeInitiate>400</saccadeInitiate>
+            <saccadeTime>200</saccadeTime>
+            <stayOnTarget>150</stayOnTarget>
+            <size>15</size>
+        </params>
+        <randoms>
+            <fixDuration>[2300:100:2800]</fixDuration>
+        </randoms>
+    </experiment>   
+    
+    <experiment name="dirmem_withhelp.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <distance>[12]*17</distance>
+            <angle>0:45:359</angle>
+            <size>15</size>
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <targetColor>[255 255 255]'</targetColor>
+            <helperTargetColor>[128 128 128]'</helperTargetColor>
+            <timeToFix>1000</timeToFix>
+            <targetDuration>100</targetDuration>
+            <noFixTimeout>1000</noFixTimeout>
+            <targetOnsetDelay>200</targetOnsetDelay>
+            <saccadeInitiate>400</saccadeInitiate>
+            <saccadeTime>200</saccadeTime>
+            <stayOnTarget>150</stayOnTarget>
+            <fixJuice>0</fixJuice>
+        </params>
+        <randoms>
+            <fixDuration>[1300:10:1800]</fixDuration>
+        </randoms>
+    </experiment>    
+    
+    <experiment name="dirmem_bci_discrete.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <distance>12*17</distance>
+            <angle>[0:45:(360-45)]</angle>
+            <allAngles>[-1]'</allAngles>
+            <delayAngle>[0:45:(360-45)]'</delayAngle>
+            <size>[20]</size>
+            <targetColor>[255 255 255]'</targetColor>
+            <helperTargetColor>[255 255 255]'</helperTargetColor>
+            <cursorColor>[60 80 60]'</cursorColor>
+            <targetOnsetDelay>500</targetOnsetDelay>
+            <saccadeInitiate>500</saccadeInitiate>
+            <saccadeTime>150</saccadeTime>
+            <earlySaccadeTimeOut>1000</earlySaccadeTimeOut>
+            <stayOnTarget>150</stayOnTarget>
+            <updatesOnTarget>8</updatesOnTarget>
+            <bciJuice>2</bciJuice>
+            <saccadeJuice>0</saccadeJuice>
+            <bciSaccadeJuice>1</bciSaccadeJuice>
+            <preBCIDelay>240</preBCIDelay>
+            <postBCIDelay>100</postBCIDelay>
+            <targetColorOther>[60 60 60]'</targetColorOther>
+            <feedbackType>['annulus']</feedbackType>
+            <sizeOther>[10]</sizeOther>
+            <BCIPause>500</BCIPause>
+            <minAnnulusSize>10</minAnnulusSize>
+            <maxAnnulusSize>80</maxAnnulusSize>            
+            <annulusThickness>5</annulusThickness>
+            <wrongTargTimeOut>0</wrongTargTimeOut>
+            <distfunflag>1</distfunflag>
+            <mindist>0.25</mindist>
+            <minRxn>0.08</minRxn>
+            <cursorVisible>0</cursorVisible>
+            <bciRewardEnable>0</bciRewardEnable>
+            <showDelayTargetFlag>1</showDelayTargetFlag>
+            <fixJuice>0</fixJuice>
+            <convergeAnnulus>1</convergeAnnulus>
+            <noisyAnnulusFlag>1</noisyAnnulusFlag>
+            <noisyFlatTime>1000</noisyFlatTime>
+            <initSinusoidGain>10</initSinusoidGain>
+        </params>
+        <randoms>
+            <annulusvisibleflag>[0]</annulusvisibleflag>
+            <convergeDelay>[100]</convergeDelay>
+            <fixDuration>[3000]</fixDuration>
+            <bciTrial>[zeros(1,10)]</bciTrial>
+            <targetDuration>[500]</targetDuration>
+            <noisyFreq1>[4 5 10 20]</noisyFreq1>
+            <noisyFreq2>[4 5 10 20]</noisyFreq2>
+        </randoms>
+    </experiment> 
+    
+    <experiment name="dirmem_bci_discrete_block.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <distance>12*17</distance>
+            <size>[20]</size>
+            <angle>[0 180]'</angle>
+            <allAngles>[-1]'</allAngles>
+            <delayAngle>[0:45:(360-45)]'</delayAngle>
+            <mindist>[.25 .25 .25 .25 .25 .25 .25 .25]'</mindist>
+            <targWinRad>150</targWinRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <targetColor>[60 60 60]'</targetColor>
+            <cursorColor>[60 80 60]'</cursorColor>
+            <timeToFix>1000</timeToFix>
+            <noFixTimeout>2000</noFixTimeout>
+            <targetOnsetDelay>200</targetOnsetDelay>
+            <saccadeInitiate>0</saccadeInitiate>
+            <saccadeTime>0</saccadeTime>
+            <stayOnTarget>150</stayOnTarget>
+            <cursorVisible>1</cursorVisible>
+            <bciRewardEnable>1</bciRewardEnable>
+            <updatesOnTarget>4</updatesOnTarget>
+            <bciJuice>3</bciJuice>
+            <saccadeJuice>2</saccadeJuice>
+            <bciSaccadeJuice>1</bciSaccadeJuice>
+            <bciWedgeWidth>180</bciWedgeWidth>
+            <preBCIDelay>400</preBCIDelay>
+            <postBCIDelay>100</postBCIDelay>
+            <targetColorOther>[60 60 60]'</targetColorOther>
+            <feedbackType>['annulus']</feedbackType>
+            <sizeOther>[15]</sizeOther>
+            <BCIPause>500</BCIPause>
+            <minAnnulusSize>10</minAnnulusSize>
+            <maxAnnulusSize>80</maxAnnulusSize>
+            <annulusThickness>5</annulusThickness>
+            <startAnnulusRad>5/7</startAnnulusRad>
+            <wrongTargTimeOut>1500</wrongTargTimeOut>
+            <distfunflag>1</distfunflag>
+            <minRxn>0</minRxn>
+            <bciTrial>1</bciTrial>
+            <miniblocksize>10</miniblocksize>
+            <nCueTrials>1</nCueTrials>
+            <annulusvisibleflag>1</annulusvisibleflag>
+            <noFixTimeoutBCI>2000</noFixTimeoutBCI>
+            <countMisses>0</countMisses>
+            <countSaccade>1</countSaccade>
+            <errorBadHandshakeFlag>1</errorBadHandshakeFlag>
+            <earlySaccadeTimeOut>2000</earlySaccadeTimeOut>
+            <longHelper>0</longHelper>
+            <longSaccadeJuice>0</longSaccadeJuice>
+            <convergeAnnulus>0</convergeAnnulus>
+            <noisyAnnulusFlag>0</noisyAnnulusFlag>
+            <noisyFlatTime>1000</noisyFlatTime>
+            <initSinusoidGain>10</initSinusoidGain>
+            <cueBCI>1</cueBCI>
+        </params>
+        <randoms>
+            <fixDuration>[3600]</fixDuration>
+            <targetDuration>[390]</targetDuration>
+        </randoms>
+    </experiment>
+    
+    <experiment name="dirmem_bci_discrete_distractor.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <distance>170</distance>
+            <angle>[0 180]</angle>
+            <allAngles>-1</allAngles>
+            <delayAngle>[0:90:270]'</delayAngle>
+            <size>[15]</size>
+            <targetColor>[255 255 255]'</targetColor>
+            <helperTargetColor>[255 255 255]'</helperTargetColor>
+            <cursorColor>[60 80 60]'</cursorColor>
+            <targetOnsetDelay>200</targetOnsetDelay>
+            <saccadeInitiate>500</saccadeInitiate>
+            <saccadeTime>200</saccadeTime>
+            <earlySaccadeTimeOut>1000</earlySaccadeTimeOut>
+            <stayOnTarget>150</stayOnTarget>
+            <updatesOnTarget>8</updatesOnTarget>
+            <bciJuice>2</bciJuice>
+            <saccadeJuice>0</saccadeJuice>
+            <bciSaccadeJuice>1</bciSaccadeJuice>
+            <preBCIDelay>240</preBCIDelay>
+            <postBCIDelay>100</postBCIDelay>
+            <targetColorOther>[60 60 60]'</targetColorOther>
+            <feedbackType>['annulus']</feedbackType>
+            <sizeOther>[15]</sizeOther>
+            <BCIPause>500</BCIPause>
+            <minAnnulusSize>10</minAnnulusSize>
+            <maxAnnulusSize>80</maxAnnulusSize>
+            <annulusThickness>5</annulusThickness>
+            <wrongTargTimeOut>0</wrongTargTimeOut>
+            <distfunflag>1</distfunflag>
+            <mindist>0.25</mindist>
+            <minRxn>0.08</minRxn>
+            <cursorVisible>1</cursorVisible>
+            <bciRewardEnable>1</bciRewardEnable>
+            <showDelayTargetFlag>1</showDelayTargetFlag>
+            <fixJuice>0</fixJuice>
+            <convergeAnnulus>1</convergeAnnulus>
+            <distractorOn>1</distractorOn>
+            <distractorOnTime>1000</distractorOnTime>
+            <distractorDuration>100</distractorDuration>
+            <distractorColor>[90 60 60]'</distractorColor>
+        </params>
+        <randoms>
+            <annulusvisibleflag>[1 1 1 1 0]</annulusvisibleflag>
+            <convergeDelay>[1000]</convergeDelay>
+            <fixDuration>[2300:50:2800]</fixDuration>
+            <bciTrial>[zeros(1,10)]</bciTrial>
+            <targetDuration>[100]</targetDuration>
+            <distractorOffset>[1 3]</distractorOffset>
+        </randoms>
+    </experiment> 
+    
+    <experiment name="distanceStabilityBCI.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <mindist>[1]'</mindist>
+            <fixColor>[0 0 255]'</fixColor>
+            <cursorColor>[60 80 60]'</cursorColor>
+            <timeToFix>1000</timeToFix>
+            <noFixTimeout>2000</noFixTimeout>
+            <cursorVisible>1</cursorVisible>
+            <bciRewardEnable>1</bciRewardEnable>
+            <updatesOnTarget>8</updatesOnTarget>
+            <bciJuice>2</bciJuice>
+            <calibJuice>2</calibJuice>
+            <preBCIDelay>100</preBCIDelay>
+            <postBCIDelay>400</postBCIDelay>
+            <feedbackType>['annulus']</feedbackType>
+            <BCIPause>0</BCIPause>
+            <minAnnulusSize>10</minAnnulusSize>
+            <maxAnnulusSize>80</maxAnnulusSize>
+            <annulusThickness>5</annulusThickness>
+            <startAnnulusRad>3/7</startAnnulusRad>
+            <annulusSizeAtThresh>0.2</annulusSizeAtThresh>
+            <bciTrial>1</bciTrial>
+            <annulusvisibleflag>1</annulusvisibleflag>
+            <noFixTimeoutBCI>2000</noFixTimeoutBCI>
+            <errorBadHandshakeFlag>1</errorBadHandshakeFlag>
+            <noisyAnnulusFlag>1</noisyAnnulusFlag>
+            <noisyFlatTime>2000</noisyFlatTime>
+            <initSinusoidGain>10</initSinusoidGain>
+            <cueBCI>1</cueBCI>
+            <noisyFreq1>[5]</noisyFreq1>
+            <noisyFreq2>[5]</noisyFreq2>
+            <iterativeRecal>1</iterativeRecal>
+            <recalTrial>[60]'</recalTrial>
+            <recalPercent>[0]'</recalPercent>
+            <convergeDelay> 400 </convergeDelay>
+            <calibrationpause>10000</calibrationpause>
+            <recalMissReward>1</recalMissReward>
+        </params>
+        <randoms>
+            <shamFlag>[0 0 0 0 0 0 0 0 0 1]</shamFlag>
+            <convergeDelay>[100]</convergeDelay>
+            <fixDuration>[4000]</fixDuration>
+            <convergeAnnulus>[0]</convergeAnnulus>
+        </randoms>
+    </experiment>
+    
+    <experiment name="distanceStabilityBCIBlock.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <mindist>[1]'</mindist>
+            <fixColor>[0 0 255]'</fixColor>
+            <cursorColor>[60 80 60]'</cursorColor>
+            <timeToFix>1000</timeToFix>
+            <noFixTimeout>2000</noFixTimeout>
+            <cursorVisible>1</cursorVisible>
+            <bciRewardEnable>1</bciRewardEnable>
+            <updatesOnTarget>8</updatesOnTarget>
+            <bciJuice>2</bciJuice>
+            <calibJuice>2</calibJuice>
+            <preBCIDelay>100</preBCIDelay>
+            <postBCIDelay>400</postBCIDelay>
+            <feedbackType>['annulus']</feedbackType>
+            <BCIPause>0</BCIPause>
+            <minAnnulusSize>10</minAnnulusSize>
+            <maxAnnulusSize>80</maxAnnulusSize>
+            <annulusThickness>5</annulusThickness>
+            <startAnnulusRad>3/7</startAnnulusRad>
+            <annulusSizeAtThresh>0.2</annulusSizeAtThresh>
+            <bciTrial>1</bciTrial>
+            <annulusvisibleflag>1</annulusvisibleflag>
+            <noFixTimeoutBCI>2000</noFixTimeoutBCI>
+            <errorBadHandshakeFlag>1</errorBadHandshakeFlag>
+            <noisyAnnulusFlag>1</noisyAnnulusFlag>
+            <noisyFlatTime>2000</noisyFlatTime>
+            <initSinusoidGain>10</initSinusoidGain>
+            <cueBCI>1</cueBCI>
+            <noisyFreq1>[5]</noisyFreq1>
+            <noisyFreq2>[5]</noisyFreq2>
+            <iterativeRecal>1</iterativeRecal>
+            <recalTrial>[60]'</recalTrial>
+            <recalPercent>[0]'</recalPercent>
+            <convergeDelay> 400 </convergeDelay>
+            <calibrationpause>10000</calibrationpause>
+            <recalMissReward>1</recalMissReward>
+            <bciinitblocklength>100</bciinitblocklength>
+            <bciblocklength>100</bciblocklength>
+            <shamblocklength>20</shamblocklength>
+            <bciminiblocktrials>[ones(1,9),0]'</bciminiblocktrials>
+            <shamminiblocktrials>0</shamminiblocktrials>
+            <shampossible>[1 2 3 4 5]'</shampossible>
+        </params>
+        <randoms>
+            <convergeDelay>[100]</convergeDelay>
+            <fixDuration>[4000]</fixDuration>
+            <convergeAnnulus>[0]</convergeAnnulus>
+        </randoms>
+    </experiment>
+    
+     <experiment name="distanceStabilityBCIcalib.xml">
+        <params>
+            <bgColor>[60 60 60]'</bgColor>
+            <mindist>[1]'</mindist>
+            <fixColor>[0 0 255]'</fixColor>
+            <cursorColor>[60 80 60]'</cursorColor>
+            <timeToFix>1000</timeToFix>
+            <noFixTimeout>2000</noFixTimeout>
+            <targetOnsetDelay>0</targetOnsetDelay>
+            <saccadeInitiate>0</saccadeInitiate>
+            <saccadeTime>0</saccadeTime>
+            <stayOnTarget>150</stayOnTarget>
+            <cursorVisible>1</cursorVisible>
+            <bciRewardEnable>0</bciRewardEnable>
+            <updatesOnTarget>8</updatesOnTarget>
+            <bciJuice>3</bciJuice>
+            <calibJuice>2</calibJuice>
+            <preBCIDelay>100</preBCIDelay>
+            <postBCIDelay>400</postBCIDelay>
+            <feedbackType>['annulus']</feedbackType>
+            <BCIPause>0</BCIPause>
+            <minAnnulusSize>10</minAnnulusSize>
+            <maxAnnulusSize>80</maxAnnulusSize>
+            <annulusThickness>5</annulusThickness>
+            <startAnnulusRad>3/7</startAnnulusRad>
+            <annulusSizeAtThresh>0.2</annulusSizeAtThresh>
+            <bciTrial>0</bciTrial>
+            <annulusvisibleflag>1</annulusvisibleflag>
+            <noFixTimeoutBCI>2000</noFixTimeoutBCI>
+            <errorBadHandshakeFlag>0</errorBadHandshakeFlag>
+            <convergeAnnulus>1</convergeAnnulus>
+            <noisyAnnulusFlag>1</noisyAnnulusFlag>
+            <noisyFlatTime>2000</noisyFlatTime>
+            <initSinusoidGain>10</initSinusoidGain>
+            <cueBCI>1</cueBCI>
+            <noisyFreq1>[4 5 7 10 20]</noisyFreq1>
+            <noisyFreq2>[5 10]</noisyFreq2>
+        </params>
+        <randoms>
+            <convergeDelay>[100]</convergeDelay>
+            <fixDuration>[4000]</fixDuration>
+        </randoms>
+    </experiment>
+    
+    
+    <experiment name="dir.xml">
+        <params>
+            <bgColor>[128 128 128]'</bgColor>
+            <fixJuice>0</fixJuice>
+            <distance>103*[1 2 3 4 5 6]</distance>
+            <angle>[0:45:315]</angle>
+            <size>15</size>        
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <targetColor>[255 255 255]'</targetColor>
+            <timeToFix>1000</timeToFix>
+            <fixDuration>650</fixDuration>
+            <targetDuration>1850</targetDuration>
+            <noFixTimeout>1000</noFixTimeout>
+            <targetOnsetDelay>150</targetOnsetDelay>
+            <saccadeInitiate>500</saccadeInitiate>
+            <saccadeTime>500</saccadeTime>
+            <stayOnTarget>200</stayOnTarget>
+        </params>
+    </experiment>
+    
+    <experiment name="fixblank.xml">
+        <params>
+            <stimLength>10</stimLength>       
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <preStimFix>0</preStimFix>
+            <timeToFix>1000</timeToFix> 
+            <saccadeInitiate>0</saccadeInitiate>
+            <saccadeTime>0</saccadeTime>
+            <stayOnTarget>0</stayOnTarget>
+            <saccadeLength>0</saccadeLength>
+            <noFixTimeout>2000</noFixTimeout>
+            <saccadeDir>0</saccadeDir>
+            <isi>300</isi>
+        </params>
+    </experiment>
+    
+    <experiment name="vgsDots.xml">
+        <conditions>
+            <distance>[261]</distance>
+            <angle>[0 90]</angle>
+        </conditions>
+        <params>
+            <colorFEF>[255 255 255]'</colorFEF>
+            <dwell>7</dwell>
+            <fixX>260</fixX>
+            <fixY>260</fixY>
+        </params>
+    </experiment>
+    
+    <experiment name="fixblank_active.xml">
+        <params>
+            <fixJuice>0</fixJuice>
+            <stimLength>50</stimLength>       
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <fixColor>[0 0 255]'</fixColor>
+            <preStimFix>200</preStimFix>
+            <timeToFix>1000</timeToFix> 
+            <saccadeInitiate>300</saccadeInitiate>
+            <saccadeTime>500</saccadeTime>
+            <stayOnTarget>500</stayOnTarget>
+            <saccadeLength>200</saccadeLength>
+            <noFixTimeout>1000</noFixTimeout>
+            <saccadeDir>0:359</saccadeDir>
+        </params>
+    </experiment>
+    
+    <experiment name="dir_remapping.xml">        
+        <globals>
+            <targWinRad>35</targWinRad> 
+        </globals>
+        
+        <conditions>
+            <size>6</size>
+            <grouped>
+                <distance>[repmat(51,1,16)]</distance>
+                <angle>[0 0 0 0 90 90 90 90 180 180 180 180 270 270 270 270]</angle>
+                <targX>round([-119.5 -170.5 -170.5 -119.5 -119.5 -170.5 -170.5 -119.5 -119.5 -170.5 -170.5 -119.5 -119.5 -170.5 -170.5 -119.5])</targX>
+                <targY>round([-63.5 -63.5 -114.5 -114.5 -63.5 -63.5 -114.5 -114.5 -63.5 -63.5 -114.5 -114.5 -63.5 -63.5 -114.5 -114.5])</targY>
+            </grouped>
+        </conditions>        
+        <params> 
+            <fixX>0</fixX>
+            <fixY>0</fixY>
+            <fixRad>5</fixRad>
+            <targRad>5</targRad>
+            <fixColor>[0 0 255]</fixColor>
+            <targetColor>[255 0 100]</targetColor>
+            <stimColor>[255 255 255]</stimColor>
+            <timeToFix>1000</timeToFix>
+            <fixDuration>500</fixDuration>
+            <stimDuration>25</stimDuration>
+            <noFixTimeout>1000</noFixTimeout>
+            <targetOnsetDelay>500</targetOnsetDelay>
+            <stimOnsetDelay>500</stimOnsetDelay>
+            <saccadeInitiate>500</saccadeInitiate>
+            <saccadeTime>300</saccadeTime>
+            <stayOnTarget>500</stayOnTarget>
+            <SaccadeAlignFlag>0</SaccadeAlignFlag>
+        </params>        
+    </experiment>
+    
+    <experiment name="driftchoice_bci_training.xml">
+        <params>
+            <phase>0</phase>
+            <spatial>0.0235</spatial>
+            <temporal>3</temporal>
+            <radius>40</radius>
+            <contrast>1</contrast>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>150</stimulusDuration>
+            <targetDuration>40</targetDuration>
+            <waitAfterTarget>0.1</waitAfterTarget>
+            <cueDuration>0.12</cueDuration>
+            <extraReward>2</extraReward>
+            <startTargAmp>[1.04 1.08 1.16 ]'</startTargAmp>
+            <showHoles>1</showHoles>
+            <visCueBrightness>1.5</visCueBrightness>
+            <visCueRad>10</visCueRad>  
+            <cueColor>[140 140 140]'</cueColor>
+            <rewardHalflife>60</rewardHalflife>
+            <rewardCap>10</rewardCap>
+            <noFixTimeout>2000</noFixTimeout>
+            <minTargetOnset> 5 </minTargetOnset>
+            <meanTargetOnset>90</meanTargetOnset>
+            <maxTargetOnset>210</maxTargetOnset>
+            <earlyTargetDur>35</earlyTargetDur>
+            <tooSlow>.5</tooSlow>
+            <margin>60</margin>
+            <shorttimeout>500</shorttimeout>
+            <invalidAmp>2</invalidAmp>
+            <miniblocksize>100</miniblocksize>
+            <initcue>2</initcue>
+            <blockcue>1</blockcue>
+            <numblockcues>0</numblockcues>
+            <targprobtype>1</targprobtype>
+        </params>   
+        <randoms>
+            <preStimFix>[300]</preStimFix>
+            <isValid>[1 1 1 1 1 1 1 1 1 0]</isValid>
+            <isCatch>[0 0 0 0 0]</isCatch>
+            <cue>[1 2]</cue>
+            <targAmpPick>[1 2 3]</targAmpPick>
+            <cueAmplitude>[0 0]</cueAmplitude>
+            <cueTargetInterval>[300]</cueTargetInterval>
+            <earlyLateTar>[1 0 0 0 0 0 0 0 0 0]</earlyLateTar>
+        </randoms>
+    </experiment> 
+    
+    <experiment name="driftchoice_bci_training_natmov.xml">
+        <params>
+            <fixJuice>0</fixJuice>
+            <phase>0</phase>
+            <spatial>0.0235</spatial>
+            <temporal>3</temporal>
+            <radius>40</radius>
+            <contrast>1</contrast>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>120</stimulusDuration>
+            <targetDuration>40</targetDuration>
+            <waitAfterTarget>0.1</waitAfterTarget>
+            <cueDuration>0.12</cueDuration>
+            <extraReward>2</extraReward>
+            <startTargAmp>[1.04 1.08 1.16 1.32 1.64 ]'</startTargAmp>
+            <showHoles>0</showHoles>
+            <visCueBrightness>1.5</visCueBrightness>
+            <visCueRad>10</visCueRad>  
+            <cueColor>[140 140 140]'</cueColor>
+            <rewardHalflife>60</rewardHalflife>
+            <rewardCap>10</rewardCap>
+            <noFixTimeout>2000</noFixTimeout>
+            <minTargetOnset> 5 </minTargetOnset>
+            <meanTargetOnset>90</meanTargetOnset>
+            <maxTargetOnset>210</maxTargetOnset>
+            <earlyTargetDur>35</earlyTargetDur>
+            <tooSlow>1</tooSlow>
+            <margin>60</margin>
+            <shorttimeout>500</shorttimeout>
+            <miniblocksize>100</miniblocksize>
+            <initcue>2</initcue>
+            <blockcue>1</blockcue>
+            <numblockcues>5</numblockcues>
+            <targprobtype>1</targprobtype>
+            <contrasts>[0 0.1 0.2 0.3 0.5]'</contrasts>
+        </params>   
+        <randoms>
+            <preStimFix>[300]</preStimFix>
+            <isValid>[ones(1,9), 0]</isValid>
+            <invalidAmp>[2 3 4]</invalidAmp>
+            <isCatch>[0 0 0 0 0]</isCatch>
+            <cue>[1 2]</cue>
+            <targAmpPick>[1 2 3 4 5]</targAmpPick>
+            <cueAmplitude>[0 0]</cueAmplitude>
+            <cueTargetInterval>[300]</cueTargetInterval>
+            <earlyLateTar>[1 0 0 0 0 0 0 0 0 0]</earlyLateTar>
+        </randoms>
+    </experiment> 
+    
+    <experiment name="driftchoice_bci.xml">
+        <params>
+            <phase>0</phase>
+            <spatial>0.0235</spatial>
+            <temporal>3</temporal>
+            <radius>40</radius>
+            <contrast>1</contrast>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>150</stimulusDuration>
+            <targetDuration>40</targetDuration>
+            <waitAfterTarget>10</waitAfterTarget>
+            <cueDuration>0.12</cueDuration>
+            <extraReward>2</extraReward>
+            <startTargAmp>[ 1.04 1.8 1.16 ]'</startTargAmp>
+            <showHoles>0</showHoles>
+            <visCueBrightness>1.5</visCueBrightness>
+            <visCueRad>10</visCueRad>  
+            <cueColor>[140 140 140]'</cueColor>
+            <rewardHalflife>60</rewardHalflife>
+            <rewardCap>10</rewardCap>
+            <noFixTimeout>2000</noFixTimeout>
+            <minTargetOnset> 5 </minTargetOnset>
+            <meanTargetOnset>90</meanTargetOnset>
+            <maxTargetOnset>210</maxTargetOnset>
+            <earlyTargetDur>35</earlyTargetDur>
+            <tooSlow>.5</tooSlow>
+            <margin>60</margin>
+            <shorttimeout>500</shorttimeout>
+            <invalidAmp>2</invalidAmp>
+            <miniblocksize>100</miniblocksize>
+            <initcue>1</initcue>
+            <blockcue>1</blockcue>
+            <numblockcues>5</numblockcues>
+            <targprobtype>1</targprobtype>
+        </params>   
+        <randoms>
+            <preStimFix>[300]</preStimFix>
+            <isValid>[1 1 1 1 1 1 1 1 1 0]</isValid>
+            <isCatch>[0 0 0 0 0]</isCatch>
+            <cue>[1 2]</cue>
+            <targAmpPick>[1 2 3]</targAmpPick>
+            <cueAmplitude>[0 0]</cueAmplitude>
+            <cueTargetInterval>[300]</cueTargetInterval>
+            <earlyLateTar>[1 0 0 0 0 0 0 0 0 0]</earlyLateTar>
+            <notone>[1:15]</notone>
+        </randoms>
+    </experiment> 
+    
+    
+    <experiment name="driftchoice_bcithresh.xml">
+        <params>
+            <phase>0</phase>
+            <spatial>0.0235</spatial>
+            <temporal>3</temporal>
+            <radius>40</radius>
+            <contrast>1</contrast>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+            <orientation1>45</orientation1>        
+            <orientation2>135</orientation2> 
+            <stimulusDuration>150</stimulusDuration>
+            <targetDuration>40</targetDuration>
+            <waitAfterTarget>10</waitAfterTarget>
+            <cueDuration>0.12</cueDuration>
+            <extraReward>2</extraReward>
+            <startTargAmp>[1.16]'</startTargAmp>
+            <showHoles>0</showHoles>
+            <visCueBrightness>1.5</visCueBrightness>
+            <visCueRad>10</visCueRad>  
+            <cueColor>[140 140 140]'</cueColor>
+            <rewardHalflife>60</rewardHalflife>
+            <rewardCap>10</rewardCap>
+            <noFixTimeout>2000</noFixTimeout>
+            <minTargetOnset> 5 </minTargetOnset>
+            <meanTargetOnset>90</meanTargetOnset>
+            <maxTargetOnset>150</maxTargetOnset>
+            <earlyTargetDur>35</earlyTargetDur>
+            <tooSlow>.5</tooSlow>
+            <margin>60</margin>
+            <shorttimeout>500</shorttimeout>
+            <invalidAmp>2</invalidAmp>
+            <miniblocksize>100</miniblocksize>
+            <initcue>2</initcue>
+            <blockcue>1</blockcue>
+            <numblockcues>5</numblockcues>
+            <threshflag>1</threshflag>
+            <threshtriallength>150</threshtriallength>
+            <mintargetfreqin>0.5</mintargetfreqin>
+            <mintargetfreqout>0.5</mintargetfreqout>
+            <minthresh> 0.3</minthresh>
+            <maxthresh>1</maxthresh>
+            <freqperthresh>0.6</freqperthresh>
+            <threshReward>4</threshReward>
+            <validTargFlag>1</validTargFlag>
+            <fixreward>1</fixreward>
+            <twoTTLflag>1</twoTTLflag>
+            <adaptiveThreshFlag>1</adaptiveThreshFlag>
+            <variableLenBCIFlag>1</variableLenBCIFlag>
+            <freqdurflag>1</freqdurflag>
+            <freqdur>3</freqdur>
+            <numAdjustTrials>20</numAdjustTrials>
+            <behavLimits>0.75</behavLimits>
+            <freqStep>0.02</freqStep>
+        </params>   
+        <randoms>
+            <preStimFix>[300]</preStimFix>
+            <isValid>[1 1 1 1 1 1 1 1 1 1]</isValid>
+            <isCatch>[0 0 0 0 0]</isCatch>
+            <cue>[1 2]</cue>
+            <targAmpPick>[1]</targAmpPick>
+            <cueAmplitude>[0 0]</cueAmplitude>
+            <cueTargetInterval>[300]</cueTargetInterval>
+            <earlyLateTar>[1 0 0 0 0 0 0 0 0 0]</earlyLateTar>
+            <notone>[1]</notone>
+            <showtarg>[0 0 0 0 0 1 1 1 1 1]</showtarg>
+        </randoms>
+    </experiment> 
+    
+    <experiment name="auditoryClassicalCondition.xml">
+        <params>
+            <soundEnabled>1</soundEnabled>
+            <soundtime>800</soundtime>
+            <soundfreq>440</soundfreq>
+            <sampleFreq>48000</sampleFreq>
+            <outBufferSize>4*48000</outBufferSize>
+            <betweentrialtime>400</betweentrialtime>
+        </params>
+        <randoms>
+            <soundrnd>[1 2 3 4 5]</soundrnd>
+        </randoms>
+    </experiment>
+    
+        
+    
+    <experiment name="auditoryForcedChoice.xml">
+        <params>
+            <targX>[-350]</targX>
+            <targY>[-100]</targY>
+            <helpRad>150</helpRad>
+            <timeout>3000</timeout>
+        </params>
+        <randoms>
+            <cue>[1 2]</cue>
+            <azimuth>[10 20 30 45 60 90]</azimuth>
+        </randoms>
+    </experiment>
+    
+    <experiment name="auditoryMemoryGuided.xml">
+        <params>
+            <targX>[-350]</targX>
+            <targY>[-100]</targY>
+            <helpRad>150</helpRad>
+            <timeout>3000</timeout>
+        </params>
+        <randoms>
+            <cue>[1 2]</cue>
+            <azimuth>[10 20 30 45 60 90]</azimuth>
+        </randoms>
+    </experiment>
+    
+    <experiment name="adaptiveSampling.xml">
+        <params>
+            <centerx>-120</centerx>
+            <centery>-120</centery>
+        </params>
+    </experiment>
+</subject>

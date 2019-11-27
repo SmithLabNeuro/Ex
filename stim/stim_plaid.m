@@ -1,0 +1,89 @@
+function stim_plaid(optstr,w,objID,arg)
+%function stim_plaid(optstr,w,objID,arg)
+%
+% showex helper function for 'plaid' stim class
+%
+% Each helper function has to have the ability to do 3 things:
+% (1) parse the input arguments from the 'set' command and precompute
+% anything that is necessary for that stimulus
+% (2) issue the display commands for that object
+% (3) clean up after that object is displayed (not always necessary)
+
+global objects;
+global sv;
+
+if strcmp(optstr,'setup')
+    a = sscanf(arg,'%i %f %f %f %f %f %f %f %f %f %f %f');
+    
+    % arguments: (1) frameCount
+    %            (2) x position
+    %            (3) y position
+    %            (4) aperture radius
+    %            (5) contrast (0.0-1.0) for 1st grating
+    %            (6) contrast (0.0-1.0) for 2nd grating
+    %            (7) angle for 1st grating
+    %            (8) angle for 2nd grating
+    %            (9) frequency for 1st grating
+    %            (10) frequency for 2nd grating
+    %            (11) cycles per second for 1st grating
+    %            (12) cycles per second for 2nd grating
+    
+    [gratingid, ~] = CreateProceduralSineGrating(w,...                 % Window pointer
+        2 * a(4),...     % Width
+        2 * a(4),...     % Height
+        [],...
+        a(4),...
+        .5);
+    
+    XCoord = (sv.midScreen(1) + a(2));
+    YCoord = (sv.midScreen(2) - a(3));
+    TextureRect = [0,0,2 * a(4), 2 * a(4)];
+    dstRect = CenterRectOnPoint(TextureRect,XCoord,YCoord);
+    
+    RectArray = [dstRect',dstRect'];
+    
+    ContrastArray = [a(5),a(6)];
+    AngleArray = [-a(7)-90,-a(8)-90]; %this mess is intentional
+    FrequencyArray = [a(9),a(10)];
+    PhaseVelocityArray = [a(11),a(12)];
+    
+    stimname = mfilename;
+    
+    objects{objID} = struct( ...
+        'type',stimname(6:end), ...
+        'frame', 0, ...
+        'fc',round(a(1)), ...
+        'RectArray',RectArray, ...
+        'ContrastArray',ContrastArray, ...
+        'AngleArray',AngleArray, ...
+        'FrequencyArray',FrequencyArray, ...
+        'PhaseVelocityArray',PhaseVelocityArray, ...
+        'TexturePointer',gratingid, ...
+        'ScreenPointer',w, ...
+        'dstRect',dstRect);
+    
+elseif strcmp(optstr,'display')
+
+    ParamArray = [objects{objID}.PhaseVelocityArray .* objects{objID}.frame;...
+        objects{objID}.FrequencyArray;...
+        objects{objID}.ContrastArray;...
+        [0,0]];
+    
+    Screen('DrawTextures',...
+        w,...
+        objects{objID}.TexturePointer,...
+        [],...
+        objects{objID}.RectArray,...
+        objects{objID}.AngleArray, ...
+        [], ...
+        [], ...
+        [], ...
+        [],...
+        [], ...
+        ParamArray);
+
+elseif strcmp(optstr,'cleanup')
+    Screen('Close',objects{objID}.TexturePointer);
+else
+    error('Invalid option string passed into stim_*.m function');
+end
