@@ -183,7 +183,6 @@ while true % display loop
                     [objID, withoutID] = strtok(s);
                     objID = str2double(objID);
                     [objType, args] = strtok(withoutID);
-                    disp(args)
                     if strcmp(s1,'dset')
                         diodeVal=0;
                         feval(['stim_',objType],'setup',w,objID,args);                        
