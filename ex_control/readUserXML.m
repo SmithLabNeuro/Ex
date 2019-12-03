@@ -43,10 +43,12 @@ for kid = 1:length(x.Children)
             if strcmp(node.Children(i).Name,'params')
                 params = node.Children(i);
             elseif strcmp(node.Children(i).Name,'randoms')
-                thisParam = node.Children(i).Children;
-                paramName = thisParam.Name;
-                paramData = thisParam.Children.Data;
-                eval(sprintf('%s.%s = %s;',node.Children(i).Name,paramName,paramData));
+                for j =  1:length(node.Children(i).Children)
+                    thisParam = node.Children(i).Children(j);
+                    paramName = thisParam.Name;
+                    paramData = thisParam.Children.Data;
+                    eval(sprintf('%s.%s = %s;',node.Children(i).Name,paramName,paramData));
+                end
             end
         end
     end;
