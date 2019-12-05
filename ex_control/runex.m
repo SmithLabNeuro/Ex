@@ -89,24 +89,91 @@ for dx = 1:numel(requiredDirectories)
 end
 
 %% Find Ex_local dir, make sure it's there, make sure it has the subdirectories you expect, and add it to the path
+checkBackup = true;
+makeDir = true;
 if exist(params.localExDir,'dir')
     requiredLocalDirectories = {'ex','xml','user','control','display'};
-    for ld = 1:numel(requiredLocalDirectories)
-        ldpath = [params.localExDir,filesep,requiredLocalDirectories{ld}];
-        if exist(ldpath,'dir')
-            addpath(ldpath);
-        else
-            mkdir(ldpath);
-            addpath(ldpath);
-            % make the subfolder and add to path
+    ld = zeros(1,length(requiredLocalDirectories));
+    for idx = 1:numel(requiredLocalDirectories)
+        ldpath(idx) = {[params.localExDir,filesep,requiredLocalDirectories{idx}]};
+        if exist(ldpath{idx},'dir')
+            ld(idx) = 1;
         end
     end
-else %  if there's no Ex_local at all, make all subfolders and add to path
-    mkdir(params.localExDir);
-    addpath(genpath(params.localExDir));
+    if sum(ld) == length(requiredLocalDirectories)
+        addpath(genpath(params.localExDir));
+        checkBackup = false;
+        try
+            testN = 1;
+            save(fullfile(params.localExDir,'control','test.mat'),'testN');
+        catch
+            checkBackup = true;
+            warning('Ex_local saving failed');
+        end
+    else
+        warning('Ex_local does not have full required directories');
+    end
+else
+    warning('Ex_local folder does not exist');
 end
 
+if checkBackup
+    p =  'Do you want to run with Ex_local_backup? Enter Y if you want.';
+    inputResult = input(p,'s');
+    if inputResult == 'Y'
+        if exist([params.localExDir,'_backup'],'dir')
+            requiredLocalDirectories = {'ex','xml','user','control','display'};
+            ld = zeros(1,length(requiredLocalDirectories));
+            for idx = 1:numel(requiredLocalDirectories)
+                ldpath(idx) = {[params.localExDir,'_backup',filesep,requiredLocalDirectories{idx}]};
+                if exist(ldpath{idx},'dir')
+                    ld(idx) = 1;
+                end
+            end
+            if sum(ld) == length(requiredLocalDirectories)
+                addpath(ldpath{:});
+                makeDir = false;
+                try
+                    testM = 1;
+                    save(fullfile([params.localExDir,'_backup'],'control','test.mat'),'testM');
+                    params.localExDir = [params.localExDir,'_backup'];
+                catch
+                    makeDir = true;
+                    warning('Ex_local_backup saving failed'); 
+                end
+            else
+                warning('Ex_local_backup does not have full required directories');
+            end
+        else
+            warning('Ex_local_backup does not exist');
+        end    
+    end
+end
 
+if makeDir
+    if ~unix('test -L Ex_local')
+       disp('Ex_local is a link, which can not be run');
+        return;
+    end
+    if ~exist(params.localExDir,'dir')
+        p = 'Do you want to create Ex_local folder and subfolders? They are required to run!(Enter Y if you want.)';
+        inputResult = input(p,'s');
+        if inputResult == 'Y'
+            mkdir(params.localExDir);
+            mkdir(params.localExDir,'ex');
+            mkdir(params.localExDir,'xml');
+            mkdir(params.localExDir,'user');
+            mkdir(params.localExDir,'control');
+            mkdir(params.localExDir,'display');
+        else
+            disp('Ex_local folder and subfolders are required to run.');
+            return;
+        end
+    else
+        disp('Ex_local folder may be empty/corrupted, please delete it to continue.')
+        return;
+    end
+end
 
 %% now, prompt for subject ID
 if isfield(params,'SubjectID')
@@ -958,7 +1025,9 @@ fclose all;
                         calibration{4} = regress(calibration{1}(:,2), [calibration{2} ones(size(calibration{2},1),1)]);
                         calibration{5} = regress(calibration{2}(:,1), [calibration{1} ones(size(calibration{1},1),1)]);
                         calibration{6} = regress(calibration{2}(:,2), [calibration{1} ones(size(calibration{1},1),1)]);
+                      
                         save(localCalibrationFilename,'calibration');
+                       
                         break;
                     end
                 else %not all the positions have been marked as good yet
