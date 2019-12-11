@@ -1,5 +1,7 @@
-function filename = findBCIFileName(filepath)
-thismonkey = 'pe';%filepath(4:5); %folder has format D:monkeyname
+function filename = findBCIFileName(filepath,thismonkey)
+if ~exist('monkey','var')
+    thismonkey = 'Sa';%filepath(4:5); %folder has format D:monkeyname
+end
         thismonkey(1) = upper(thismonkey(1));
         thisyear = num2str(year(date));
         thisyear = thisyear(3:4);
@@ -9,10 +11,10 @@ thismonkey = 'pe';%filepath(4:5); %folder has format D:monkeyname
 
         if length(thefile)>1
             for n = 1:length(thefile)
-                [~,thisfilename,~] = fileparts(thefile(n).name);
+                [~,thisfilename,ext] = fileparts(thefile(n).name);
                 userChoice = nan;
                 while ~(strcmpi(userChoice,'y') || strcmpi(userChoice,'n'))
-                    userChoice = input([thisfilename,'.nev\nThis file? [y/n] ', ],'s');
+                    userChoice = input([thisfilename,'.',ext,'\nThis file? [y/n] ', ],'s');
                 end
 
                 switch lower(userChoice)

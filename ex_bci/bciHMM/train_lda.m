@@ -9,6 +9,9 @@ function [ params ] = train_lda( trainX, trainY )
     params.nClasses = nClasses;
     params.nTotal = length(trainY);
     
+    % center X
+    params.globalMu = mean(trainX,1);
+    trainX = bsxfun(@minus,trainX,params.globalMu);
     
     %% fit LDA model
     for ii=1:nClasses
@@ -18,10 +21,12 @@ function [ params ] = train_lda( trainX, trainY )
         curr_class = trainX(trainY==classLabels(ii),:);
         params.Mu(ii,:) = mean(curr_class,1);
         params.Sigma(ii,:,:) = cov(curr_class,1);
+        %params.Sigma(ii,:,:) = diag(diag(cov(curr_class,1)));
     end
     
     params.muTotal = sum(params.Mu,1) ./ params.nClasses;
-    params.Sw = squeeze(sum(params.Sigma,1)) ./ params.nClasses;
+    %params.Sw = squeeze(sum(params.Sigma,1)) ./ params.nClasses;
+    params.Sw = squeeze(sum(bsxfun(@times,params.Sigma,params.classPi'),1));
     params.Sb = zeros(size(params.Sw));
     for ii=1:nClasses
         diffMu = (params.Mu(ii,:) - params.muTotal);
@@ -30,13 +35,13 @@ function [ params ] = train_lda( trainX, trainY )
     params.Sb = params.Sb * params.nTotal;
     
     %% find projection vector and project X 
-    invSw_Sb = params.Sw \ params.Sb;
+    invSw_Sb = pinv(params.Sw) * params.Sb;
     [u,~,~] = svd(invSw_Sb,'econ');
     
     params.projMat = u;
     params.projVec = u(:,1);
     
-    params.projData = trainX*params.projVec;
+    params.projData = trainX*params.projMat;
     
 end
 

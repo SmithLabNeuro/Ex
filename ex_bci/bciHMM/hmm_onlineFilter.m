@@ -9,12 +9,7 @@ function [ postProb ] = hmm_onlineFilter( testX, prevPostProb, params )
     priorProb = params.hmmParams.pi;
     
     %% preprocess data (keep good neurons + project into LDA space)
-    origCalibMean = mean(params.calib_angMeans,2);
-    if params.recalibflag == 1
-        testX = testX - params.centeringMean;
-    else
-        testX = testX - origCalibMean;
-    end
+    testX = testX - params.centeringMean;
     testX = params.ldaProjMat'*testX;
     
     %% forward algorithm
