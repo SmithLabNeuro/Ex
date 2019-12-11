@@ -14,7 +14,7 @@ end
                 [~,thisfilename,ext] = fileparts(thefile(n).name);
                 userChoice = nan;
                 while ~(strcmpi(userChoice,'y') || strcmpi(userChoice,'n'))
-                    userChoice = input([thisfilename,'.',ext,'\nThis file? [y/n] ', ],'s');
+                    userChoice = input([thisfilename,ext,'\nThis file? [y/n] ', ],'s');
                 end
 
                 switch lower(userChoice)
@@ -31,8 +31,8 @@ end
             end
         else
 
-            [~,filename,~] = fileparts(thefile.name);
-            fprintf(['Using the following file: \n',filename,'.nev\n'])  
+            [~,filename,ext] = fileparts(thefile.name);
+            fprintf(['Using the following file: \n',filename,ext,'\n'])  
             fprintf('If you want a different file, enter the filename\n as the first input to this function (do not include .nev extention)\n')
         end
 end

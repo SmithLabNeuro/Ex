@@ -10,10 +10,10 @@
 close all; clear; clc;
 addpath ../
 addpath ../bciHMM
+addpath bcihelpers
 addpath(genpath('../../ex_control/'))
 addpath(genpath('../../xippmex-1.11'))
 %addpath(genpath('../xippmex-1.4.0-test1/'));
-addpath(genpath('../../ex_bci/FA_distanceBCIsystemBlock2BCI'))
 addpath('/home/smithlab/Dropbox/smithlab/matlab/fa')
 %% make temp directory for online dat storage
 bcitemploc = '/home/smithlab/Documents/bcitemp';%'../../../../../Documents/bcitemp';
@@ -439,7 +439,7 @@ try
             
             
             [cursorX,cursorY] = posterior2pos(modelparams.allangles,postP(:,end));
-            valtosend = [cursorX;cursorY];
+            valtosend = [cursorX;cursorY]';
             
             trackvals = [trackvals valtosend];
             if offlinemodeflag==0
@@ -475,7 +475,7 @@ try
                 
                 hold on
                 scatter(targlocx,targlocy,10,'k','fill')
-                scatter(0,0,1,'k')modelparams.allangles
+                scatter(0,0,1,'k')
                 t = linspace(0,2*pi);plot(40*cos(t)+targlocx,40*sin(t)+targlocy)
                 xlim([-140 140])
                 ylim([-140 140])
