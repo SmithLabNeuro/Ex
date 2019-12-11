@@ -75,7 +75,7 @@ thisStart = tic;
 if nargin >= 4
     
     bciSuccess = 0;
-    freqvals = zeros(1,length(e.delayAngle));
+    freqvals = zeros(1,2);
     timeontargetcounter = 0;
     checkbcisuccessflag = 0;
     bciupdatetime = GetSecs;
@@ -111,61 +111,38 @@ if nargin >= 4
                 sigflag = 0;
                 while matlabUDP2('check',sockets(2))
                     a = str2double(strsplit(matlabUDP2('receive',sockets(2))));
+                    display(a)
                     freqevents = [freqevents; a];
+                    display(freqvals)
                     freqvals = [freqvals; a];
+                    
                     sendCode(codes.SOUND_CHANGE);
                 end
             else
                 if sigflag == 0 || (GetSecs - sigtime)>0.002
                     sigtime= GetSecs;
                     sigflag = 1;
-                end       
+                end
             end
             
             if e.convergeAnnulus == 0 &&~isempty(freqevents)
                 if cursorvisibleflag == 1
                     msgclock = tic;
                     sendCode(codes.STIM1_ON)
-                    posterior = freqevents(end);
-                    msgstring = [];
-                    targetdist = posterior;
-%                     targetdist = max(0,e.annulusSizeAtThresh*posterior);
-%                     if isfield(e,'iterativeRecal') && e.iterativeRecal == 1 && behav(end).currRecal<=length(e.recalTrial)
-%                         convergeTime = (waitTime-e.convergeDelay);
-%                         if (toc(thisStart)*1000) <= convergeTime% freeze annulus T ms before end of delay
-%                             delayRemaining = 1-(toc(thisStart)*1000)/convergeTime;
-%                             %delayRemaining = 1-(toc(thisStart)*1000)/convergeTime;
-% %                             if e.startAnnulusRad > e.lowerboundprop
-% %                                 outerradnobci = round(e.minAnnulusSize+delayRemaining*(e.maxAnnulusSize-e.minAnnulusSize));
-% %                             end
-%                         end
-%                         % 2018/11/28 RW make the annulus stay just above the
-%                         % threshold so that he does not get out of converge
-%                         % trials early
-%                         targetdist = (targetdist*e.recalPercent(behav(end).currRecal) + max(e.annulusSizeAtThresh+0.0001,delayRemaining)*(1-e.recalPercent(behav(end).currRecal)));
-%                         if isfield(e,'recalMissReward') && e.recalMissReward == 1
-%                             bciSuccess = 1;
-%                         end
-%                     end
-%                     
-%                     outerrad = round(e.minAnnulusSize+targetdist*(e.maxAnnulusSize-e.minAnnulusSize));
-                    %display(targetdist)
-                    %%%%%%% code for gradually transfering control to animal %%%%%
-
-                  %%%%% end code for gradually transfering control to animal %%%%%
-                    
-                    
-                    
-                    
-%                     
-%                     innerrad = outerrad - e.annulusThickness;
-%                     msgstring1 = sprintf('mset %i oval 0 %i %i %i %i %i %i',[5 fixX fixY (outerrad) e.cursorColor(1) e.cursorColor(2) e.cursorColor(3)]);
-%                     msgstring2 = sprintf(' mset %i oval 0 %i %i %i %i %i %i',[4 fixX fixY (innerrad) e.bgColor(1) e.bgColor(2) e.bgColor(3)]);
-%                     msgstring = [msgstring1 msgstring2];
-%                     msgAndWait(msgstring);
-%                     sendCode(codes.STIM2_ON)
-                     msgtime = toc(msgclock);
-                     checkbcisuccessflag = 1;
+                    unitposition = freqevents(end,:); % the bci computer is sendings a 2-d value
+                    cursorpos = unitposition*e.annulusSize;
+                    msgtime = toc(msgclock);
+                    checkbcisuccessflag = 1;
+                    display('test')
+                    msgstring = sprintf('mset %i oval 0 %i %i %i %i %i %i',[4 round(cursorpos(1)) round(cursorpos(2)) e.cursorRad e.cursorColor(1) e.cursorColor(2) e.cursorColor(3)]);
+                    if cursorvisibleflag == 1
+                        msgAndWait(msgstring);
+                        sendCode(codes.STIM2_ON)
+                    end
+                    display(msgstring)
+                    display('test2')
+                    %display(toc(a));
+                    a = tic;
                 else
                     msgclock = tic;
                     while GetSecs-bciupdatetime < (bciloopinterval + cursoroffsettime)
@@ -179,7 +156,7 @@ if nargin >= 4
                 end
                 bciupdatetime = GetSecs;
                 timevec = [timevec; (toc(thisStart)*1000)];
-                sentcursors = [sentcursors;targetdist toc(thisStart)];
+                sentcursors = [sentcursors;cursorpos toc(thisStart)];
             elseif e.convergeAnnulus == 1 && e.annulusvisibleflag==1
                 convergeTime = (waitTime-e.convergeDelay);
                 
@@ -207,19 +184,16 @@ if nargin >= 4
                         %correct threshold. Over time the weight goes from
                         %the first process to the second, creating a smooth
                         %traversal from random to correct.
-                        % to do: 
-                            % initialize random walk at beginning of file
-                            % randomX
-                            % randomY
+                        % to do:
+                        % initialize random walk at beginning of file
+                        % randomX
+                        % randomY
                         newRandomX = 2*(rand(1)-0.5);
                         newRandomY = 2*(rand(1)-0.5);
                         randomXpre = randomX + e.randomGain*(newRandomX-randomX);
                         randomYpre = randomY + e.randomGain*(newRandomY-randomY);
                         randDirX = delayRemaining*sin(e.randomDirection);
                         randDirY = delayRemaining*cos(e.randomDirection);
-                        
-                       
-
                         
                         deltargX = targX-fixX;
                         deltargY = targY-fixY;
@@ -243,24 +217,24 @@ if nargin >= 4
                     else
                         %delayRemaining = 1-(toc(thisStart)*1000)/convergeTime;
                         %if e.startAnnulusRad>e.lowerboundprop
-                            %outerrad = round(lowerbound+delayRemaining*(startrad-lowerbound));
-                            %innerrad = outerrad - e.annulusThickness;
-                            deltargX = targX-fixX;
-                            deltargY = targY-fixY;
-                            delCxmax = e.Cmax * deltargX/(deltargX^2+deltargY^2)^0.5;
-                            delCymax = e.Cmax * deltargY/(deltargX^2+deltargY^2)^0.5;
-                            centerX = delayRemaining*delCxmax+fixX;
-                            centerY = delayRemaining*delCymax+fixY;
-                            % variables:
-                             % e.Cmax
-                             % e.cursorRad
-                             % e.noisyCursorDirNoiseFlag
-                             % e.randomGain
-                            % to do:
-                                % remove inner annulus in main file
-                                % initialize random walk at beginning of file
-                                    % randomX
-                                    % randomY
+                        %outerrad = round(lowerbound+delayRemaining*(startrad-lowerbound));
+                        %innerrad = outerrad - e.annulusThickness;
+                        deltargX = targX-fixX;
+                        deltargY = targY-fixY;
+                        delCxmax = e.Cmax * deltargX/(deltargX^2+deltargY^2)^0.5;
+                        delCymax = e.Cmax * deltargY/(deltargX^2+deltargY^2)^0.5;
+                        centerX = delayRemaining*delCxmax+fixX;
+                        centerY = delayRemaining*delCymax+fixY;
+                        % variables:
+                        % e.Cmax
+                        % e.cursorRad
+                        % e.noisyCursorDirNoiseFlag
+                        % e.randomGain
+                        % to do:
+                        % remove inner annulus in main file
+                        % initialize random walk at beginning of file
+                        % randomX
+                        % randomY
                         %end
                     end
                 end
@@ -282,8 +256,18 @@ if nargin >= 4
         if checkbcisuccessflag == 1
             %bcifun(freqvals(end,:),bcitarget)
             checkbcisuccessflag = 0;
-
-            bcifunout = bcifun(targetdist,e.annulusSizeAtThresh);% the posterior should always be normalized so that correct = 1
+            bcitargX = e.annulusSize*targX/e.distance;
+            bcitargY = e.annulusSize*targY/e.distance;
+            display(bcitargX)
+            
+            display(bcitargY)
+            display(cursorpos)
+            bcifunout = (((bcitargX-cursorpos(1)).^2 + (bcitargY-cursorpos(2)).^2)^0.5)<e.BCIDistanceThresh;%bcifun(targetdist,e.annulusSizeAtThresh);% the posterior should always be normalized so that correct = 1
+            display((((bcitargX-cursorpos(1)).^2 + (bcitargY-cursorpos(2)).^2)^0.5))
+            display(bcifunout)
+            display(~isempty(freqvals))
+            display(bcirewardflag)
+            display(timeontargetcounter >= updatesintargetwin)
             if ~isempty(freqvals)  && length(bcifunout)==1 && bcifunout==1
                 timeontargetcounter = timeontargetcounter+1;
                 if bcirewardflag == 1 && timeontargetcounter >= updatesintargetwin

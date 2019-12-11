@@ -154,7 +154,8 @@ if nargin >= 4
                     end
                     msgstring = [];
                     targetdist = posterior;
-%                     targetdist = max(0,e.annulusSizeAtThresh*posterior);
+                    display('I am here but the lights are off')
+                    targetdist = max(0,e.annulusSizeAtThresh*posterior);
 %                     if isfield(e,'iterativeRecal') && e.iterativeRecal == 1 && behav(end).currRecal<=length(e.recalTrial)
 %                         convergeTime = (waitTime-e.convergeDelay);
 %                         if (toc(thisStart)*1000) <= convergeTime% freeze annulus T ms before end of delay
@@ -173,7 +174,7 @@ if nargin >= 4
 %                         end
 %                     end
 %                     
-%                     outerrad = round(e.minAnnulusSize+targetdist*(e.maxAnnulusSize-e.minAnnulusSize));
+                     outerrad = round(e.minAnnulusSize+targetdist*(e.maxAnnulusSize-e.minAnnulusSize));
                     %display(targetdist)
                     %%%%%%% code for gradually transfering control to animal %%%%%
 
@@ -182,13 +183,13 @@ if nargin >= 4
                     
                     
                     
-%                     
-%                     innerrad = outerrad - e.annulusThickness;
-%                     msgstring1 = sprintf('mset %i oval 0 %i %i %i %i %i %i',[5 fixX fixY (outerrad) e.cursorColor(1) e.cursorColor(2) e.cursorColor(3)]);
-%                     msgstring2 = sprintf(' mset %i oval 0 %i %i %i %i %i %i',[4 fixX fixY (innerrad) e.bgColor(1) e.bgColor(2) e.bgColor(3)]);
-%                     msgstring = [msgstring1 msgstring2];
-%                     msgAndWait(msgstring);
-%                     sendCode(codes.STIM2_ON)
+                    
+                    innerrad = outerrad - e.annulusThickness;
+                    msgstring1 = sprintf('mset %i oval 0 %i %i %i %i %i %i',[5 fixX fixY (outerrad) e.cursorColor(1) e.cursorColor(2) e.cursorColor(3)]);
+                    msgstring2 = sprintf(' mset %i oval 0 %i %i %i %i %i %i',[4 fixX fixY (innerrad) e.bgColor(1) e.bgColor(2) e.bgColor(3)]);
+                    msgstring = [msgstring1 msgstring2];
+                    msgAndWait(msgstring);
+                    sendCode(codes.STIM2_ON)
                      msgtime = toc(msgclock);
                      checkbcisuccessflag = 1;
                 else
