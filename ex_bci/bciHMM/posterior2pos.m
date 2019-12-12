@@ -6,7 +6,7 @@ function [x,y] = posterior2pos(targ_angs,postProbs)
     rad_vals = deg2rad(targ_angs);
     comp_vals = exp(rad_vals*1i);
     
-    pos_comp = comp_vals'*postProbs;
+    pos_comp = sum(comp_vals.*postProbs);
     
     x = real(pos_comp);
     y = imag(pos_comp);
