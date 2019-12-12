@@ -37,6 +37,7 @@ function [ modelParams ] = train_lowdHmm( trainDat, modelParams, varargin )
     allCounts = allCounts(modelParams.goodneuron,:,:);
     nNeurons = size(allCounts,1);
     modelParams.centeringMean = squeeze(mean(mean(allCounts,2),3));
+    allCounts = bsxfun(@minus,allCounts,modelParams.centeringMean);
     
     %% train LDA and project data into LDA space
     indCounts = reshape(allCounts,nNeurons,[])';
