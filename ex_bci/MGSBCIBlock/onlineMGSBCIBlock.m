@@ -12,7 +12,7 @@ addpath ../
 addpath ../bciHMM
 addpath bcihelpers
 addpath(genpath('../../ex_control/'))
-addpath(genpath('../../xippmex-1.11'))
+addpath(genpath('../../xippmex'))
 %addpath(genpath('../xippmex-1.4.0-test1/'));
 addpath('/home/smithlab/Dropbox/smithlab/matlab/fa')
 %% make temp directory for online dat storage
@@ -389,7 +389,8 @@ try
                     correcttrials(numtrials) = 0;
                     onlinedat(numtrials).counts = countbuffer;
                     onlinedat(numtrials).cursorloc = trackvals;
-                    onlinedat(numtrials).correctflag = 0;
+                    onlinedat
+(numtrials).correctflag = 0;
                     onlinedat(numtrials).bcinum = bcinum;
                     onlinedat(numtrials).trialnum = numtrials;
                     onlinedat(numtrials).postP = postP;
@@ -398,7 +399,8 @@ try
                     numtrials = numtrials+1;
                     modelparamsold = modelparams;
                     %                     if recalibflag==1&&length(correcttrials)>numcalibtrials && sum(correcttrials((end-numcalibtrials+1):end))==0
-                    %                         modelparams = calibrateDistanceBCIFA([filename,'_'],filepath,filepath,modelparamsold.gamma,modelparamsold.targetCorrect,1,modelparams.multgain,numtrials,onlinedat((end-numcalibtrials+1):end),modelparamsold);
+                    %        
+                 modelparams = calibrateDistanceBCIFA([filename,'_'],filepath,filepath,modelparamsold.gamma,modelparamsold.targetCorrect,1,modelparams.multgain,numtrials,onlinedat((end-numcalibtrials+1):end),modelparamsold);
                     %                         fprintf('Too Many Misses. Updating Model Params.\n')
                     %                     end
                 end
