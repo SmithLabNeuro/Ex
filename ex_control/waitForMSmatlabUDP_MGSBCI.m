@@ -130,6 +130,9 @@ if nargin >= 4
                     msgclock = tic;
                     sendCode(codes.STIM1_ON)
                     unitposition = freqevents(end,:); % the bci computer is sendings a 2-d value
+                    [cursorangle,R] = cart2pol(unitposition(1), unitposition(2));
+                    [cursX,cursY] = pol2cart(cursorangle+deg2rad(e.perturbAngle),R);
+                    unitposition = [cursX cursY];
                     cursorpos = unitposition*e.annulusSize;
                     msgtime = toc(msgclock);
                     checkbcisuccessflag = 1;
