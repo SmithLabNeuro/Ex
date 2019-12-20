@@ -83,7 +83,7 @@ thisFile = mfilename('fullpath');
 [runexDirectory,~,~] = fileparts(thisFile); clear thisFile;
 % everything up to and including the last file separator:
 runexDirectory = regexp(runexDirectory,sprintf('.*(?!\\%c).*\\%c',filesep,filesep),'match'); 
-requiredDirectories = {'ex','ex_control','xml','user','xippmex'};
+requiredDirectories = {'ex','ex_control','xml','xippmex'};
 for dx = 1:numel(requiredDirectories)
     addpath([runexDirectory{:},requiredDirectories{dx}]);
 end
@@ -103,11 +103,13 @@ if exist(params.localExDir,'dir')
     if sum(ld) == length(requiredLocalDirectories)
         addpath(genpath(params.localExDir));
         checkBackup = false;
+        makeDir = false;
         try
             testN = 1;
             save(fullfile(params.localExDir,'control','test.mat'),'testN');
         catch
             checkBackup = true;
+            makeDir = true;
             warning('Ex_local saving failed');
         end
     else

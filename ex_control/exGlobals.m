@@ -28,7 +28,7 @@ params.writeFile = true; % write trial data to file
 params.bciEnabled = true; % enable BCI computer communication
 params.bciCursorEnabled = true; % enable BCI cursor on runex computer
 params.statusUpdates = false; % writing a status file of behavioral info
-params.soundEnabled = false; % enable sound capabilities
+params.soundEnabled = true; % enable sound capabilities
 %
 params.control2displayIP = '192.168.1.11'; % local IP address of control computer
 params.display2controlIP = '192.168.1.10'; % local IP address of display computer

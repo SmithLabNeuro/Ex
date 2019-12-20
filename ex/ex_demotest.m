@@ -1,7 +1,7 @@
 function result = ex_demotest(e)
 % ex file: ex_driftchoice
 
-global params codes behav allCodes;
+global params codes;
 
 phase = 0;
 msgAndWait('set 2 grating %i %f %f %f %f %i %i %i %f',...
@@ -125,6 +125,22 @@ if ~waitForDisplay(e.fixX,e.fixY,params.fixWinRad)
     return;
 end
 sendCode(codes.STIM_OFF);
+
+if e.soundtime>0
+    playTone(e.soundfreq,e.soundtime,1,0,0,0);
+    sendCode(codes.SOUND_ON)
+    if ~waitForMS(e.soundtime,e.fixX,e.fixY,params.fixWinRad)
+        sendCode(codes.BROKE_FIX);
+        msgAndWait('all_off');
+        sendCode(codes.STIM_OFF);
+        sendCode(codes.FIX_OFF);
+        waitForMS(1000);
+        result = codes.BROKE_FIX;
+        msg('timing_end');
+        return;
+    end
+    sendCode(codes.SOUND_OFF)
+end
 
 
 sendCode(codes.CORRECT);
