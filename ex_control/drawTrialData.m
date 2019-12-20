@@ -19,21 +19,4 @@ for i = 1:length(trialData)
     y = y + wins.lineSpacing.*wins.textSize;
 end
 
-%Write a small file to the status folder for the monitoring applet
-%(thanks, Mike Morais!) -06Sep2013 ACS:
-if params.statusUpdates
-    try
-        aioV = samp;
-        aioV = aioV(end,:);
-        eyeLine = sprintf('eyeX: %.2f, eyeY: %.2f',aioV);
-        fid = fopen(statusInfo.filename,'w');
-        if fid>-1
-            fprintf(fid,'%s\n',datestr(now),params.SubjectID,eyeLine,trialData{:});
-            fclose(fid);
-        end;
-    catch ME
-        warning('Error updating status:: %s',ME.message); %#ok<WNTAG>
-    end;
-end;
-
 end
