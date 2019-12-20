@@ -4,7 +4,7 @@ function drawTrialData
 % simply writes the current trialData to the screen. used by runex and can
 % be used within an ex file
 
-global trialData wins params statusInfo;
+global trialData wins;
 
 x = 0;
 y = 0;
