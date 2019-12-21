@@ -126,7 +126,7 @@ if nargin >= 4
             end
             
             if e.convergeAnnulus == 0 &&~isempty(freqevents)
-                if cursorvisibleflag == 1
+                if cursorvisibleflag == 1||e.doBCIwithoutcursor == 1
                     msgclock = tic;
                     sendCode(codes.STIM1_ON)
                     unitposition = freqevents(end,:); % the bci computer is sendings a 2-d value
