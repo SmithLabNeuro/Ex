@@ -3,7 +3,9 @@
 % channel 1. The plot shows a delay of minimum spike time that
 % increases as channel number increases.
 clear all
-addpath(genpath('../xippmex-1.3.1.64_linux'));
+%addpath(genpath('../xippmex-1.3.1.64_linux'));
+%addpath('/home/smithlab/Dropbox/smithlabrig/Ex/xippmex-1.3.1.64_linux')
+addpath('/home/smithlab/Dropbox/smithlabrig/Ex/xippmex-1.11')
 status = xippmex; % start xippex
 elec = xippmex('elec','nano'); %get valid electrodes
 numloops = 1000; % this needs to be large if spike rate is low in order to estimate min spike time on each channel
@@ -31,6 +33,6 @@ for n = 1:numloops;
 end
 temp=nanmin(vals,[],2);
 figure; % plot minimum times from offset
-plot(temp-temp(1));ylim([-0.001 0.002]);
+plot(temp-temp(1));%ylim([-0.001 0.002]);
 xlabel('Channel Number');ylabel('Difference from Channel 1 Min Time')
 xippmex('close'); % close xippmex
