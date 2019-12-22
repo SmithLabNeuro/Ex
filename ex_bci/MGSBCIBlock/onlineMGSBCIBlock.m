@@ -9,10 +9,9 @@
 %
 close all; clear; clc;
 addpath ../
-addpath ../bciHMM
 addpath bcihelpers
 addpath(genpath('../../ex_control/'))
-addpath(genpath('../../xippmex'))
+addpath(genpath('/home/smithlab/Dropbox/smithlabrig/Ex/xippmex-1.11'))
 %addpath(genpath('../xippmex-1.4.0-test1/'));
 addpath('/home/smithlab/Dropbox/smithlab/matlab/fa')
 %% make temp directory for online dat storage
@@ -21,6 +20,16 @@ mkdir(bcitemploc);
 
 %% Flags
 
+% decoder flag
+decode_type = 'kf';
+
+if strcmpi(decode_type,'hmm')
+    addpath(genpath('../bciHMM'));
+elseif strcmpi(decode_type,'kf')
+    addpath(genpath('../bciKF'));
+else
+    error('Invalid decoder type!!!');
+end
 
 % xippmex headstage setting. Either 'micro' or 'nano'
 microornano= 'nano';
@@ -389,8 +398,7 @@ try
                     correcttrials(numtrials) = 0;
                     onlinedat(numtrials).counts = countbuffer;
                     onlinedat(numtrials).cursorloc = trackvals;
-                    onlinedat
-(numtrials).correctflag = 0;
+                    onlinedat(numtrials).correctflag = 0;
                     onlinedat(numtrials).bcinum = bcinum;
                     onlinedat(numtrials).trialnum = numtrials;
                     onlinedat(numtrials).postP = postP;
@@ -398,11 +406,10 @@ try
                     save([bcitemploc,'/onlinedat',num2str(numtrials)],'temponlinedat')
                     numtrials = numtrials+1;
                     modelparamsold = modelparams;
-                    %                     if recalibflag==1&&length(correcttrials)>numcalibtrials && sum(correcttrials((end-numcalibtrials+1):end))==0
-                    %        
-                 modelparams = calibrateDistanceBCIFA([filename,'_'],filepath,filepath,modelparamsold.gamma,modelparamsold.targetCorrect,1,modelparams.multgain,numtrials,onlinedat((end-numcalibtrials+1):end),modelparamsold);
-                    %                         fprintf('Too Many Misses. Updating Model Params.\n')
-                    %                     end
+                    if recalibflag==1 && length(correcttrials)>numcalibtrials && sum(correcttrials((end-numcalibtrials+1):end))==0
+                           modelparams = calibrateDistanceBCIFA([filename,'_'],filepath,filepath,modelparamsold.gamma,modelparamsold.targetCorrect,1,modelparams.multgain,numtrials,onlinedat((end-numcalibtrials+1):end),modelparamsold);
+                           fprintf('Too Many Misses. Updating Model Params.\n');
+                    end
                 end
                 if exist('onlinedat','var')&&length(onlinedat)>60&&mod(length(onlinedat),10)==0&&(correctflag>=0)
                     thisonlinedat = onlinedat;
@@ -428,21 +435,32 @@ try
             %             this code is for a continuous decoder
             
             
-            % new stuff
-            if isempty(postP)
-                %posterior = computePostNBP(sum(countbuffer(:,(end-loopsperbin+1):end),2),modelparams.mean);
-                currPostP = hmm_onlineFilter(countbuffer(:,end),postP,modelparams);
-                postP = [postP currPostP];
+            if strcmpi(decode_type,'hmm')
+                if isempty(postP)
+                    %posterior = computePostNBP(sum(countbuffer(:,(end-loopsperbin+1):end),2),modelparams.mean);
+                    currPostP = hmm_onlineFilter(countbuffer(:,end),postP,modelparams);
+                    postP = [postP currPostP];
+                else
+                    %posterior = computePostNBP(sum(countbuffer(:,:),2),modelparams.mean);
+                    currPostP = hmm_onlineFilter(countbuffer(:,end),postP(:,end),modelparams);
+                    postP = [postP currPostP];
+                end
+                [cursorX,cursorY] = posterior2pos(modelparams.allangles,postP(:,end));
+            elseif strcmpi(decode_type,'kf')
+                if isempty(postP)
+                    currPostP = kf_onlineFilter(countbuffer(:,end),postP,modelparams);
+                    postP = [postP currPostP];
+                else
+                    currPostP = kf_onlineFilter(countbuffer(:,end),postP(end),modelparams);
+                    postP = [postP currPostP];
+                end
+                cursorX = currPostP.mu(1);
+                cursorY = currPostP.mu(2);
             else
-                %posterior = computePostNBP(sum(countbuffer(:,:),2),modelparams.mean);
-                currPostP = hmm_onlineFilter(countbuffer(:,end),postP(:,end),modelparams);
-                postP = [postP currPostP];
+                error('Invalid decoder type!!!');
             end
             
-            
-            [cursorX,cursorY] = posterior2pos(modelparams.allangles,postP(:,end));
             valtosend = [cursorX;cursorY]';
-            
             trackvals = [trackvals valtosend];
             if offlinemodeflag==0
                 outpercent = (testcursor/10);
