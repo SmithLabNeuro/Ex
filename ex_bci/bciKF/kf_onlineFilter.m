@@ -27,7 +27,7 @@ function z_new = kf_onlineFilter(x,z,modelparams)
         sig_1_0 = A*sig_1_1*A' + Q;
     end
 
-    xt = x - d;
+    xt = lowd_x - d;
 
     kt = sig_1_0*C'*inv(C*sig_1_0*C'+R);
     z_new.mu = mu_1_0 + kt*(xt - C*mu_1_0);
