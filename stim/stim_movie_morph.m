@@ -1,4 +1,4 @@
-function stim_movie_morph(optstr,w,objID,arg)
+function stim_movie_morph2(optstr,w,objID,arg)
 %function stim_movie_morph(optstr,w,objID,arg)
 %
 % showex helper function for 'movie_morph' stim class that can
@@ -99,7 +99,7 @@ if strcmp(optstr,'setup')
     % Now morph the images however you want
     if morphType > 0
         for F=1:length(vars.mov)
-            if morphType == 1 % hue shift
+            if morphType == 1 % L*a*b* color shift
                 cform = makecform('srgb2lab');
                 invcform = makecform('lab2srgb');
                 labImg = applycform(im2double(vars.mov{F}),cform);
@@ -112,6 +112,42 @@ if strcmp(optstr,'setup')
                 vars.mov{F} = uint8(applycform(labAnew,invcform).*255); %new image
             elseif morphType == 2 % orientation shift
                 vars.mov{F} = imrotate(vars.mov{F},morphAngle,'bilinear','crop');
+            elseif morphType == 3 % zoom
+                origArea = movieSize(1)*movieSize(2);
+                origX = movieSize(1);
+                origY = movieSize(2);
+                center = [round(origX/2) round(origY/2)];
+                newArea = origArea*(1-morphAngle/100);
+                newX = sqrt(newArea*origX/origY);
+                newY = newArea/newX;
+                vars.mov{F} = vars.mov{F}(center(1)-floor(newY/2):center(1)+ceil(newY/2),center(2)-floor(newX/2):center(2)+ceil(newX/2),:);
+                vars.mov{F}=imresize(vars.mov{F},[movieSize(1) movieSize(2)],'nearest');
+            elseif morphType == 4 %L*a*b (L)Lightness shift
+                cform = makecform('srgb2lab');
+                invcform = makecform('lab2srgb');
+                labImg = applycform(im2double(vars.mov{F}),cform);
+                labImg(:,:,1) = labImg(:,:,1)+morphAngle;
+                labImg(labImg(:,:,1)>100) = 100;
+                labImg(labImg(:,:,1)<0) = 0;                
+                vars.mov{F} = uint8(applycform(labImg,invcform).*255); %new image
+            elseif morphType == 5 %hsv (h)hue shift
+                hsvimg = rgb2hsv(vars.mov{F});
+                hsvimg(:,:,1) = hsvimg(:,:,1) + morphAngle*(1/360); %increase hue
+                hsvimg(hsvimg>1) = hsvimg(hsvimg>1)-1;
+                hsvimg(hsvimg<0) = abs(hsvimg(hsvimg<0));
+                vars.mov{F} = hsv2rgb(hsvimg).*255;
+            elseif morphType == 6 % hsv (s)saturation
+                hsvimg = rgb2hsv(vars.mov{F});
+                hsvimg(:,:,2) = hsvimg(:,:,2) + morphAngle/100; %increase saturation
+                hsvimg(hsvimg>1) = 1;
+                hsvimg(hsvimg<0) = 0;
+                vars.mov{F} = hsv2rgb(hsvimg).*255;
+            elseif morphType == 7 % hsv (v)value shift
+                hsvimg = rgb2hsv(vars.mov{F});
+                hsvimg(:,:,3) = hsvimg(:,:,3) + morphAngle/100; %increase value
+                hsvimg(hsvimg>1) = 1;
+                hsvimg(hsvimg<0) = 0;
+                vars.mov{F} = hsv2rgb(hsvimg).*255;
             end
         end
     end
