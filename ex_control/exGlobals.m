@@ -173,6 +173,7 @@ codes.SOUND_CHANGE = 134;
 % behavior codes
 codes.FIXATE  = 140 ;	% attained fixation 
 codes.SACCADE = 141 ;	% initiated saccade
+codes.CURSOR_POS = 142; % indicates next codes will define cursor position
 
 % trial outcome codes
 codes.CORRECT = 150 ;	% Independent of whether reward is given
