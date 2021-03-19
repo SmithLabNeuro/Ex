@@ -10,6 +10,8 @@ Returns the current X and Y eye positions in terms of voltage, scaled to +/- 5V
 2016.05.16 - changed so it returns value in mV to match Ripple data 
  acquisition and so offline calibration/registration is easier
  
+2021.03.19 - updated version to handle changes in the I/O card driver
+
 ***************************************************************************/
 
 #include <stdio.h>
@@ -37,6 +39,13 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     double voltsx,voltsy;
     int stype;
     double * out;
+    static comedi_range fixed_range =
+    {
+	.min = -1.0 * VOLTOFFSET,
+	.max = 1.0 * VOLTOFFSET,
+	.unit = UNIT_volt
+    };
+    comedi_range *rng;
     
     it=comedi_open("/dev/comedi0");
     if (it == NULL)
@@ -74,16 +83,29 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     
     /*mexPrintf("Eyes: %d %d\n",eyex,eyey);*/
     
-    voltsx=comedi_to_phys(eyex,comedi_get_range(it,SUBDEV,EYEXCHAN,RANGE),maxdata);
-    voltsy=comedi_to_phys(eyey,comedi_get_range(it,SUBDEV,EYEYCHAN,RANGE),maxdata);
+    rng = comedi_get_range(it,SUBDEV,EYEXCHAN,RANGE);
+    if (rng->unit == UNIT_none)
+    {
+	/* Replace incorrect range reported by old cb_pcimdas driver. */
+	rng = &fixed_range;
+    }
+    voltsx=comedi_to_phys(eyex,rng,maxdata);
+
+    rng = comedi_get_range(it,SUBDEV,EYEYCHAN,RANGE);
+    if (rng->unit == UNIT_none)
+    {
+	/* Replace incorrect range reported by old cb_pcimdas driver. */
+	rng = &fixed_range;
+    }
+    voltsy=comedi_to_phys(eyey,rng,maxdata);
     
     /*mexPrintf("Volts: %g %g\n",voltsx,voltsy);*/
 
     plhs[0] = mxCreateDoubleMatrix(1,2,mxREAL);
     out = mxGetPr(plhs[0]);
     
-    out[0] = (voltsx*VOLTSCALE-VOLTOFFSET)*MVPERVOLT; /* returns signal in mV */
-    out[1] = (voltsy*VOLTSCALE-VOLTOFFSET)*MVPERVOLT;
+    out[0] = voltsx*MVPERVOLT; /* returns signal in mV */
+    out[1] = voltsy*MVPERVOLT;
     /*out[0] = voltsx;
     out[1] = voltsy;*/
     

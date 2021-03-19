@@ -16,6 +16,7 @@ globals = struct([]);
 userFile = ['rig_' lower(stem) '.xml'];
 
 if ~exist(userFile,'file')
+    warning('rigfile %s does not exist',userFile);
     return;
 end
 

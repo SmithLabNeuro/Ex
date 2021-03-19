@@ -1,9 +1,9 @@
 function [params,randoms,globals] = readUserXML(subject,xmlFile)
 
-% function [m params randoms globals] = readUserXML(subject,xmlFile)
+% function [params randoms globals] = readUserXML(subject,xmlFile)
 %
 % Basically a modified version of readExperiment that reads
-% subject-specific settings. -ACS 05Sep2014
+% subject-specific settings. 
 
 % reads an xml file and returns the 3 sets of parameters:
 % conditions: parameters that are tied to condition number
@@ -13,13 +13,17 @@ function [params,randoms,globals] = readUserXML(subject,xmlFile)
 
 randoms = struct();
 globals = struct();
-params = struct([]);
+params = struct();
 
 if isempty(subject)
     return;
 end
 
 userFile = ['subject_' lower(subject) '.xml'];
+if ~exist(userFile,'file')
+        warning('Subject file %s does not exist',userFile);
+        return;
+end
 
 x = xml2struct(userFile);
 x = removeComments(x);
@@ -36,9 +40,10 @@ for kid = 1:length(x.Children)
             eval(sprintf('%s.%s = %s;',node.Name,paramName,paramData));
         end;
     elseif strcmp(node.Name,'experiment')
-        attr = squeeze(struct2cell(node.Attributes)); %added squeeze -04Sep2013 ACS
-        exptName = cell2mat(attr(2,strcmp('name',attr(1,:))));
-        if ~strcmp(exptName,xmlFile), continue; end %only read the section that includes the information for the current experiment
+        attr = squeeze(struct2cell(node.Attributes)); 
+        exptName = attr(2,strcmp('name',attr(1,:)));
+        %only read the section that includes the information for the current experiment
+        if ~strcmp(exptName,xmlFile), continue; end;
         for i  = 1:length(node.Children)
             if strcmp(node.Children(i).Name,'params')
                 params = node.Children(i);
@@ -51,9 +56,8 @@ for kid = 1:length(x.Children)
                 end
             end
         end
-    end;
-end;
-
+    end
+end
 end
 
 function x = removeBlanks(x)
