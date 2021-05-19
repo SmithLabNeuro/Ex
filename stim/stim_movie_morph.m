@@ -1,4 +1,4 @@
-function stim_movie_morph2(optstr,w,objID,arg)
+function stim_movie_morph(optstr,w,objID,arg)
 %function stim_movie_morph(optstr,w,objID,arg)
 %
 % showex helper function for 'movie_morph' stim class that can
@@ -148,6 +148,38 @@ if strcmp(optstr,'setup')
                 hsvimg(hsvimg>1) = 1;
                 hsvimg(hsvimg<0) = 0;
                 vars.mov{F} = hsv2rgb(hsvimg).*255;
+            elseif morphType == 8 % phase shift
+                im = mat2gray(vars.mov{F});                
+                imSize = size(im);
+                randPhase = angle(fft2(rand(imSize(1), imSize(2))))./morphAngle;
+                for K=1:imSize(3)                    
+                    imFourier(:,:,K) = fft2(im(:,:,K));
+                    %Fast-Fourier transform
+                    Amp(:,:,K) = abs(imFourier(:,:,K));
+                    %amplitude spectrum
+                    Phase(:,:,K) = angle(imFourier(:,:,K));
+                    %phase spectrum
+                    Phase(:,:,K) = Phase(:,:,K) + randPhase;
+                    %add random phase to original phase
+                    imScrambled(:,:,K) = ifft2(Amp(:,:,K).*exp(sqrt(-1)*(Phase(:,:,K))));
+                    %combine Amp and Phase then perform inverse Fourier                    
+                    imScrambled = mat2gray(real(imScrambled));
+                    %get rid of imaginery part in image (due to rounding error)
+                end
+                vars.mov{F} = imScrambled.*255;
+            elseif morphType == 9 % gaudy change (sort of like saturation)
+                im = vars.mov{F};
+                imSize = size(im);
+                for N = 1:imSize(3)
+                    top = 128+127*((100-morphAngle)/100);
+                    bottom = 0+127*(morphAngle/100);
+                    part = im(:,:,N);
+                    part(im(:,:,N)>=top) = 255;
+                    part(im(:,:,N)<=bottom) = 0;
+                    im(:,:,N) = part;
+                end
+                %mov{1}=im;
+                vars.mov{F} = im;
             end
         end
     end

@@ -2,31 +2,39 @@ function [cnds, params, randoms, globals] = readExperiment(xmlFile,subject,machi
 % function [m params randoms] = readExperiment(xmlFile)
 %
 % reads an xml file and returns the 3 sets of parameters:
-% cnds: main attribute
-% params: attribute, conditions and parameters
-% randoms: parameters that vary randomly on every trial
+% cnds: parameters that are tied to condition number
+% params: parameters that consistant on every trial
+% randoms: parameters that vary randomly on every trial  but are not tied to condition
+% globals: parameters that suit for multi experiment
 
-cnds = struct();
+cnds = cell(0);
+params = struct();
+randoms = struct();
+globals = struct();
+
+if ~exist(xmlFile,'file')
+    warning('xml file %s does not exist',xmlFile);
+    return
+end
 
 x = xml2struct(xmlFile);
 x = removeComments(x);
 x = removeBlanks(x);
 
-
 % name,repeats,ex,bgcolor must in stimulus
-mainAtt = squeeze(struct2cell(x.Attributes)); %added squeeze -04Sep2013 ACS
-if (isempty(find(strcmp(mainAtt,'name'), 1)) || isempty(find(strcmp(mainAtt,'repeats'), 1)) || ...
-        isempty(find(strcmp(mainAtt,'ex'), 1)) || isempty(find(strcmp(mainAtt,'bgColor'), 1)))
-    error('Missing main attributes');
+mainAtt = squeeze(struct2cell(x.Attributes));
+checkAtt = {'name','repeats','ex','bgColor'};
+for i = 1:length(checkAtt)
+    if isempty(find(strcmp(mainAtt,checkAtt{i}),1))
+        error('Missing main attributes:%s',checkAtt{i});
+    end
 end
-
-params = cell(0);
 
 % read in subject file
 subject_params = struct([]);
 subject_randoms = struct([]);
 subject_globals = struct([]);
-if nargin>1 %added to support subject-specific settings -05Sep2013 ACS
+if nargin>1 
     [subject_params, subject_randoms, subject_globals] = readUserXML(subject,xmlFile);
     if ~isempty(fieldnames(subject_globals))
         subject_globals_value = squeeze(struct2cell(subject_globals));
@@ -41,6 +49,7 @@ if nargin>1 %added to support subject-specific settings -05Sep2013 ACS
             end
         end
     end
+  disp(['Finished reading subject-specific XML file for ',subject]);  
 end
 
 rig_globals = struct([]);
@@ -60,6 +69,7 @@ if nargin>2
         rig_globals=parseExperiment(rig_globals);
         rig_globals = rig_globals{1};
     end
+    disp(['Finished reading rig-specific XML file for ',machine]);
 end
 
 % combine globals
@@ -72,8 +82,6 @@ if nargin > 2
     end
 end
 globals = subject_globals;
-
-
 
 % check for duplicate params/randoms names in stimulus file
 allName={};
@@ -152,11 +160,17 @@ if ~isempty(globals)
         end
         %params.(globals_name{i}) = globals.(globals_name{i});
     end
+else
+    globals_name={};
 end
 
 paramIndex = find(strcmp({x.Children.Name},'params'));
 randomIndex = find(strcmp({x.Children.Name},'randoms'));
-userFile = ['subject_',lower(subject),'.xml'];
+if nargin>1
+    userFile = ['subject_',lower(subject),'.xml'];
+else
+    userFile = 'subject_.xml';
+end
 
 % name,repeats,ex can not be anywhere else
 if ~isempty(x.Children(paramIndex).Attributes)
@@ -266,18 +280,18 @@ if exist(userFile,'file')
 end
 
 temp_params = x.Children(paramIndex);
-temp_conditions.Name = 'conditions';
-temp_conditions.Attributes = [];
-temp_conditions.Data = '';
-temp_conditions.Children = [];
+temp_cnds.Name = 'conditions';
+temp_cnds.Attributes = [];
+temp_cnds.Data = '';
+temp_cnds.Children = [];
 for i = length(temp_params.Children):-1:1
     if (strcmp(temp_params.Children(i).Name,'grouped') || size(str2num(temp_params.Children(i).Children.Data),2)>1)
-        temp_conditions.Children = [temp_params.Children(i) temp_conditions.Children];
+        temp_cnds.Children = [temp_params.Children(i) temp_cnds.Children];
         temp_params.Children(i)=[];
     end
 end
-if ~isempty(temp_conditions.Children)
-    cnds = parseExperiment(temp_conditions);
+if ~isempty(temp_cnds.Children)
+    cnds = parseExperiment(temp_cnds);
     params.emptyCnd = 0;
 else
     cnds.emptyCnd = 1;
