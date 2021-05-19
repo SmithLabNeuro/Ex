@@ -169,6 +169,8 @@ codes.USTIM_OFF = 131 ;
 codes.SOUND_ON = 132 ;
 codes.SOUND_OFF = 133 ;
 codes.SOUND_CHANGE = 134;
+codes.CURSOR_ON = 135;
+codes.CURSOR_OFF = 136;
 
 % behavior codes
 codes.FIXATE  = 140 ;	% attained fixation 

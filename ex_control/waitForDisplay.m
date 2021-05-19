@@ -53,6 +53,7 @@ while true
         trialSuccess = 0;
         break;
     end
+    
     if (GetSecs-loopTop)>params.waitForTolerance, warning('waitFor:tooSlow','waitForDisplay exceeded latency tolerance - %s',datestr(now)); end; %warn tolerance exceeded -acs22dec2012
 end
 
