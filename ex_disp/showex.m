@@ -84,6 +84,16 @@ matlabUDP2('send',socket,'ack');
 
 %% Put our code in high-priority/realtime mode
 origPriority = Priority(1); % 1 or > is realtime mode; 0 is normal
+newPriority = Priority(1); % check that the priority is now 1
+if newPriority ~= 1 
+        ansr = questdlg('Unable to change Priority. Probably PsychLinuxConfiguration was not run. Continue?');
+    switch lower(ansr(1))
+        case 'y'
+            warning('Running without setting Priority');
+        otherwise
+            return; %punt
+    end
+end
 
 %% Set verbosity. 3 is default, 1 means only output errors
 origVerbosity = Screen('Preference', 'Verbosity', 1);
