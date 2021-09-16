@@ -38,6 +38,11 @@ params.control2bciIP = '192.168.2.11'; % local IP address of control computer
 params.bci2controlIP = '192.168.2.10'; % local IP address of bci computer
 params.control2bciSocket = 4244;
 %
+params.control2dataIP = '128.2.245.223'; % jjxqqn200d200 qsjjjqxlocal IP address of control computer (note over the network no direct ethernet connection)
+params.data2controlIP = '128.2.245.219'; % local IP address of data computer (note over the network no direct ethernet connection)
+params.control2dataSocketSend = 4245;
+params.control2dataSocketReceive = 4246;
+%
 params.screenDistance = 36; % distance from eye to screen in cm
 params.pixPerCM = 27.03; % pixels per centimeter of screen
 % fixation window (pixels)

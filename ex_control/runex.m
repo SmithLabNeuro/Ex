@@ -84,9 +84,15 @@ assert(sum(isspace(params.machine))==0,'Machine name must not have spaces');
 %% UDP initialization for showex
 matlabUDP2('all_close'); %first close any open UDP sessions.
 sockets(1) = matlabUDP2('open',params.control2displayIP,params.display2controlIP,params.control2displaySocket);
+
 fprintf('Waiting for showex (CTRL+C to quit) ...');
 msgAndWait('ack',[],60); %wait up to 1 min for showex to start -acs14mar2016
 fprintf(' connected.\n');
+
+%% opening up chatter with the data computer
+socketsDatComp.sender = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketSend);
+socketsDatComp.receiver = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketReceive);
+recordingTrueFalse = false;
 
 %% Find directories and set paths
 thisFile = mfilename('fullpath');
@@ -355,7 +361,8 @@ availableOutcomes = fieldnames(retry);
 stats = zeros(numel(availableOutcomes),1);
 
 %Define standard prompt strings:
-defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, e(x)it';
+% defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, e(x)it';
+defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
 setJuicePrompt = 'juice (x), juice (d)uration, juice (i)nterval, (q)uit';
 calibrationInProgressPrompt = 'Calibrating...(g)ood position, (b)ack up, (q)uit, (j)uice, (r)efresh dot'; 
 calibrationDonePrompt = '(f)inished calibration, (b)ack up, (q)uit, (j)uice';
@@ -408,6 +415,15 @@ addpath(localDataDir); %add to search directory so outfiles can be found if need
 % %initialize status info:
 % statusInfo.path = localStatusDir;
 % statusInfo.filename = fullfile(statusInfo.path,[params.machine,'.txt']);
+
+%% get/open database file
+homedirCont = dir('~');
+homedir = homedirCont(1).folder;
+homeTag = find(localDataDir == '~');
+localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
+sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
+sqlDb = sqlite(sqlDbPath);
+
 
 %% Display-side local directory:
 if isfield(params,'localShowexDir')
@@ -489,7 +505,12 @@ if params.displayHz~=100
 end
 
 % Open a double buffered fullscreen window
-[wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray);
+if debug
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 500]);
+else
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 500]);
+%     [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber,gray);
+end
 
 % some default values for the control display only (no effect on subject display)
 wins.textSize = 14; 
@@ -640,6 +661,11 @@ while true
                 Screen('CopyWindow',wins.voltageBG,wins.voltage,wins.voltageDim,wins.voltageDim);
             case 's'
                 exRunExperiment; % see experimental control subfunction
+            case 'r'
+                recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse); % see recording subfunction that communicates with data computer
+%             case 't'
+%                 Screen(wins.info,'FillRect',gray);
+%                 textInput = GetEchoString(wins.w, 'message for database', 0, 0);
             case 'x'
                 try
                     TimingTest(allCodes);
@@ -1140,6 +1166,93 @@ fclose all;
         drawTrialData();
         setWindowBackground(wins.voltageBG);
     end
+
+%% function to initialize recording on the data computer using appropriate parameters
+    function recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse)
+        timeout = 10;
+        promptSt = 'Communicating with data computer to start recording...';
+        trialData{4} = promptSt;
+        drawTrialData();
+        [~,xmlBase,~] = fileparts(xmlParams.xmlFile);
+        
+        if ~recordingTrueFalse
+            rc = sendMessageWaitAck(socketsDatComp, 'record');
+            if isempty(rc)
+                return
+            end
+            
+            rc = sendMessageWaitAck(socketsDatComp, params.SubjectID);
+            if isempty(rc)
+                return
+            end
+            
+            trialData{4} = 'Enter session number, then the SPACE bar.';
+            drawTrialData();
+            sessionNum = getParams;
+            if ~isnan(sessionNum)
+                rc = sendMessageWaitAck(socketsDatComp, num2str(sessionNum));
+                if isempty(rc)
+                    return
+                end
+            else
+                return
+            end
+            
+            
+            rc = sendMessageWaitAck(socketsDatComp, xmlBase);
+            if isempty(rc)
+                return
+            end
+            currPrompt = '(r)ecord neural data';
+            nextPrompt = 'stop (r)ecording neural data';
+        else
+            rc = sendMessageWaitAck(socketsDatComp, 'stopRecording');
+            neuralOutName = receiveMessageSendAck(socketsDatComp);
+            sqlDb.insert('experiment_info', {'animal', 'date', 'task', 'rig', 'behavior_output_name', 'neural_output_name'}, {params.SubjectID, datestr(today), xmlBase, params.machine, outfilename, neuralOutName})
+            currPrompt = 'stop (r)ecording neural data';
+            nextPrompt = '(r)ecord neural data';
+        end
+        
+        promptSt = strfind(defaultRunexPrompt, currPrompt);
+        defaultRunexPrompt(promptSt:promptSt+length(currPrompt)-1) = [];
+        defaultRunexPrompt = [defaultRunexPrompt(1:promptSt-1), nextPrompt, defaultRunexPrompt(promptSt:end)];
+        recordingTrueFalse = ~recordingTrueFalse;
+        trialData{4} = defaultRunexPrompt;
+        drawTrialData();
+        
+        function rcvd = sendMessageWaitAck(sockets, msgToSend)
+            matlabUDP2('send', sockets.sender, msgToSend)
+            rcvd = waitForData(sockets.receiver, 'ack');
+        end
+        
+        function rcvd = receiveMessageSendAck(sockets)
+            rcvd = waitForData(sockets.receiver, '');
+            matlabUDP2('send', sockets.sender, 'ack');
+        end
+        
+        function rcvd = waitForData(socketRec, msgToReceive)
+            st = tic;
+            rcvd = '';
+            
+            while toc(st) < timeout && ((~strcmp(rcvd, msgToReceive) && ~isempty(msgToReceive)) || (isempty(msgToReceive) && isempty(rcvd)))
+                if matlabUDP2('check',socketRec)
+                    rcvd = matlabUDP2('receive',socketRec);
+                end
+                pause(0.001)
+            end
+            if ~isempty(msgToReceive) && ~strcmp(rcvd,msgToReceive)
+                rcvd = '';
+                promptSt = 'Communication with data computer failed--is it running recordFromControl.m?';
+                trialData{4} = promptSt;
+                drawTrialData();
+                pause(2)
+                trialData{4} = defaultRunexPrompt;
+                drawTrialData();
+                return
+            end
+        end
+    end
+    
     
 %%
     function cleanUp()
