@@ -77,6 +77,9 @@ params.digOut4 = 22; % C6
 params.eyeSmoothing = 5; % 0 for no smoothing, numbers >= 1 are in msec
 params.eyeHistoryBufferSize = 200; %in samples (duration depends on how fast "samp" is called)
 params.drawSaccades = true;
+% used to check hold on joystick
+params.hallEffectZBaseline = 2.5209e+03; % found manually... could consider having a calibration step going forward
+params.hallEffectZRotationAngleMaxDegree = 45; % found manually... could consider having a calibration step going forward
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                 DIGITAL CODES LIST (0-255)            %
