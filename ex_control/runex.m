@@ -45,6 +45,16 @@ assert(repeats > 0,'Must have > 0 repeats'); % Don't allow zero repeats
 
 %% Put our code in high-priority/realtime mode
 origPriority = Priority(1); % 1 or > is realtime mode; 0 is normal
+newPriority = Priority(1); % check that the priority is now 1
+if newPriority ~= 1 
+        ansr = questdlg('Unable to change Priority. Probably PsychLinuxConfiguration was not run. Continue?');
+    switch lower(ansr(1))
+        case 'y'
+            warning('Running without setting Priority');
+        otherwise
+            return; %punt
+    end
+end
 
 %% Set verbosity. 3 is default, 1 means only output errors
 origVerbosity = Screen('Preference', 'Verbosity', 1);
@@ -780,6 +790,10 @@ fclose all;
                         
                         msgAndWait('checkForAborts'); %just to check for aborts.
                     catch ME %This block handles the cases when showex aborts...
+                        %%% just throw it right away for now MS August 2021
+                        %msgAndWait('prerethrow')
+                        rethrow(ME); %kicks up to runexError function
+                        %msgAndWait('postrethrow')
                         switch ME.identifier
                             case 'waitFor:aborted'
                                 sendCode(codes.SHOWEX_ABORT);
@@ -822,6 +836,7 @@ fclose all;
                         end
                     end
                     
+                    %msgAndWait('prealloff')
                     msg('all_off');
                     msgAndWait('rem_all');
                     
