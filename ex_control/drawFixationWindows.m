@@ -54,7 +54,7 @@ global calibration wins;
                 Screen('FramePoly',wins.voltage,winColors(i,:),vPoints);
             elseif size(r,1)==3
                 % wedge
-                if i == 1 || i == 2
+                if false%i == 1 || i == 2
                     fixationWindow = r(1,i).*[-1 -1 1 1]' + [fixX(i) fixY(i) fixX(i) fixY(i)]'; 
                     Screen('FrameOval',wins.eye,winColors(i,:),fixationWindow.*repmat(wins.pixelsPerPixel,1,2)'+repmat(wins.midE,1,2)');
                     fixationWindow = reshape(fixationWindow,2,[])'; %put X values in one column and Y values in another...
