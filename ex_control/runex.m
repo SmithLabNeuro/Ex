@@ -263,6 +263,9 @@ switch class(xmlParams.bgColor)
 end
 
 %% Initialize BCI Functionality
+if isfield(xmlParams, 'useBci')
+    params.bciEnabled = xmlParams.useBci;
+end
 if params.bciEnabled
     try
         sockets(2) = matlabUDP2('open',params.control2bciIP,params.bci2controlIP,params.control2bciSocket);
@@ -270,6 +273,25 @@ if params.bciEnabled
         disp(ERR.message);
         disp('*ERROR* - No BCI connection, proceeding without BCI computer');
     end
+    
+    disp('Establishing communication with BCI computer');
+    matlabUDP2('send', sockets(2), 'ready');
+    bciMsg = matlabUDP2('receive', sockets(2));
+    while ~strcmp(bciMsg, 'prepared')
+        pause(0.1)
+        disp('sent')
+        matlabUDP2('send', sockets(2), 'ready');
+        bciMsg = matlabUDP2('receive', sockets(2));
+    end
+    bciMsg = '';
+    % wait for the second ack that happens after the buffer has been
+    % cleared
+    while ~strcmp(bciMsg, 'flushed')
+        pause(0.1)
+        bciMsg = matlabUDP2('receive', sockets(2));
+    end
+    bciMsg = '';
+    disp('Communicating with BCI');
     
     if params.bciCursorEnabled
         bciCursorTraj = [];
