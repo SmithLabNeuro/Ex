@@ -1,10 +1,10 @@
 function shouldBreak = keyboardEvents()
-global trialMessage;
+global trialMessage typingNotes;
 
 shouldBreak = 0;
 
 [ keyIsDown, keyCode] = KbQueueCheck;
-if keyIsDown
+if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
     c = KbName(keyCode);
     KbQueueFlush;
     if numel(c)>1, return; end;
