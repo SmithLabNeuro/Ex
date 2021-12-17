@@ -38,7 +38,7 @@ params.control2bciIP = '192.168.2.11'; % local IP address of control computer
 params.bci2controlIP = '192.168.2.10'; % local IP address of bci computer
 params.control2bciSocket = 4244;
 %
-params.control2dataIP = '128.2.245.223'; % jjxqqn200d200 qsjjjqxlocal IP address of control computer (note over the network no direct ethernet connection)
+params.control2dataIP = '128.2.245.223'; % local IP address of control computer (note over the network no direct ethernet connection)
 params.data2controlIP = '128.2.245.219'; % local IP address of data computer (note over the network no direct ethernet connection)
 params.control2dataSocketSend = 4245;
 params.control2dataSocketReceive = 4246;
@@ -59,6 +59,8 @@ params.diodeLoc = [10 10 40 40];
 % is displayed (to notify us that there are timing issues that may warrant attention)
 params.waitForTolerance = 0.01; % in seconds, so 0.01 = 10 ms
 
+%for the lab note taking
+params.keyboardName = 'Dell KB216 Wired Keyboard';
 %% sound params
 params.sampleFreq = 48000; % 48 kHz
 params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds
