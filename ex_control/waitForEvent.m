@@ -43,8 +43,14 @@ while (toc(ticStart)*1000) <= timeout
     loopTop = GetSecs;
     
     funcSuccess = zeros(1,length(eventCheckerFunction));
+    displayUpdateString = cell(1,length(eventCheckerFunction));
     for funcInd = 1:length(eventCheckerFunction)
-        funcSuccess(funcInd) = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+        if nargout(eventCheckerFunction{funcInd}) == 2
+            [funcSuccess(funcInd), displayUpdateString{funcInd}] = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+        else
+            funcSuccess(funcInd) = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+            displayUpdateString{funcInd} = '';
+        end
     end
     
     if all(funcSuccess==1)
@@ -63,6 +69,28 @@ while (toc(ticStart)*1000) <= timeout
         success = 0;
         runOnceMore = false;
         break;
+    end
+    
+    % ALL COMMANDS IN disaplyUpdateString MUST START WITH set
+    for dispStrInd = length(displayUpdateString):-1:1
+        if isempty(displayUpdateString{dispStrInd})
+            displayUpdateString(dispStrInd) = [];
+        elseif ~strcmp(displayUpdateString{dispStrInd}(1:3), 'set')
+            error('bad display string %s:\n\nall display strings must start with set', displayUpdateString{dispStrInd})
+        else
+            % maybe add a white space at the end? might not matter for
+            % these strings...
+        end
+    end
+    if ~isempty(displayUpdateString)
+%         disp(qx'hr')
+        fullDisplayStr = strcat(displayUpdateString{:});
+        try
+            msgAndWait(['m' fullDisplayStr])
+        catch err
+            a = 5;
+            b = 3;
+        end
     end
             
     %if (GetSecs-loopTop)>params.waitForTolerance, warning('waitFor:tooSlow','waitFor exceeded latency tolerance - %s',datestr(now)); end; %warn tolerance exceeded -acs22dec2012
