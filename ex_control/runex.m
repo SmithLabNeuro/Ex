@@ -29,6 +29,11 @@ global audioHandle;
 global debug; %#ok<NUSED> This will be assigned by exGlobals
 global sockets;
 global bciCursorTraj; % only used when bci cursor is enabled
+global typingNotes;
+global notes;
+global sqlDb;
+global sessionInfo;
+typingNotes = false;
 
 %% Startup message
 thisFileInfo = dir(which(mfilename));
@@ -424,7 +429,6 @@ localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
 sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
 sqlDb = sqlite(sqlDbPath);
 
-
 %% Display-side local directory:
 if isfield(params,'localShowexDir')
     localShowexDir = params.localShowexDir;
@@ -535,19 +539,23 @@ cRes = wins.controlResolution;
 dispRat = wins.displayResolution(2) / wins.displayResolution(1);
 eyePortion = 0.5; % Top half of display is for eye windows, bottom for status
 eyeMargin = 0.05; % Extra margin between info and eye displays
+infoHorizontalPortion = 0.75; % Bottom-left of screen is for info
 wins.voltageSize = ceil([0 0 cRes(2)*eyePortion cRes(2)*eyePortion]); 
 wins.eyeSize = ceil([cRes(1)-1-((cRes(2)*eyePortion)/dispRat) 0 cRes(1)-1 cRes(2)*eyePortion]);
-wins.infoSize = ceil([cRes(2)*eyeMargin cRes(2)*(eyePortion+eyeMargin) cRes(1)-1 cRes(2)-1]);
+wins.infoSize = ceil([cRes(2)*eyeMargin cRes(2)*(eyePortion+eyeMargin) infoHorizontalPortion*cRes(1)-1 cRes(2)-1]);
+wins.labNotesSize = ceil([infoHorizontalPortion*cRes(1)-1 + (1-infoHorizontalPortion)*eyeMargin cRes(2)*(eyePortion+eyeMargin) cRes(1)-1 cRes(2)-1]);
 
 % Create the control display windows
 wins.voltageDim = [0 0 wins.voltageSize(3:4)-wins.voltageSize(1:2)];
 wins.eyeDim = [0 0 wins.eyeSize(3:4)-wins.eyeSize(1:2)];
 wins.infoDim = [0 0 wins.infoSize(3:4)-wins.infoSize(1:2)];
+wins.labNotesDim = [0 0 wins.labNotesSize(3:4)-wins.labNotesSize(1:2)];
 [wins.voltage, vRect] = Screen('OpenOffscreenWindow',wins.w,gray,wins.voltageDim);
 wins.voltageBG = Screen('OpenOffscreenWindow',wins.w,gray,wins.voltageDim);
 wins.eye = Screen('OpenOffscreenWindow',wins.w,gray,wins.eyeDim);
 [wins.eyeBG,  eRect] = Screen('OpenOffscreenWindow',wins.w,gray,wins.eyeDim);
 wins.info = Screen('OpenOffscreenWindow',wins.w,gray,wins.infoDim);
+wins.labNotes = Screen('OpenOffscreenWindow',wins.w,gray,wins.infoDim);
 
 % scale factors to convert from eye tracker volts or full-screen
 % pixel coordinates into the two control display screens
@@ -625,13 +633,20 @@ msgAndWait('bg_color %d %d %d',xmlParams.bgColor);
 KbQueueCreate;
 KbQueueStart;
 
+%% save experiment run to database
+[sessionInfo, sessionNotes] = writeExperimentSessionToDatabase();
+notes = sessionNotes;
+if params.writeFile
+    writeExperimentInfoToDatabase(sessionInfo)
+end
+
 %% Keyboard events handling loop:
 while true
     % MATT - should setup KbQueue so it only detects keys that we
     % use, it's supposed to be faster. Doesn't matter here but
     % would be more important in the functions that run during a trial
     [ keyIsDown, keyCode] = KbQueueCheck;
-    if keyIsDown
+    if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
         c = KbName(keyCode);
         KbQueueFlush;
         if numel(c)>1; continue; end %keyboard mash and other weirdness
@@ -662,11 +677,19 @@ while true
             case 's'
                 exRunExperiment; % see experimental control subfunction
             case 'r'
-                recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse); % see recording subfunction that communicates with data computer
+                recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo); % see recording subfunction that communicates with data computer
 %             case 't'
 %                 Screen(wins.info,'FillRect',gray);
 %                 textInput = GetEchoString(wins.w, 'message for database', 0, 0);
             case 'x'
+                if params.writeFile
+                    trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
+                    writeExperimentInfoToDatabase([], 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                end
+                % shut off recording
+                if recordingTrueFalse
+                    recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo);
+                end
                 try
                     TimingTest(allCodes);
                     break;
@@ -941,6 +964,10 @@ fclose all;
             for stk = 1:length(err.stack)
                 fprintf('In ==> %s %s %i\n',err.stack(stk).file,err.stack(stk).name,err.stack(stk).line);
             end
+            % shut off recording
+            if recordingTrueFalse
+                 recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo);
+            end
             beep;
         end
     end
@@ -951,7 +978,7 @@ fclose all;
         drawTrialData();
         while true
             [ keyIsDown, keyCode] = KbQueueCheck;
-            if keyIsDown
+            if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
                 c = KbName(keyCode);
                 KbQueueFlush;
                 switch c
@@ -999,7 +1026,7 @@ fclose all;
         while true
             [ keyIsDown, keyCode] = KbQueueCheck;
             keyCode = find(keyCode, 1);
-            if keyIsDown                
+            if keyIsDown && (~isempty(typingNotes) && ~typingNotes)                
                 if keyCode == 66 % space bar
                     break;
                 end
@@ -1065,7 +1092,7 @@ fclose all;
             end
             samp; % make sure the eyeHistory buffer gets filled with recent samples
             [ keyIsDown, keyCode] = KbQueueCheck;
-            if keyIsDown
+            if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
                 c = KbName(keyCode);
                 KbQueueFlush;
                 if numel(c)>1, continue; end
@@ -1168,7 +1195,7 @@ fclose all;
     end
 
 %% function to initialize recording on the data computer using appropriate parameters
-    function recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse)
+    function recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo)
         timeout = 10;
         promptSt = 'Communicating with data computer to start recording...';
         trialData{4} = promptSt;
@@ -1186,9 +1213,7 @@ fclose all;
                 return
             end
             
-            trialData{4} = 'Enter session number, then the SPACE bar.';
-            drawTrialData();
-            sessionNum = getParams;
+            sessionNum = sessionInfo;
             if ~isnan(sessionNum)
                 rc = sendMessageWaitAck(socketsDatComp, num2str(sessionNum));
                 if isempty(rc)
@@ -1208,7 +1233,8 @@ fclose all;
         else
             rc = sendMessageWaitAck(socketsDatComp, 'stopRecording');
             neuralOutName = receiveMessageSendAck(socketsDatComp);
-            sqlDb.insert('experiment_info', {'animal', 'date', 'task', 'rig', 'behavior_output_name', 'neural_output_name'}, {params.SubjectID, datestr(today), xmlBase, params.machine, outfilename, neuralOutName})
+            writeExperimentInfoToDatabase(sessionInfo, 'neural_output_name', neuralOutName)
+%             sqlDb.insert('experiment_info', {'animal', 'date', 'task', 'rig', 'behavior_output_name', 'neural_output_name'}, {params.SubjectID, datestr(today), xmlBase, params.machine, outfilename, neuralOutName})
             currPrompt = 'stop (r)ecording neural data';
             nextPrompt = '(r)ecord neural data';
         end
@@ -1253,6 +1279,75 @@ fclose all;
         end
     end
     
+%% function to write to database
+    function writeExperimentInfoToDatabase(sessionInfo, varargin)
+        [~,xmlBase,~] = fileparts(xmlParams.xmlFile);
+        if ~isempty(varargin)
+            % at this point, and experiment_info matching these parameters
+            % should already have been written, so we link it to the neural
+            % data being recorded
+            updateStrCell = {};
+            for fieldToUpdateInd = 1:2:length(varargin)
+                fieldToUpdate = varargin{fieldToUpdateInd};
+                valueToPutIn = varargin{fieldToUpdateInd + 1};
+                updateStr = sprintf('%s = "%s"', fieldToUpdate, valueToPutIn);
+                updateStrCell{end+1} = updateStr;
+            end
+            updateStrTotal = strjoin(updateStrCell, ' and ');
+            sqlDb.exec(sprintf('UPDATE experiment_info SET %s WHERE behavior_output_name = "%s"', updateStrTotal, outfilename));
+%             sqlDb.insert('experiment_info', {'start_time', 'task', 'session', 'behavior_output_name', 'neural_output_name'}, {datestr(now, 'yyyy-mm-dd HH:MM:SS'), xmlBase, sessionInfo, outfilename, neuralOutName})
+        else
+            sqlDb.insert('experiment_info', {'start_time', 'task', 'session', 'behavior_output_name'}, {datestr(now, 'yyyy-mm-dd HH:MM:SS'), xmlBase, sessionInfo, outfilename})
+        end
+        
+    end
+
+    function [sessionInfo, sessionNotes] = writeExperimentSessionToDatabase()
+        lastSessionNumber = sqlDb.fetch('SELECT max(session_number) from experiment_session');
+        newSessionNumber = lastSessionNumber{1} + 1;
+        infoPossiblyRelated = sqlDb.fetch('SELECT rowid, (strftime(''%s'', ''now'', ''localtime'') - strftime(''%s'',start_time))/3600 FROM experiment_info WHERE datetime(start_time) >= datetime(''now'', ''-1 day'') ');
+        if ~isempty(infoPossiblyRelated)
+            hoursFromStart = cell2mat(infoPossiblyRelated(:, 2));
+            [sortedHours, sortInd] = sort(hoursFromStart);
+            infoPossiblyRelated = infoPossiblyRelated(sortInd, :);
+            if any(sortedHours<12)
+                infoId = infoPossiblyRelated{sortedHours<12, 1};
+                sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d', infoId));
+                sessionInfo = sessionAllInfo{1};
+                sessionNotes = sessionAllInfo{2};
+            elseif any(sortedHours<16)
+                keyboard
+            else
+                % there was an experiment within 1 day (could be up to
+                % 47.9999 hours, since the 'day' metric could be day 1 at
+                % 12:01 AM vs day 2 at 11:59 PM, but that's still day 2 -
+                % day 1 = 1 day...), but >16 hours so not counted as the same
+                % session
+                sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
+                sessionInfo = sqlDb.fetch('SELECT session_number FROM experiment_session ORDER BY session_number DESC LIMIT 1');
+                sessionInfo = sessionInfo{1};
+                sessionNotes = [];
+            end
+        else
+            % no experiments within 1 day, but there still might be an
+            % experiment_session *from today* which we check for here
+            todaySessionAllInfo = sqlDb.fetch('SELECT session_number, ifnull(notes,"") FROM experiment_session WHERE strftime(''%Y-%m-%d'', date) == strftime(''%Y-%m-%d'', ''now'', ''localtime'')');
+            if size(todaySessionAllInfo, 1)==1
+                % this might happen if runex was run but with no
+                % experiment--here we avoid writing another row to
+                % experiment_session
+                sessionInfo = todaySessionAllInfo{1};
+                sessionNotes = todaySessionAllInfo{2};
+            elseif size(todaySessionAllInfo, 1)>1
+                keyboard
+            else
+                sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
+                sessionInfo = sqlDb.fetch('SELECT session_number FROM experiment_session ORDER BY session_number DESC LIMIT 1');
+                sessionInfo = sessionInfo{1};
+                sessionNotes = [];
+            end
+        end
+    end
     
 %%
     function cleanUp()
