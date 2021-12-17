@@ -86,7 +86,7 @@ params.eyeHistoryBufferSize = 200; %in samples (duration depends on how fast "sa
 params.drawSaccades = true;
 % used to check hold on joystick
 params.hallEffectZBaseline = 2.5209e+03; % found manually... could consider having a calibration step going forward
-params.hallEffectZRotationAngleMaxDegree = 45; % found manually... could consider having a calibration step going forward
+params.hallEffectZRotationAngleMaxDegree = 45; % from specs
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                 DIGITAL CODES LIST (0-255)            %
