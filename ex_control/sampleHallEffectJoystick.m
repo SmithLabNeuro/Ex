@@ -2,10 +2,10 @@ function [xVal, yVal, zValAng, buttonPress] = sampleHallEffectJoystick()
 
 global params behav
 
-buttonAnalogChannel = 6;
-xAnalogChannel = 3;
-yAnalogChannel = 4;
-zAnalogChannel = 5;
+buttonAnalogChannel = 6; % follow colors on joystick pinout
+xAnalogChannel = 3; % follow colors on joystick pinout
+yAnalogChannel = 4; % follow colors on joystick pinout
+zAnalogChannel = 5; % follow colors on joystick pinout
 
 button = unixGetAnalogInput(buttonAnalogChannel); % in mV
 xVal = unixGetAnalogInput(xAnalogChannel); % in mV
