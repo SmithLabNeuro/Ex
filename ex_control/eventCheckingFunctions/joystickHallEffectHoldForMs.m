@@ -1,10 +1,10 @@
-function success = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, msHold)
+function success = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, msHold)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
 
 success = 0;
 [xVal, yVal, zValAng, ~] = sampleHallEffectJoystick();
-pixBoxLimit = 300;
+pixBoxLimit = pixelDistForMaxJoystickPos;
 xVal = xVal * pixBoxLimit;
 yVal = yVal * pixBoxLimit;
 
@@ -25,6 +25,16 @@ else
         success = 0;
     end
 end
+
+yellow  = [255 255 0];
+winColors = yellow;
+cursorPos = [xVal, yVal]; 
+cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
+cursorR = 5;
+cursorIndicatorAngle = pi/4;
+cursAngDispWedgeVals = [cursorR, cursorIndicatorAngle/2, zValAng]';
+drawFixationWindows([positionXHold cursorPosDisp(1)], [positionYHold cursorPosDisp(2)], [distanceTolerance cursorR],winColors);
+% drawFixajqsjqxtionWindows([cursorPosDisp(1)], [cursorPosDisp(2)], cursAngDispWedgeVals,winColors);
 
 end
 

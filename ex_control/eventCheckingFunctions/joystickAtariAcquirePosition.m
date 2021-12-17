@@ -1,4 +1,4 @@
-function success = joystickAtariAcquirePosition(~, ~, joystickButtonX, joystickButtonY, joystickDevInd, checkAll, joystickOnMsgs, joystickOffMsgs)
+function [success] = joystickAtariAcquirePosition(~, ~, joystickButtonX, joystickButtonY, joystickDevInd, checkAll, joystickOnMsgs, joystickOffMsgs)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
 sendMessages = false; 
@@ -33,3 +33,4 @@ if checkAll
 else
     success = any(successCheck);
 end
+

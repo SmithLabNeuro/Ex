@@ -1,11 +1,14 @@
-function success = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, cursorR, cursorColor)
-% success if the cursor reaches the target
-% failure if the cursor *doesn't* reach the target
+function success = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorR, cursorColor, immediateFailOnReturn)
+% success if the cursor leaves positionHold
+% failure if the cursor *doesn't* leave positionHold
 
 global codes
 
-pixBoxLimit = 300;
+pixBoxLimit = pixelDistForMaxJoystickPos;
 
+if nargin < 8
+    immediateFailOnReturn = false;
+end
 
 % cursor color
 cursorColorDisp = [cursorColor(1) cursorColor(2) cursorColor(3)];
@@ -51,5 +54,9 @@ xyLargeEnough = checkWithinTolerance(distanceFromHoldLoc, 0, distanceTolerance, 
 if xyLargeEnough
     success = 1;
 else
-    success = 0;
+    if immediateFailOnReturn
+        success = -1;
+    else
+        success = 0;
+    end
 end

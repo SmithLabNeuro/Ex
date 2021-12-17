@@ -1,15 +1,20 @@
-function success = joystickHallEffectCursorReachTarget(~,~, targX,targY,targRadius, cursorR, cursorColor, targWinCursRad)
+function [success, msgStr] = joystickHallEffectCursorReachTarget(~,~, targX,targY,targRadius, cursorR, cursorColor, targWinCursRad, pixelDistForMaxJoystickPos, notTargX, notTargY)
 % success if the cursor reaches the target
 % failure if the cursor *doesn't* reach the target
 
 global codes
 
-pixBoxLimit = 300;
+if nargin < 10
+    notTargX = [];
+    notTargY = [];
+end
+
+pixBoxLimit = pixelDistForMaxJoystickPos;
 
 % for the control computer to track where target is
 yellow  = [255 255 0];
 winColors = yellow;
-drawFixationWindows(targX,targY,targWinCursRad,winColors);
+% drawFixationWindows(targX,targY,targWinCursRad,winColors);
 
 % cursor color
 cursorColorDisp = [cursorColor(1) cursorColor(2) cursorColor(3)];
@@ -37,11 +42,22 @@ sendCode(posShiftY);
 relPos = ([targX targY] - cursorPos);
 distToTarget = sqrt(sum(relPos.^2));
 
+if ~isempty(notTargX)
+    relPosFromBadTarg = [notTargX notTargY] - cursorPos;
+    distToBadTarg = sqrt(sum(relPosFromBadTarg.^2, 2));
+end
+
 switch size(targRadius,1)
     case 1 %circular window
         success = distToTarget < targWinCursRad;
+        if ~isempty(notTargX) && any(distToBadTarg < targWinCursRad)
+            success = -1;
+        end
     case 2 %rectangular window
         success = all(abs(distToTarget)<abs(targRadius),1);
+        if ~isempty(notTargX) && any(all(abs(distToBadTarg)<abs(targRadius'),2))
+            success = -1;
+        end
     otherwise
         error('EX:waitForFixation:badRadius','Radius must have exactly 1 or 2 rows');
 end
@@ -52,6 +68,9 @@ end
 
 % draw the cursor
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-msgStr = sprintf('mset 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
+msgStr = sprintf('set 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
 
-msgAndWait(msgStr);
+% msgAndWait(msgStr);
+
+
+drawFixationWindows([targX cursorPosDisp(1)],[targY cursorPosDisp(2)],[targWinCursRad cursorR],winColors);
