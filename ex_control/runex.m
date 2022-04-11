@@ -28,7 +28,7 @@ global wins params codes calibration stats;
 global behav;
 global audioHandle;
 global debug; %#ok<NUSED> This will be assigned by exGlobals
-global sockets;
+global sockets socketsDatComp;
 global bciCursorTraj; % only used when bci cursor is enabled
 global typingNotes;
 global notes;
@@ -397,8 +397,8 @@ availableOutcomes = fieldnames(retry);
 stats = zeros(numel(availableOutcomes),1);
 
 %Define standard prompt strings:
-% defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, e(x)it';
-defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
+defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, e(x)it';
+
 setJuicePrompt = 'juice (x), juice (d)uration, juice (i)nterval, (q)uit';
 calibrationInProgressPrompt = 'Calibrating...(g)ood position, (b)ack up, (q)uit, (j)uice, (r)efresh dot'; 
 calibrationDonePrompt = '(f)inished calibration, (b)ack up, (q)uit, (j)uice';
@@ -634,6 +634,18 @@ params.calibPixY = calibration{1}(:,2)';
 params.calibVoltX = calibration{2}(:,1)';
 params.calibVoltY = calibration{2}(:,2)';
 
+%% save experiment run to database
+[sessionInfo, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
+notes = sessionNotes;
+if params.writeFile
+    writeExperimentInfoToDatabase(sessionInfo, xmlParams, outfilename)
+    defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
+    trialData{4} = defaultRunexPrompt;
+    
+    notes = sprintf('%s\n\n%s\n', notes, outfilename);
+    sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d ', notes, sessionInfo));
+end
+
 %% define plotter timer function
 
 plotter = timer;
@@ -656,12 +668,6 @@ msgAndWait('bg_color %d %d %d',xmlParams.bgColor);
 KbQueueCreate;
 KbQueueStart;
 
-%% save experiment run to database
-[sessionInfo, sessionNotes] = writeExperimentSessionToDatabase();
-notes = sessionNotes;
-if params.writeFile
-    writeExperimentInfoToDatabase(sessionInfo)
-end
 
 %% Keyboard events handling loop:
 while true
@@ -700,19 +706,46 @@ while true
             case 's'
                 exRunExperiment; % see experimental control subfunction
             case 'r'
-                recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo); % see recording subfunction that communicates with data computer
+                if params.writeFile
+                    try
+                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                    catch err
+                        if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
+                            trialData{4} = err.message;
+                            drawTrialData();
+                            pause(2)
+                            trialData{4} = defaultRunexPrompt;
+                            drawTrialData();
+                        else
+                            rethrow(err)
+                        end
+                    end
+                end
 %             case 't'
 %                 Screen(wins.info,'FillRect',gray);
 %                 textInput = GetEchoString(wins.w, 'message for database', 0, 0);
             case 'x'
                 if params.writeFile
                     trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
-                    writeExperimentInfoToDatabase([], 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                    writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                    % shut off recording
+                    if recordingTrueFalse
+                        try
+                            [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                        catch err
+                            if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
+                                trialData{4} = err.message;
+                                drawTrialData();
+                                pause(2)
+                                trialData{4} = defaultRunexPrompt;
+                                drawTrialData();
+                            else
+                                error(err.identifier, err.message)
+                            end
+                        end
+                    end
                 end
-                % shut off recording
-                if recordingTrueFalse
-                    recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo);
-                end
+                
                 try
                     TimingTest(allCodes);
                     break;
@@ -988,8 +1021,23 @@ fclose all;
                 fprintf('In ==> %s %s %i\n',err.stack(stk).file,err.stack(stk).name,err.stack(stk).line);
             end
             % shut off recording
-            if recordingTrueFalse
-                 recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo);
+            if params.writeFile
+                if recordingTrueFalse
+                    try
+                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                    catch err
+                        if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
+                            trialData{4} = err.message;
+                            drawTrialData();
+                            pause(2)
+                            trialData{4} = defaultRunexPrompt;
+                            drawTrialData();
+                        else
+                            error(err.identifier, err.message)
+                        end
+                    end
+                end
+
             end
             beep;
         end
