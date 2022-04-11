@@ -25,7 +25,7 @@ global eyeHistory eyeHistoryCurrentPos;
 global trialCodes thisTrialCodes trialTic allCodes;
 global trialMessage trialData;
 global wins params codes calibration stats;
-global behav;
+global behav outfilename;
 global audioHandle;
 global debug; %#ok<NUSED> This will be assigned by exGlobals
 global sockets socketsDatComp;
@@ -394,7 +394,8 @@ retry = struct('CORRECT',       0,...
     'SHOWEX_TIMINGERROR',  1,...    
     'BCI_ABORT',     1,...
     'BCI_CORRECT',   0,...
-    'BCI_MISSED',    1);
+    'BCI_MISSED',    1,...
+    'BACKGROUND_PROCESS_TRIAL', 0);
 
 allFields = fieldnames(xmlParams);
 retryFields = cellfun(@cell2mat,regexp(allFields,'(?<=retry_)\w*','match'),'uniformoutput',0);
@@ -900,6 +901,7 @@ fclose all;
                         e{I} = exCatstruct(xmlParams,e{I});
                         e{I}.('currentBlock')=j;
                         e{I}.('currentCnd')=cnd(I);
+                        e{I}.trialCounter = trialCounter;
                     end
                     e = cell2mat(e);
                     try
