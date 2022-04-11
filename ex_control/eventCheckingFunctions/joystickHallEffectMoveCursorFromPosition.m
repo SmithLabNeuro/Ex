@@ -1,4 +1,4 @@
-function success = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorR, cursorColor, immediateFailOnReturn)
+function [success, msgStr] = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorR, cursorColor, immediateFailOnReturn)
 % success if the cursor leaves positionHold
 % failure if the cursor *doesn't* leave positionHold
 
@@ -36,15 +36,10 @@ sendCode(posShiftY);
 
 % compute how close the cursor is to the target
 
-if keyboardEvents()
-    success = -1;
-end
 
 % draw the cursor
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-msgStr = sprintf('mset 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
-
-msgAndWait(msgStr);
+msgStr = sprintf('set 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
 
 positionXHold = positionHold(1);
 positionYHold = positionHold(2);
