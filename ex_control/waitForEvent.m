@@ -27,7 +27,7 @@ function [success, funcSuccess, extraFuncOutput] = waitForEvent(timeout, eventCh
 
 global debug params sockets;
 
-if nargin<1, timeout = 10; end;
+if nargin<4, successIfTimeElapsed = false; end;
 
 
 if ~iscell(eventCheckerFunction)
@@ -173,12 +173,14 @@ end
     %if (GetSecs-loopTop)>params.waitForTolerance, warning('waitFor:tooSlow','waitFor exceeded latency tolerance - %s',datestr(now)); end; %warn tolerance exceeded -acs22dec2012
 end
 
-
+if successIfTimeElapsed
+    success = 1;
+end
 
 % for events that would have succeeded if things happen for *at least* a
 % length of time, running the checker functions once more allows one to
 % check if they have (since the loop will have broken out)
-if runOnceMore
+if runOnceMore && ~successIfTimeElapsed
     loopTop = GetSecs;
     funcSuccess = zeros(1,length(eventCheckerFunction));
     for funcInd = 1:length(eventCheckerFunction)
