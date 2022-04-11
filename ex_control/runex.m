@@ -305,6 +305,16 @@ if params.bciEnabled
     if params.bciCursorEnabled
         bciCursorTraj = [];
     end
+    
+    % send bci paramater file that will be used--not 100% clear whether I
+    % want this here or in the stim file... but I'm coming around to
+    % wanting it here
+    bciSocket.sender = sockets(2);
+    bciSocket.receiver = sockets(2);
+    sendMessageWaitAck(bciSocket, 'readyBciParamFile');
+    sendMessageWaitAck(bciSocket, xmlParams.bciDecoderParamFile);
+    sendMessageWaitAck(bciSocket, params.SubjectID);
+
 end
 
 %% Initialize Sound Functionality
@@ -770,7 +780,12 @@ clear plotter;
 
 Screen('CloseAll');
 
+if params.bciEnabled
+    matlabUDP2('send', sockets(2), 'bciEnd')
+end
+
 matlabUDP2('all_close');
+
 % for n= 1:length(sockets)
 %     matlabUDP2('close',sockets(n)); %NB: Does this matlapUDP call close/affect the xippmex socket??
 % end
@@ -1020,6 +1035,11 @@ fclose all;
             for stk = 1:length(err.stack)
                 fprintf('In ==> %s %s %i\n',err.stack(stk).file,err.stack(stk).name,err.stack(stk).line);
             end
+            % shut off BCI
+            if params.bciEnabled
+                matlabUDP2('send', sockets(2), 'bciEnd')
+            end
+
             % shut off recording
             if params.writeFile
                 if recordingTrueFalse
