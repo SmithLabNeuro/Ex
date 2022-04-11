@@ -110,6 +110,14 @@ for dx = 1:numel(requiredDirectories)
     addpath([runexDirectory{:},requiredDirectories{dx}]);
 end
 
+%% get/open database file
+homedirCont = dir('~');
+homedir = homedirCont(1).folder;
+localDataDir = params.localDataDir;
+homeTag = find(localDataDir == '~');
+localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
+sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
+sqlDb = sqlite(sqlDbPath);
 %% Find Ex_local dir, make sure it's there, make sure it has the subdirectories you expect, and add it to the path
 % if exist(params.localExDir,'dir')
 %     requiredLocalDirectories = {'ex','xml','user','control','display'};
@@ -236,7 +244,7 @@ else
     params.SubjectID = input('Enter the subject ID:','s');
 end
 params.SubjectID = regexprep(lower(params.SubjectID),'\s',''); %enforce lowercase / no whitespace 
-
+params.SubjectID = confirmOrAddSubjectToDatabase(params.SubjectID);
 %% quick double-check
 assert(isempty(strfind(params.machine,'_')),'Found an underscore');
 
@@ -443,14 +451,6 @@ addpath(localDataDir); %add to search directory so outfiles can be found if need
 % %initialize status info:
 % statusInfo.path = localStatusDir;
 % statusInfo.filename = fullfile(statusInfo.path,[params.machine,'.txt']);
-
-%% get/open database file
-homedirCont = dir('~');
-homedir = homedirCont(1).folder;
-homeTag = find(localDataDir == '~');
-localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
-sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
-sqlDb = sqlite(sqlDbPath);
 
 %% Display-side local directory:
 if isfield(params,'localShowexDir')
@@ -1211,167 +1211,13 @@ fclose all;
             [~,outfilename,outfileext] = fileparts(outfile);
             trialData{1} = sprintf('Subject: %s - %s%s, Filename: %s%s',upper(params.SubjectID),xmlFile,mmString,outfilename,outfileext);
         else
-            trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile mmString];
+            trialData{1} = sprintf('Subject: %s - %s%s; NOT RECORDING DATA', upper(params.SubjectID), xmlFile, mmString);
         end
         drawTrialData();
         setWindowBackground(wins.voltageBG);
     end
 
-%% function to initialize recording on the data computer using appropriate parameters
-    function recordingTrueFalse = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo)
-        timeout = 10;
-        promptSt = 'Communicating with data computer to start recording...';
-        trialData{4} = promptSt;
-        drawTrialData();
-        [~,xmlBase,~] = fileparts(xmlParams.xmlFile);
-        
-        if ~recordingTrueFalse
-            rc = sendMessageWaitAck(socketsDatComp, 'record');
-            if isempty(rc)
-                return
-            end
-            
-            rc = sendMessageWaitAck(socketsDatComp, params.SubjectID);
-            if isempty(rc)
-                return
-            end
-            
-            sessionNum = sessionInfo;
-            if ~isnan(sessionNum)
-                rc = sendMessageWaitAck(socketsDatComp, num2str(sessionNum));
-                if isempty(rc)
-                    return
-                end
-            else
-                return
-            end
-            
-            
-            rc = sendMessageWaitAck(socketsDatComp, xmlBase);
-            if isempty(rc)
-                return
-            end
-            currPrompt = '(r)ecord neural data';
-            nextPrompt = 'stop (r)ecording neural data';
-        else
-            rc = sendMessageWaitAck(socketsDatComp, 'stopRecording');
-            neuralOutName = receiveMessageSendAck(socketsDatComp);
-            writeExperimentInfoToDatabase(sessionInfo, 'neural_output_name', neuralOutName)
-%             sqlDb.insert('experiment_info', {'animal', 'date', 'task', 'rig', 'behavior_output_name', 'neural_output_name'}, {params.SubjectID, datestr(today), xmlBase, params.machine, outfilename, neuralOutName})
-            currPrompt = 'stop (r)ecording neural data';
-            nextPrompt = '(r)ecord neural data';
-        end
-        
-        promptSt = strfind(defaultRunexPrompt, currPrompt);
-        defaultRunexPrompt(promptSt:promptSt+length(currPrompt)-1) = [];
-        defaultRunexPrompt = [defaultRunexPrompt(1:promptSt-1), nextPrompt, defaultRunexPrompt(promptSt:end)];
-        recordingTrueFalse = ~recordingTrueFalse;
-        trialData{4} = defaultRunexPrompt;
-        drawTrialData();
-        
-        function rcvd = sendMessageWaitAck(sockets, msgToSend)
-            matlabUDP2('send', sockets.sender, msgToSend)
-            rcvd = waitForData(sockets.receiver, 'ack');
-        end
-        
-        function rcvd = receiveMessageSendAck(sockets)
-            rcvd = waitForData(sockets.receiver, '');
-            matlabUDP2('send', sockets.sender, 'ack');
-        end
-        
-        function rcvd = waitForData(socketRec, msgToReceive)
-            st = tic;
-            rcvd = '';
-            
-            while toc(st) < timeout && ((~strcmp(rcvd, msgToReceive) && ~isempty(msgToReceive)) || (isempty(msgToReceive) && isempty(rcvd)))
-                if matlabUDP2('check',socketRec)
-                    rcvd = matlabUDP2('receive',socketRec);
-                end
-                pause(0.001)
-            end
-            if ~isempty(msgToReceive) && ~strcmp(rcvd,msgToReceive)
-                rcvd = '';
-                promptSt = 'Communication with data computer failed--is it running recordFromControl.m?';
-                trialData{4} = promptSt;
-                drawTrialData();
-                pause(2)
-                trialData{4} = defaultRunexPrompt;
-                drawTrialData();
-                return
-            end
-        end
-    end
-    
-%% function to write to database
-    function writeExperimentInfoToDatabase(sessionInfo, varargin)
-        [~,xmlBase,~] = fileparts(xmlParams.xmlFile);
-        if ~isempty(varargin)
-            % at this point, and experiment_info matching these parameters
-            % should already have been written, so we link it to the neural
-            % data being recorded
-            updateStrCell = {};
-            for fieldToUpdateInd = 1:2:length(varargin)
-                fieldToUpdate = varargin{fieldToUpdateInd};
-                valueToPutIn = varargin{fieldToUpdateInd + 1};
-                updateStr = sprintf('%s = "%s"', fieldToUpdate, valueToPutIn);
-                updateStrCell{end+1} = updateStr;
-            end
-            updateStrTotal = strjoin(updateStrCell, ' and ');
-            sqlDb.exec(sprintf('UPDATE experiment_info SET %s WHERE behavior_output_name = "%s"', updateStrTotal, outfilename));
-%             sqlDb.insert('experiment_info', {'start_time', 'task', 'session', 'behavior_output_name', 'neural_output_name'}, {datestr(now, 'yyyy-mm-dd HH:MM:SS'), xmlBase, sessionInfo, outfilename, neuralOutName})
-        else
-            sqlDb.insert('experiment_info', {'start_time', 'task', 'session', 'behavior_output_name'}, {datestr(now, 'yyyy-mm-dd HH:MM:SS'), xmlBase, sessionInfo, outfilename})
-        end
-        
-    end
 
-    function [sessionInfo, sessionNotes] = writeExperimentSessionToDatabase()
-        lastSessionNumber = sqlDb.fetch('SELECT max(session_number) from experiment_session');
-        newSessionNumber = lastSessionNumber{1} + 1;
-        infoPossiblyRelated = sqlDb.fetch('SELECT rowid, (strftime(''%s'', ''now'', ''localtime'') - strftime(''%s'',start_time))/3600 FROM experiment_info WHERE datetime(start_time) >= datetime(''now'', ''-1 day'') ');
-        if ~isempty(infoPossiblyRelated)
-            hoursFromStart = cell2mat(infoPossiblyRelated(:, 2));
-            [sortedHours, sortInd] = sort(hoursFromStart);
-            infoPossiblyRelated = infoPossiblyRelated(sortInd, :);
-            if any(sortedHours<12)
-                infoId = infoPossiblyRelated{sortedHours<12, 1};
-                sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d', infoId));
-                sessionInfo = sessionAllInfo{1};
-                sessionNotes = sessionAllInfo{2};
-            elseif any(sortedHours<16)
-                keyboard
-            else
-                % there was an experiment within 1 day (could be up to
-                % 47.9999 hours, since the 'day' metric could be day 1 at
-                % 12:01 AM vs day 2 at 11:59 PM, but that's still day 2 -
-                % day 1 = 1 day...), but >16 hours so not counted as the same
-                % session
-                sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
-                sessionInfo = sqlDb.fetch('SELECT session_number FROM experiment_session ORDER BY session_number DESC LIMIT 1');
-                sessionInfo = sessionInfo{1};
-                sessionNotes = [];
-            end
-        else
-            % no experiments within 1 day, but there still might be an
-            % experiment_session *from today* which we check for here
-            todaySessionAllInfo = sqlDb.fetch('SELECT session_number, ifnull(notes,"") FROM experiment_session WHERE strftime(''%Y-%m-%d'', date) == strftime(''%Y-%m-%d'', ''now'', ''localtime'')');
-            if size(todaySessionAllInfo, 1)==1
-                % this might happen if runex was run but with no
-                % experiment--here we avoid writing another row to
-                % experiment_session
-                sessionInfo = todaySessionAllInfo{1};
-                sessionNotes = todaySessionAllInfo{2};
-            elseif size(todaySessionAllInfo, 1)>1
-                keyboard
-            else
-                sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
-                sessionInfo = sqlDb.fetch('SELECT session_number FROM experiment_session ORDER BY session_number DESC LIMIT 1');
-                sessionInfo = sessionInfo{1};
-                sessionNotes = [];
-            end
-        end
-    end
-    
 %%
     function cleanUp()
         Priority(origPriority);
