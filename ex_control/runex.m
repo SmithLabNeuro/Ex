@@ -19,6 +19,7 @@ function runex(xmlFile,repeats,outfile,~)
 
 %% initialize global variables
 clear global behav allCodes params;
+clear plotDisplay;
 
 global eyeHistory eyeHistoryCurrentPos;
 global trialCodes thisTrialCodes trialTic allCodes;
