@@ -12,7 +12,10 @@ function dat = getDatParams(dat)
             try
                 eval(['params.' lhs '=[' rhs '];']);
             catch
-                eval(['params.' lhs '=''' rhs ''';']);
+                try
+                    eval(['params.' lhs '=''' rhs ''';']);
+                catch
+                    params.(lhs) = rhs;
             end
         end
     end
