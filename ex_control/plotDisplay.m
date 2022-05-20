@@ -17,7 +17,11 @@ function plotDisplay(obj,~)
 % 2013/09/12 by Adam Snyder: removed references to histogram window.
 
 global wins bciCursorTraj params typingNotes notes sqlDb sessionInfo;
-persistent lastSamp lastClick;
+persistent lastSamp lastClick updateNotes;
+
+if isempty(updateNotes)
+    updateNotes = true;
+end
 
 if ~exist('lastSamp','var')
     lastSamp = samp;
@@ -70,7 +74,7 @@ Screen('DrawTexture',wins.w,wins.info,[0 0 wins.infoSize(3:4)-wins.infoSize(1:2)
 % % lab notebook screen
 if isfield(params, 'keyboardName')
     clickTextExpansion = 1.5;
-    keyboardId = GetKeyboardIndices(params.keyboardName);
+    keyboardId = GetKeyboardIndices([params.keyboardName]);
     [pos(1), pos(2), mouseClick] = GetMouse();
     if mouseClick(1)
         timeSinceLastClick = toc(lastClick);
@@ -91,13 +95,21 @@ if isfield(params, 'keyboardName')
                 else
                     disp('end')
                     typingNotes = false;
+                    updateNotes = true;
                     % update the session with any notes that have been written
                     sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d ', notes, sessionInfo));
+                    % NOTE: you might think the below is a good idea, but
+                    % it is not. It kills the ability to do any inputs to
+                    % the trial. Kthx.
+                    % for ind = 1:length(keyboardId)
+                    %     KbQueueStop(keyboardId(ind));
+                    % end
                 end
             end
         end
     end
-    if ~typingNotes
+    if ~typingNotes && updateNotes
+        updateNotes = false;
         % start typing button
         typeNotesButtonText = 'Click here to type notes';
         x=0;y=wins.labNotesDim(4)-clickTextExpansion*wins.textSize;
@@ -107,17 +119,15 @@ if isfield(params, 'keyboardName')
         Screen('DrawText',wins.labNotes,typeNotesButtonText,x,y, [], gray);
         
         % fill in what notes are there...
-%         if ~isempty(notes)
-            x=0;y=wins.labNotesDim(4)-(1+clickTextExpansion)*wins.textSize;
+        x=0;y=wins.labNotesDim(4)-(1+clickTextExpansion)*wins.textSize;
         Screen('TextSize',wins.labNotes,wins.textSize);
-            wrappedString = WrapString(char(notes), 35);
-            drawStr = split(wrappedString, newline);
-            for lns = length(drawStr):-1:1
-                Screen('DrawText',wins.labNotes,drawStr{lns},x,y, [], gray);
-                y = y - wins.textSize;
-            end
-%         end
-    else
+        wrappedString = WrapString(char(notes), 35);
+        drawStr = split(wrappedString, newline);
+        for lns = length(drawStr):-1:1
+            Screen('DrawText',wins.labNotes,drawStr{lns},x,y, [], gray);
+            y = y - wins.textSize;
+        end
+    elseif typingNotes
         % prep the background
         white=WhiteIndex(0);
         Screen(wins.labNotes,'FillRect',white);

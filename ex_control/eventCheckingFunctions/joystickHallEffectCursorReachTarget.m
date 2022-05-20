@@ -1,4 +1,4 @@
-function [success, msgStr] = joystickHallEffectCursorReachTarget(~,~, targX,targY,targRadius, cursorR, cursorColor, targWinCursRad, pixelDistForMaxJoystickPos, notTargX, notTargY)
+function [success, msgStr, fixWinOutput] = joystickHallEffectCursorReachTarget(~,~, targX,targY,targRadius, cursorObjectId, cursorR, cursorColor, targWinCursRad, pixelDistForMaxJoystickPos, notTargX, notTargY)
 % success if the cursor reaches the target
 % failure if the cursor *doesn't* reach the target
 
@@ -30,6 +30,9 @@ posShiftForCode = [posX0 posY0];
 [xVal, yVal, ~, ~] = sampleHallEffectJoystick();
 cursorPos = [xVal*pixBoxLimit, yVal*pixBoxLimit]; 
 
+% I think this posShift, a double, gets cast to an int in unixSendByte,
+% which sendCode calls... keep in mind in case weird things appear, but
+% it's been working until now...
 posShift = posShiftForCode + cursorPos;
 posShiftX = posShift(1);
 posShiftY = posShift(2);
@@ -43,6 +46,10 @@ relPos = ([targX targY] - cursorPos);
 distToTarget = sqrt(sum(relPos.^2));
 
 if ~isempty(notTargX)
+    projOnBadTarg = [notTargX notTargY] * cursorPos';
+    projOnGoodTarg = [targX targY] * cursorPos';
+    distFromCent = sqrt(sum(cursorPos.^2));
+    targetDist = sqrt(sum(targX^2 + targY^2));
     relPosFromBadTarg = [notTargX notTargY] - cursorPos;
     distToBadTarg = sqrt(sum(relPosFromBadTarg.^2, 2));
 end
@@ -50,9 +57,12 @@ end
 switch size(targRadius,1)
     case 1 %circular window
         success = distToTarget < targWinCursRad;
-        if ~isempty(notTargX) && any(distToBadTarg < targWinCursRad)
+        if ~isempty(notTargX) && ((any(projOnBadTarg>projOnGoodTarg) && (distFromCent > 2*targetDist/3)) || (projOnGoodTarg<0 && distFromCent>targetDist/4)) %qany(distToBadTarg < targWinCursRad)
             success = -1;
         end
+%         if targY==0 && targX > 0 && distToTarget < targWinCursRad
+%             disp(distToTarget)
+%         end
     case 2 %rectangular window
         success = all(abs(distToTarget)<abs(targRadius),1);
         if ~isempty(notTargX) && any(all(abs(distToBadTarg)<abs(targRadius'),2))
@@ -62,15 +72,12 @@ switch size(targRadius,1)
         error('EX:waitForFixation:badRadius','Radius must have exactly 1 or 2 rows');
 end
 
-if keyboardEvents()
-    success = -1;
-end
-
 % draw the cursor
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-msgStr = sprintf('set 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
+msgStr = sprintf('set %d oval 0 %i %i %i %i %i %i', [cursorObjectId cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
 
 % msgAndWait(msgStr);
 
 
-drawFixationWindows([targX cursorPosDisp(1)],[targY cursorPosDisp(2)],[targWinCursRad cursorR],winColors);
+% drawFixationWindows([targX cursorPosDisp(1)],[targY cursorPosDisp(2)],[targWinCursRad cursorR],winColors);
+fixWinOutput = {[targX cursorPosDisp(1)], [targY cursorPosDisp(2)], [targWinCursRad cursorR], winColors};

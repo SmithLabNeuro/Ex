@@ -1,4 +1,4 @@
-function [success, funcSuccess] = waitForEvent(timeout, eventCheckerFunction, eventFunctionInputs)
+function [success, funcSuccess, extraFuncOutput] = waitForEvent(timeout, eventCheckerFunction, eventFunctionInputs, successIfTimeElapsed)
 % function waitForEvent(timeout)
 %
 % function to generalize waitFor functionality:
@@ -27,7 +27,7 @@ function [success, funcSuccess] = waitForEvent(timeout, eventCheckerFunction, ev
 
 global debug params sockets;
 
-if nargin<1, timeout = 10; end;
+if nargin<4, successIfTimeElapsed = false; end;
 
 
 if ~iscell(eventCheckerFunction)
@@ -39,30 +39,30 @@ loopStart = GetSecs;
 ticStart = tic;
 success = 0;
 runOnceMore = true;
+firstLoop = true;
 while (toc(ticStart)*1000) <= timeout
     loopTop = GetSecs;
     
     funcSuccess = zeros(1,length(eventCheckerFunction));
     displayUpdateString = cell(1,length(eventCheckerFunction));
+    fixWindowUpdateInputs = cell(1, length(eventCheckerFunction));
+    extraFuncOutput = cell(1, length(eventCheckerFunction));
     for funcInd = 1:length(eventCheckerFunction)
-        if nargout(eventCheckerFunction{funcInd}) == 2
+        if nargout(eventCheckerFunction{funcInd}) == 4
+            [funcSuccess(funcInd), displayUpdateString{funcInd}, fixWindowUpdateInputs{funcInd}, extraFuncOutput{funcInd}] = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+        elseif nargout(eventCheckerFunction{funcInd}) == 3
+            [funcSuccess(funcInd), displayUpdateString{funcInd}, fixWindowUpdateInputs{funcInd}] = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+        elseif nargout(eventCheckerFunction{funcInd}) == 2
             [funcSuccess(funcInd), displayUpdateString{funcInd}] = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+%             warning('%s needs a fixWindowUpdateInputs output (can be empty vector)', char(eventCheckerFunction{funcInd}));
         else
             funcSuccess(funcInd) = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
             displayUpdateString{funcInd} = '';
+%             warning('%s needs a displayUpdateString output (can be empty string)', char(eventCheckerFunction{funcInd}));
         end
     end
     
-    if all(funcSuccess==1)
-        success = 1;
-        runOnceMore = false;
-        break;
-    elseif any(funcSuccess==-1)
-        success = 0;
-        runOnceMore = false;
-        break
-    end
-    
+   
     % let's one press e.g. 'q' in order to quit a stimulus in the middle
     % with runex
     if keyboardEvents()
@@ -85,23 +85,102 @@ while (toc(ticStart)*1000) <= timeout
     if ~isempty(displayUpdateString)
 %         disp(qx'hr')
         fullDisplayStr = strcat(displayUpdateString{:});
-        try
-            msgAndWait(['m' fullDisplayStr])
-        catch err
-            a = 5;
-            b = 3;
+%         try
+% fullDisplayStr
+%     thisStart = tic;
+if ~firstLoop
+%     timeoutH=1;
+%     warnOn = false;
+%     while true
+%         loopTopH = GetSecs;
+% 
+         while ~matlabUDP2('check',sockets(1))
+         end
+         if matlabUDP2('check', sockets(1))
+            s = matlabUDP2('receive',sockets(1));
+         end
+%             toc(thisStart)
+%             if debug
+%                 fprintf('Rcvd: %s\n', s);
+%             end;
+%             if strcmp(s,'abort'), %added to potentially help with hangs. -ACS 03Sep2013
+%                 error('waitFor:aborted','Abort signal received');
+%             end;
+%             if warnOn
+%                 s={s, 'warn'};
+%             end
+%             break; %message received
+%         elseif toc(thisStart)>timeoutH
+%             error('waitFor:aborted','Timeout waiting for return message');
+%         else
+%             s = '';
+%         end;
+%         chk = GetSecs-loopTopH;
+%         if (chk)>params.waitForTolerance, warning('waitFor:tooSlow','waitFor exceeded latency tolerance - %s - by %0.01f msecs',datestr(now), 1000*(chk - params.waitForTolerance)); warnOn = true;  end; %warn tolerance exceeded -acs22dec2012
+%     end
+else
+    firstLoop = false;
+end
+          msg(['m' fullDisplayStr])
+%           toc(thisStart)
+%         catch err
+%             a = 5;
+%             b = 3;
+%         end
+    end
+    
+    fixXPerFunc = cell(1, length(fixWindowUpdateInputs));
+    fixYPerFunc = cell(1, length(fixWindowUpdateInputs));
+    sizeInfoPerFunc = cell(1, length(fixWindowUpdateInputs));
+    maxSizeInput = 3;
+    winColorsPerFunc = cell(1, length(fixWindowUpdateInputs));
+    for fixWinUpdateInd = length(fixWindowUpdateInputs):-1:1
+        if ~isempty(fixWindowUpdateInputs{fixWinUpdateInd})
+            fixXPerFunc{fixWinUpdateInd} = fixWindowUpdateInputs{fixWinUpdateInd}{1};
+            fixYPerFunc{fixWinUpdateInd} = fixWindowUpdateInputs{fixWinUpdateInd}{2};
+            sizeInfoEvtFunc = fixWindowUpdateInputs{fixWinUpdateInd}{3};
+            sizeInfoPerFunc{fixWinUpdateInd} = padarray(fixWindowUpdateInputs{fixWinUpdateInd}{3}, [maxSizeInput - size(sizeInfoEvtFunc, 1), 0], NaN, 'post');
+            numWindows = length(fixXPerFunc{fixWinUpdateInd});
+            winColorsEvtFunc = fixWindowUpdateInputs{fixWinUpdateInd}{4};
+            if size(winColorsEvtFunc, 1) ~= numWindows
+                winColorsEvtFunc = repmat(winColorsEvtFunc, numWindows, 1);
+            end
+            winColorsPerFunc{fixWinUpdateInd} = winColorsEvtFunc;
+        else
+            fixXPerFunc(fixWinUpdateInd) = [];
+            fixYPerFunc(fixWinUpdateInd) = [];
+            sizeInfoPerFunc(fixWinUpdateInd) = [];
+            winColorsPerFunc(fixWinUpdateInd) = [];
         end
+    end
+    
+    fixX = cat(2, fixXPerFunc{:});
+    fixY = cat(2, fixYPerFunc{:});
+    sizeInfo = cat(2, sizeInfoPerFunc{:});
+    winColors = cat(1, winColorsPerFunc{:});
+    drawFixationWindows(fixX, fixY, sizeInfo, winColors);
+    
+    if all(funcSuccess==1)
+        success = 1;
+        runOnceMore = false;
+        break;
+    elseif any(funcSuccess==-1)
+        success = 0;
+        runOnceMore = false;
+        break
     end
             
     %if (GetSecs-loopTop)>params.waitForTolerance, warning('waitFor:tooSlow','waitFor exceeded latency tolerance - %s',datestr(now)); end; %warn tolerance exceeded -acs22dec2012
 end
 
-
+if successIfTimeElapsed
+    success = 1;
+end
 
 % for events that would have succeeded if things happen for *at least* a
 % length of time, running the checker functions once more allows one to
 % check if they have (since the loop will have broken out)
-if runOnceMore
+if runOnceMore && ~successIfTimeElapsed
     loopTop = GetSecs;
     funcSuccess = zeros(1,length(eventCheckerFunction));
     for funcInd = 1:length(eventCheckerFunction)

@@ -1,3 +1,4 @@
+
 %%% GLOBAL PARAMETERS FILE
 
 %%%% 
@@ -26,7 +27,7 @@ params.eyeTrackerAnalog = true; % true for using analog card, false for eyelink 
 params.sendingCodes = true; % sending digital codes
 params.rewarding = true; % providing rewards
 params.writeFile = true; % write trial data to file
-params.bciEnabled = true; % enable BCI computer communication
+params.bciEnabled = false; % enable BCI computer communication
 params.bciCursorEnabled = true; % enable BCI cursor on runex computer
 params.statusUpdates = false; % writing a status file of behavioral info
 params.soundEnabled = true; % enable sound capabilities
@@ -107,6 +108,7 @@ codes = struct();
 
 % trial boundaries
 codes.START_TRIAL = 1;
+codes.BACKGROUND_PROCESS_TRIAL = 250; % use to indicate this is a 'special' trial whose timing/results should not be analyzed--i.e. training a BCI decoder
 codes.SHOWEX_TIMINGERROR = 251;
 codes.BCI_ABORT = 252;  % use to indicate that BCI computer is not working
 codes.ALIGN = 253; % use if you want to align your data to a time point
@@ -192,7 +194,7 @@ codes.CURSOR_OFF = 136;
 codes.FIXATE  = 140 ;	% attained fixation 
 codes.SACCADE = 141 ;	% initiated saccade
 codes.CURSOR_POS = 142; % indicates next codes will define cursor position
-codes.BCI_CURSOR_POS = 143;
+codes.BCI_CURSOR_POS = 143; % indicates next codes will define cursor position from BCI
 
 % trial outcome codes
 codes.CORRECT = 150 ;	% Independent of whether reward is given
