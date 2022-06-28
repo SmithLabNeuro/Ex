@@ -310,8 +310,8 @@ for angInd = 1:length(unAngs)
             outVel(:,t) = muCurrGivenCurr;
             muCurrGivenPrev = A*(muCurrGivenCurr - joystickKinMean);
         end
-        p1 = subplot(2,1,1);title('predicted trajectory');hold on;plot([cumsum(outVel(1, :))]', [cumsum(outVel(2, :))]', 'color', [cols(angInd, :) 1], 'LineWidth',1);
-        p2 = subplot(2,1,2);title('true trajectory');hold on;plot([cumsum(trueTraj(1, ~any(isnan(trueTraj), 1)))]', [cumsum( trueTraj(2, ~any(isnan(trueTraj), 1)))]', 'color', [cols(angInd, :) 1], 'LineWidth', .5);
+        p1 = subplot(2,1,1);title('predicted trajectory');hold on;plot([cumsum(outVel(1, :)* binSizeMs/msPerS)]', [cumsum(outVel(2, :)* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth',1);
+        p2 = subplot(2,1,2);title('true trajectory');hold on;plot([cumsum(trueTraj(1, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', [cumsum( trueTraj(2, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth', .5);
 
     end
 end
