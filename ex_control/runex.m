@@ -288,7 +288,6 @@ if params.bciEnabled
     bciMsg = matlabUDP2('receive', sockets(2));
     while ~strcmp(bciMsg, 'prepared')
         pause(0.1)
-        disp('sent')
         matlabUDP2('send', sockets(2), 'ready');
         bciMsg = matlabUDP2('receive', sockets(2));
     end
@@ -395,7 +394,7 @@ retry = struct('CORRECT',       0,...
     'BCI_ABORT',     1,...
     'BCI_CORRECT',   0,...
     'BCI_MISSED',    1,...
-    'BACKGROUND_PROCESS_TRIAL', 0);
+    'BACKGROUND_PROCESS_TRIAL', 1);
 
 allFields = fieldnames(xmlParams);
 retryFields = cellfun(@cell2mat,regexp(allFields,'(?<=retry_)\w*','match'),'uniformoutput',0);
