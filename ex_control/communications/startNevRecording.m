@@ -48,8 +48,11 @@ end
 
 writeExperimentInfoToDatabase([], [], outfilename, 'neural_output_name', neuralOutName)
 
-
-notes = sprintf('%s\n%s\n', notes, neuralOutName);
+if strcmp(notes(end), newline)
+    notes = sprintf('%s%s\n', notes, neuralOutName);
+else
+    notes = sprintf('%s\n%s\n', notes, neuralOutName);
+end
 sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d ', notes, sessionInfo));
 
 % if it got here we assume the recording started
