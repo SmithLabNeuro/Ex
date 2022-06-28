@@ -18,9 +18,26 @@ infoPossiblyRelated = sqlDb.fetch(sprintf(['SELECT experiment_info.rowid, '... r
     'WHERE datetime(start_time) >= datetime(''now'', ''-1 day'', ''localtime'') AND '... only grabbing sessions in the past 24 hours
     'experiment_session.animal=''%s'''], params.SubjectID)); % grabbing sessions for the specific animal
 
-% There is already some experiment info which might indicate a session has
-% begun
-if ~isempty(infoPossiblyRelated)
+% here's to check if, even if there are no experiments within 1 day, there
+% was an experiment_session *from today* (could happen if we run runex
+% without recording any data; the session is still written out to allow for
+% not taking, etc.)
+todaySessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session WHERE strftime(''%%Y-%%m-%%d'', date) == strftime(''%%Y-%%m-%%d'', ''now'', ''localtime'') and animal=''%s''', params.SubjectID));
+
+if size(todaySessionAllInfo, 1)==1
+    % this might happen if runex was run but with no
+    % experiment--here we avoid writing another row to
+    % experiment_session
+    sessionInfo = todaySessionAllInfo{1};
+    sessionNotes = todaySessionAllInfo{2};
+elseif size(todaySessionAllInfo, 1)>1
+    % why would there be multiple sessions from today?
+    keyboard
+elseif ~isempty(infoPossiblyRelated)
+    % no experiment_session entries with today's date, but there are
+    % experiment_infos which might indicate a session from "today"--i.e.
+    % within some hours but there was a day change
+    
     % Looking at how many hours it has been since the task was run
     hoursFromStart = cell2mat(infoPossiblyRelated(:, 2));
     [sortedHours, sortInd] = sort(hoursFromStart);
@@ -50,21 +67,8 @@ if ~isempty(infoPossiblyRelated)
         sessionNotes = [];
     end
 else
-    % no experiments within 1 day, but there still might be an
-    % experiment_session *from today* which we check for here
-    todaySessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session WHERE strftime(''%%Y-%%m-%%d'', date) == strftime(''%%Y-%%m-%%d'', ''now'', ''localtime'') and animal=''%s''', params.SubjectID));
-    if size(todaySessionAllInfo, 1)==1
-        % this might happen if runex was run but with no
-        % experiment--here we avoid writing another row to
-        % experiment_session
-        sessionInfo = todaySessionAllInfo{1};
-        sessionNotes = todaySessionAllInfo{2};
-    elseif size(todaySessionAllInfo, 1)>1
-        keyboard
-    else
-        sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
-        sessionInfo = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
-        sessionInfo = sessionInfo{1};
-        sessionNotes = [];
-    end
+    sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
+    sessionInfo = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
+    sessionInfo = sessionInfo{1};
+    sessionNotes = [];
 end
