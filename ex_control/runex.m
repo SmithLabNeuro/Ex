@@ -614,7 +614,7 @@ if params.getEyes
         [~,outfilename,outfileext] = fileparts(outfile);
         trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ', Filename: ' outfilename outfileext];
     else 
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile];
+        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' ; NOT RECORDING DATA'];
     end
     if exist(localCalibrationFilename,'file')
         load(localCalibrationFilename);
@@ -627,7 +627,7 @@ else
         [~,outfilename,outfileext] = fileparts(outfile);
         trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE), Filename: ' outfilename outfileext];
     else
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE)'];
+        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE); NOT RECORDING DATA'];
     end
     load mouseModeCalibration
 end
