@@ -117,6 +117,12 @@ binnedSpikesAll = cellfun(...
 binnedSpikesAll = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesAll, 'uni', 0);
 binnedSpikesAllConcat = cat(1, binnedSpikesAll{:});
 numLatents = trainParams.numberFaLatents; % this is how many latents we'll project to, no matter what...
+if trainParams.zScoreSpikes
+    zScoreSpikesMat = diag(1./std(binnedSpikesAllConcat, [], 1));
+else
+    zScoreSpikesMat = eye(size(binnedSpikesAllConcat, 2));
+end
+binnedSpikesAllConcat = binnedSpikesAllConcat * zScoreSpikesMat;
 [estParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
 [~, ~, beta] = fastfa_estep(binnedSpikesAllConcat', estParams);
 
@@ -127,7 +133,8 @@ binnedSpikesBci(bciValidTrials) = cellfun(...
         ... adding binSizeSamples/2 ensures that the last point is used
         histcounts2(trialSpikeTimes, chanNums, bciStartEndTime(1):binSizeSamples:bciStartEndTime(2)+binSizeSamples/2, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel
         spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
-binnedSpikesBci(bciValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesBci(bciValidTrials), 'uni', 0);
+binnedSpikesBci(bciValidTrials) = cellfun(@(bS) bS(:, channelsKeep)*zScoreSpikesMat, binnedSpikesBci(bciValidTrials), 'uni', 0);
+
    
 binnedSpikesCurrStep = cell(size(spikeTimes));
 binnedSpikesCurrStep(bciValidTrials) = cellfun(...
@@ -233,7 +240,13 @@ TallLessOne = TallLessOne - sum(nanTimes);
 
 allLatentProj = beta * (allBinnedCountsCurrTime - estParams.d);
 meanLatProj = mean(allLatentProj, 2);
-allLatentProj = allLatentProj - meanLatProj;
+stdLatProj = std(allLatentProj, [], 2);
+if trainParams.zScoreLatents
+    zScoreLatentMat = diag(1./stdLatProj);
+else
+    zScoreLatentMat = eye(length(meanLatProj));
+end
+allLatentProj = zScoreLatentMat*(allLatentProj - meanLatProj);
 % allJoystickKinCurrTime = allJoystickKinCurrTime - joystickKinMean;
 % allJoystickKinPrevTime = allJoystickKinPrevTime - joystickKinMean;
 
@@ -259,16 +272,16 @@ end
 K = Kall{end};
 
 M1 = A - K*C*A;
-M2 = K * beta;
+M2 = K * zScoreLatentMat * beta * zScoreSpikesMat;
 % baseline takes care of accounting for mean offsets in training
 stateModelOffset = [0 0]'; % for model x_t = Ax_{t-1} + stateModelOffset
 M0 = (eye(2) - K*C) * stateModelOffset - M2*estParams.d - K*meanLatProj;
 % M0 = -M1 * joystickKinMean - M2*estParams.d - K*meanLatProj;
-
+%%
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
 bciDecoderSaveName = sprintf('%s%sKalmanBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'M0', 'M1', 'M2', 'channelsKeep', 'A', 'Q', 'C', 'R', 'beta', 'K', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'M0', 'M1', 'M2', 'channelsKeep', 'A', 'Q', 'C', 'R', 'beta', 'K', 'zScoreSpikesMat', 'zScoreLatentMat', 'estParams', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 
 %%
