@@ -68,7 +68,7 @@ subjectCamelCase(1) = upper(subjectCamelCase(1));
 
 % Train decoders 
 fprintf('\n Training first decoder \n')
-[M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoder(nev, trainParams, params, codes, datBase, nevBase, ...
+[M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoderFromNev(nev, trainParams, params, codes, datBase, nevBase, ...
     netLabels, firstGamma, firstChannelNumbersUse, firstQvalue, firstNumLatents, firstVelocityToCalWith, includeBaseForTrain);
 
 bciDecoderSaveName = sprintf('%s%sKalmanBciDecoderOne_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), timestamp);
@@ -76,7 +76,7 @@ save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'M0', 'M1', 'M2', 'chan
 firstDecoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 
 fprintf('\n Training second decoder \n')
-[M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoder(nev, trainParams, params, codes, datBase, nevBase, ...
+[M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoderFromNev(nev, trainParams, params, codes, datBase, nevBase, ...
     netLabels, secondGamma, secondChannelNumbersUse, secondQvalue, secondNumLatents, secondVelocityToCalWith, includeBaseForTrain);
 
 bciDecoderSaveName = sprintf('%s%sKalmanBciDecoderTwo_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), timestamp);
