@@ -96,7 +96,8 @@ end
 
 posPixelChange = velocityCurr * loopTimeDiff;
 cursorPosNew = cursorPos + posPixelChange;
-cursorPosLimited = min(pixBoxLimit, cursorPosNew);
+signCursor = sign(cursorPosNew);
+cursorPosLimited = signCursor.*min(pixBoxLimit, abs(cursorPosNew));
 posPixelChangeLimit = cursorPosLimited - cursorPos;
 if ~all(abs(posPixelChangeLimit - posPixelChange)<1e-10)
     velocityCurr = posPixelChangeLimit/loopTimeDiff;
