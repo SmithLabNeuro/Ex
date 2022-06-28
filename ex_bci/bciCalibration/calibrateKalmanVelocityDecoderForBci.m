@@ -29,11 +29,14 @@ end
 datBase = nev2dat(nevBase, 'nevreadflag', 1);
 
 [slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName);
-datStruct = nev2dat(nevLabelledData, 'nevreadflag', 1);
 
+
+datStruct = nev2dat(nevLabelledData, 'nevreadflag', 1);
 if ~includeBaseForTrain
-    datStruct = datStruct(length(datBase)+1:end);
     nevLabelledData = nevLabelledData(size(nevBase, 1)+1:end, :);
+    % adding + 2 skips the background process trial which happens on the
+    % overlap
+    datStruct = datStruct(length(datBase)+2:end);%nev2dat(nevLabelledData, 'nevreadflag', 1);
 end
 
 bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;
@@ -59,8 +62,19 @@ binSizeSamples = binSizeMs/msPerS*samplingRate;
 timeDecoderDelay = 0; % ms;
 binDecoderDelay = timeDecoderDelay/binSizeMs;
 
+% remove all non-calibration trials, as they don't have correct spiking
+% data and will mess up FA training
+calibrationTrialCode = codes.BACKGROUND_PROCESS_TRIAL;
+calibrationTrialsInds = cellfun(@(x) any(ismember(x(:, 2), calibrationTrialCode)), {datStruct.event});
+% datStructCalibration = datStruct(calibrationTrialsInds);
+% nevLabelledDataNoCalibration = nevLabelledData;
+% for trl = 1:length(datStructCalibration)
+%     nevLabelledDataNoCalibration(nevLabelledDataNoCalibration(:, 3)>=datStructCalibration(trl).time(1) & nevLabelledDataNoCalibration(:, 3) <= datStructCalibration(trl).time(2), :) = [];
+% end
+% datStruct = datStruct(~calibrationTrialsInds);
 
 [trimmedDat, channelsKeep] = preprocessDat(datStruct, nevLabelledData, channelNumbersUse, binSizeMs, frThresh, ffThresh, coincThresh, coincTimeMs);
+trimmedDat = trimmedDat(~calibrationTrialsInds);
 fprintf("\n%d channels being used\n", length(channelsKeep));
 
 cursorPosSignal = codes.(trainParams.cursorPositionCode);
