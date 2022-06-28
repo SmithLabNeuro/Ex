@@ -132,35 +132,38 @@ while true
 %         disp('Copying done')
         pauseTime = 0.1;
     elseif strcmp(msg, 'pauseRecording')
-        fileSavedInfo = xippmex('trial','paused');
+        fileSavedInfo = xippmex('trial','paused')
         relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', fileSavedInfo.incr_num-1)];
         sendMessageWaitAck(socketsControlComm, uint8(relFlPath));
 %         copyToRaptorRigM;
 %         copyToRaptor;
 %         disp('Copying done')
         pauseTime = 0.1;
-    elseif strcmp(msg, 'trainDecoder')
+    elseif strcmp(msg, 'trainDecoder') || strcmp(msg, 'trainDecoderPause')
         % the code below is for training a BCI decoder when requested by
         % the control computer.
         % Stops recording for trellis
-        fileSavedInfo = xippmex('trial','stopped')
-        % Checks that recording stopped and if so, keeps track of increment
-        % suffix
-        if strcmp(fileSavedInfo.status, 'stopped')
-            incSaved = fileSavedInfo.incr_num;
-        else
-            fprintf(['\nIMPORTANT: You are in debug mode.\n' ...
-                'Try running xippmex(''trial'',''stopped'' command above and then press F5 if status returns ''stopped''\n']);
-            keyboard
-            incSaved = fileSavedInfo.incr_num;
+        if strcmp(msg, 'trainDecoder')
+            fileSavedInfo = xippmex('trial','stopped')
+            % Checks that recording stopped and if so, keeps track of increment
+            % suffix
+            if strcmp(fileSavedInfo.status, 'stopped')
+                incSaved = fileSavedInfo.incr_num;
+                % Gets the fileName of nev file that was just made
+                relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', incSaved)];
+                if isempty(dir([fileSavedInfo.filebase sprintf('%04d', incSaved) '.nev']))
+                    disp('Trellis decided to fake us out on the increment number...')
+                    relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', incSaved-1)];
+                end
+            else
+                fprintf(['\nIMPORTANT: You are in debug mode.\n' ...
+                    'Try running xippmex(''trial'',''stopped'' command above and then press F5 if status returns ''stopped''\n']);
+                keyboard
+                incSaved = fileSavedInfo.incr_num;
+            end
+        elseif strcmp(msg, 'trainDecoderPause')
+            fileSavedInfo = xippmex('trial','paused')
         end
-        % Gets the fileName of nev file that was just made
-        relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', incSaved)];
-        if isempty(dir([fileSavedInfo.filebase sprintf('%04d', incSaved) '.nev']))
-            disp('Trellis decided to fake us out on the increment number...')
-            relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', incSaved-1)];
-        end
-        
         % Receive filename to use to train decoder from control computer
         % (decoderCalibrationFunctionName)
         decoderTrainFunctionName = waitForMessage(udpr, udps);
@@ -193,7 +196,25 @@ while true
         % split by a newline)
         sendMessageWaitAck(socketsControlComm, uint8(trainedDecoderInfoChar));
         
-        pauseTime = 0.1;
+        if strcmp(msg, 'trainDecoderPause')
+            recordingInfo = xippmex('trial','paused') % this is how you restart a pause?
+            if ~strcmp(recordingInfo.status, 'recording')
+                pause(1)
+                recordingInfo = xippmex('trial','paused')
+                if ~strcmp(recordingInfo.status, 'recording')
+                    keyboard
+                    %last try?
+                    recordingInfo = xippmex('trial','paused')
+                    sendMessageWaitAck(socketsControlComm, uint8('recording'));
+                else
+                    sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
+                end
+            else
+                sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
+            end
+        end
+        
+        pauseTime = 1;
     elseif strcmp(msg, 'sendDecoderParameters')
         filePausedInfo = xippmex('trial','paused')
         
@@ -206,6 +227,22 @@ while true
         sendStructAsAscii(trainParams, socketsControlComm);
         sendMessageWaitAck(socketsControlComm, 'endSendingAsciiParameters');
         
+        recordingInfo = xippmex('trial','paused') % this is how you restart a pause?
+        if ~strcmp(recordingInfo.status, 'recording')
+            pause(1)
+            recordingInfo = xippmex('trial','paused')
+            if ~strcmp(recordingInfo.status, 'recording')
+                keyboard
+                %last try?
+                recordingInfo = xippmex('trial','paused')
+                sendMessageWaitAck(socketsControlComm, uint8('recording'));
+            else
+                sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
+            end
+        else
+            sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
+        end
+    elseif strcmp(msg, 'restartPausedRecording')
         recordingInfo = xippmex('trial','paused') % this is how you restart a pause?
         if ~strcmp(recordingInfo.status, 'recording')
             pause(1)
