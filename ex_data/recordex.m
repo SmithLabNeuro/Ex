@@ -72,6 +72,9 @@ maxNumBytes = 2000; % this value mimics matlabUDP2.h; should be enough
 udpr = dsp.UDPReceiver('RemoteIPAddress', controlIPAddress, 'LocalIPPort', udpPortFromControlReceive, 'MaximumMessageLength', maxNumBytes);
 udps = dsp.UDPSender('RemoteIPAddress', controlIPAddress, 'RemoteIPPort', udpPortFromControlSend);
 
+socketsControlComm.receiver = udpr;
+socketsControlComm.sender = udps;
+
 pauseTime = 0.1;
 dataPath = 'E:\';
 bciDecodersBasePath = params.bciDecoderBasePathDataComputer;
@@ -105,25 +108,25 @@ while true
         % there)
         disp(fileLoc)
         refFlPath = sprintf('%s%04d', fileLoc(length(dataPath)+1:end), incSt);
-        sendMessageWaitAck(udps, udpr, uint8(refFlPath));
+        sendMessageWaitAck(socketsControlComm, uint8(refFlPath));
         recordingInfo = xippmex('trial','recording',fileLoc, 0, 1, incSt);
         if ~strcmp(recordingInfo.status, 'recording')
             pause(0.1)
             recordingInfo = xippmex('trial','recording',fileLoc, 0, 1, incSt);
             if ~strcmp(recordingInfo.status, 'recording')
                 keyboard
-                sendMessageWaitAck(udps, udpr, uint8(recordingInfo.status));
+                sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
             else
-                sendMessageWaitAck(udps, udpr, uint8(recordingInfo.status));
+                sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
             end
         else
-            sendMessageWaitAck(udps, udpr, uint8(recordingInfo.status));
+            sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
         pauseTime = 1;
     elseif strcmp(msg, 'stopRecording')
         fileSavedInfo = xippmex('trial','stopped');
         relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', fileSavedInfo.incr_num)];
-%         sendMessageWaitAck(udps, udpr, uint8(relFlPath));
+%         sendMessageWaitAck(socketsControlComm, uint8(relFlPath));
 %         copyToRaptorRigM;
 %         copyToRaptor;
 %         disp('Copying done')
@@ -131,7 +134,7 @@ while true
     elseif strcmp(msg, 'pauseRecording')
         fileSavedInfo = xippmex('trial','paused');
         relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', fileSavedInfo.incr_num-1)];
-        sendMessageWaitAck(udps, udpr, uint8(relFlPath));
+        sendMessageWaitAck(socketsControlComm, uint8(relFlPath));
 %         copyToRaptorRigM;
 %         copyToRaptor;
 %         disp('Copying done')
@@ -173,9 +176,9 @@ while true
         
         % send over the BCI parameters to Control computer so they can be
         % saved to the NEV
-        sendMessageWaitAck(udps, udpr, 'startSendingAsciiParameters');
-        sendStructAsAscii(trainParams, udpr, udps);
-        sendMessageWaitAck(udps, udpr, 'endSendingAsciiParameters');
+        sendMessageWaitAck(socketsControlComm, 'startSendingAsciiParameters');
+        sendStructAsAscii(trainParams, socketsControlComm);
+        sendMessageWaitAck(socketsControlComm, 'endSendingAsciiParameters');
         % Receives nev file names to calibrate on from control computer
         nevBaseRelFilepath = waitForMessage(udpr, udps);
         nevBaseFullFilepath = fullfile(dataPath, nevBaseRelFilepath);
@@ -188,8 +191,7 @@ while true
         % Send trained decoder info to the control computer as a char (i.e.
         % the location of the decoder, or the location of two decoders
         % split by a newline)
-        sendMessageWaitAck(udps, udpr, uint8(trainedDecoderInfoChar));
-
+        sendMessageWaitAck(socketsControlComm, uint8(trainedDecoderInfoChar));
         
         pauseTime = 0.1;
     elseif strcmp(msg, 'sendDecoderParameters')
@@ -200,9 +202,10 @@ while true
         [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '');
         
         % send over the BCI parameters so they can be saved to the NEV
-        sendMessageWaitAck(udps, udpr, 'startSendingAsciiParameters');
-        sendStructAsAscii(trainParams, udpr, udps);
-        sendMessageWaitAck(udps, udpr, 'endSendingAsciiParameters');
+        sendMessageWaitAck(socketsControlComm, 'startSendingAsciiParameters');
+        sendStructAsAscii(trainParams, socketsControlComm);
+        sendMessageWaitAck(socketsControlComm, 'endSendingAsciiParameters');
+        
         recordingInfo = xippmex('trial','paused') % this is how you restart a pause?
         if ~strcmp(recordingInfo.status, 'recording')
             pause(1)
@@ -211,12 +214,12 @@ while true
                 keyboard
                 %last try?
                 recordingInfo = xippmex('trial','paused')
-                sendMessageWaitAck(udps, udpr, uint8('recording'));
+                sendMessageWaitAck(socketsControlComm, uint8('recording'));
             else
-                sendMessageWaitAck(udps, udpr, uint8(recordingInfo.status));
+                sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
             end
         else
-            sendMessageWaitAck(udps, udpr, uint8(recordingInfo.status));
+            sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
     elseif strcmp(msg, 'sessionEnd')
         copyToRaptorRigM;
@@ -228,63 +231,63 @@ while true
 end
 end
 
-function msg = waitForMessage(udpr, udps)
-    msg = char(udpr())';
-    while isempty(msg)
-        pause(0.1)
-        msg = char(udpr())';
-        if length(msg) == udpr.MaximumMessageLength
-            warning('a message longer than the maximum buffer length may have been received; if so, this can be changed for udpr with the MaximumMessageLength parameter so there''s hope');
-        end
-    end
-%     disp(msg)
-    udps(uint8('ack'));
-end
-
-function msg = sendMessageWaitAck(udps, udpr, msgToSend)
-    if ischar(msgToSend)
-        msgToSend = uint8(msgToSend);
-    end
-
-    udps(msgToSend);
-    msg = char(udpr());
-    while isempty(msg)
-        pause(0.1)
-        msg = char(udpr())';
-    end
-    
-    if ~strcmp(msg, 'ack')
-        keyboard
-    end
-
-end
-
-function sendStructAsAscii(trainParams, udpr, udps)
-
-%function sendStructAsAscii(s)
-%
-% Send a struct as ascii over udp
-%
-
-fields = fieldnames(trainParams);
-
-for i = 1:length(fields)
-    val = trainParams.(fields{i});
-    if iscell(val) % works for single layer cells, not nested ones
-        for clInd = 1:length(val)
-            valC = num2str(val{clInd}(:)'); % needs to be a row for the line below
-            m = [fields{i} '{' num2str(clInd) '}=' valC ';'];
-            
-            sendMessageWaitAck(udps, udpr, m);
-        end
-    else
-        val = num2str(val(:)'); % needs to be a row for the line below
-        m = [fields{i} '=' val ';'];
-        
-        sendMessageWaitAck(udps, udpr, m);
-    end
-    
-
-end
-
-end
+% function msg = waitForMessage(udpr, udps)
+%     msg = char(udpr())';
+%     while isempty(msg)
+%         pause(0.1)
+%         msg = char(udpr())';
+%         if length(msg) == udpr.MaximumMessageLength
+%             warning('a message longer than the maximum buffer length may have been received; if so, this can be changed for udpr with the MaximumMessageLength parameter so there''s hope');
+%         end
+%     end
+% %     disp(msg)
+%     udps(uint8('ack'));
+% end
+% 
+% function msg = sendMessageWaitAck(udps, udpr, msgToSend)
+%     if ischar(msgToSend)
+%         msgToSend = uint8(msgToSend);
+%     end
+% 
+%     udps(msgToSend);
+%     msg = char(udpr());
+%     while isempty(msg)
+%         pause(0.1)
+%         msg = char(udpr())';
+%     end
+%     
+%     if ~strcmp(msg, 'ack')
+%         keyboard
+%     end
+% 
+% end
+% 
+% function sendStructAsAscii(trainParams, udpr, udps)
+% 
+% %function sendStructAsAscii(s)
+% %
+% % Send a struct as ascii over udp
+% %
+% 
+% fields = fieldnames(trainParams);
+% 
+% for i = 1:length(fields)
+%     val = trainParams.(fields{i});
+%     if iscell(val) % works for single layer cells, not nested ones
+%         for clInd = 1:length(val)
+%             valC = num2str(val{clInd}(:)'); % needs to be a row for the line below
+%             m = [fields{i} '{' num2str(clInd) '}=' valC ';'];
+%             
+%             sendMessageWaitAck(udps, udpr, m);
+%         end
+%     else
+%         val = num2str(val(:)'); % needs to be a row for the line below
+%         m = [fields{i} '=' val ';'];
+%         
+%         sendMessageWaitAck(udps, udpr, m);
+%     end
+%     
+% 
+% end
+% 
+% end
