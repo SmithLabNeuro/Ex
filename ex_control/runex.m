@@ -652,7 +652,7 @@ if params.writeFile
     defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
     trialData{4} = defaultRunexPrompt;
     
-    notes = sprintf('%s\n\n%s\n', notes, outfilename);
+    notes = sprintf('%s\n%s\n', notes, outfilename);
     sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d ', notes, sessionInfo));
 end
 
