@@ -1,9 +1,5 @@
-function decoderFileLocationAndName = calibrateKalmanVelocityDecoder(nevFilebase, nevFilesForTrain, subject)
+function decoderFileLocationAndName = calibrateKalmanVelocityDecoder(~, nevFilebase, nevFilesForTrain, subject)
 
-addpath(genpath('C:\Users\rigmdata\nevutils\'))
-addpath(genpath('C:\Users\rigmdata\spikesort\'))
-addpath(genpath('C:\Users\rigmdata\bciCode\'))
-addpath(genpath('C:\Users\rigmdata\Documents\Ex\'))
 
 gamma = 0.2;
 channelNumbersUse = 257:384;
@@ -35,7 +31,7 @@ if ~includeBaseForTrain
     datStruct = datStruct(length(datBase)+1:end);
 end
 
-bciDecoderSaveDrive = 'X:\';
+bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;
 bciDecoderRelativeSaveFolder = fullfile(subject, datestr(today, 'yymmdd'));
 bciDecoderSaveFolder = fullfile(bciDecoderSaveDrive, bciDecoderRelativeSaveFolder);
 success = mkdir(bciDecoderSaveFolder);

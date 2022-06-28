@@ -1,15 +1,11 @@
-function decoderFileLocationAndNames = calibrateMainAndSecondaryKalmanVelocityDecodersForBci(nevFilebase, nevFilesForTrain, trainParams, subject)
+function decoderFileLocationAndNames = calibrateMainAndSecondaryKalmanVelocityDecodersForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject)
 % Function operates under assumption that two decoders will be trained
 % during calibration
 
 global params codes
 
-addpath(genpath('C:\Users\rigmdata\nevutils\'))
-addpath(genpath('C:\Users\rigmdata\spikesort\'))
-addpath(genpath('C:\Users\rigmdata\bciCode\'))
-addpath(genpath('C:\Users\rigmdata\Documents\Ex\'))
 
-netFolder = params.nasNetFolder;
+netFolder = params.nasNetFolderDataComputer;
 nasNetName = trainParams.nasNetwork;
 % Retrieve decoder parameters for both decoders
 firstGamma = trainParams.firstGamma;
@@ -55,7 +51,7 @@ datBase = nev2dat(nevBase, 'nevreadflag', 1);
 [~,~, netLabels] = runNASNet({nev, waves},firstGamma, ...
     'netFolder', netFolder, 'netname', nasNetName);
 % Generates Save Folder directory for decoders
-bciDecoderSaveDrive = 'X:\';
+bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;
 bciDecoderRelativeSaveFolder = fullfile(subject);
 bciDecoderSaveFolder = fullfile(bciDecoderSaveDrive, bciDecoderRelativeSaveFolder);
 success = mkdir(bciDecoderSaveFolder);

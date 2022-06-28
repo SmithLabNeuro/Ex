@@ -1,15 +1,11 @@
-function decoderFileLocationAndName = calibrateKalmanVelocityDecoderForBci(nevFilebase, nevFilesForTrain, trainParams, subject)
+function decoderFileLocationAndName = calibrateKalmanVelocityDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject)
 
 global params codes
 
-addpath(genpath('C:\Users\rigmdata\nevutils\'))
-addpath(genpath('C:\Users\rigmdata\spikesort\'))
-addpath(genpath('C:\Users\rigmdata\bciCode\'))
-addpath(genpath('C:\Users\rigmdata\Documents\Ex\'))
 
 gamma = trainParams.gamma;
 channelNumbersUse = trainParams.rippleChannelNumbersInBci;
-netFolder = params.nasNetFolder;
+netFolder = params.nasNetFolderDataComputer;
 nasNetName = trainParams.nasNetwork;
 Qvalue = trainParams.kalmanQ;%100e3;
 fprintf('q value is %d\n', Qvalue)
@@ -40,7 +36,7 @@ if ~includeBaseForTrain
     nevLabelledData = nevLabelledData(size(nevBase, 1)+1:end, :);
 end
 
-bciDecoderSaveDrive = 'X:\';
+bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;
 bciDecoderRelativeSaveFolder = fullfile(subject);
 bciDecoderSaveFolder = fullfile(bciDecoderSaveDrive, bciDecoderRelativeSaveFolder);
 success = mkdir(bciDecoderSaveFolder);

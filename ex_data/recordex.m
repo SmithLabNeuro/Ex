@@ -1,13 +1,17 @@
 function recordex(connectionType)
 
 global params codes
+% do this before adding paths
+exGlobals; % grab the global parameters
+
 addpath(genpath('C:\Users\rigmdata\Documents\Ex\ex_control'));
+addpath(genpath('C:\Users\rigmdata\spikesort\'))
+
 xippmex('close');
 if nargin<1
     connectionType = 'tcp';
 end
 
-exGlobals; % grab the global parameters
 
 % go = waitForMessage;
 status = false;
@@ -70,7 +74,8 @@ udps = dsp.UDPSender('RemoteIPAddress', controlIPAddress, 'RemoteIPPort', udpPor
 
 pauseTime = 0.1;
 dataPath = 'E:\';
-bciDecodersParameterPath = params.bciDecoderBasePath;
+bciDecodersBasePath = params.bciDecoderBasePathDataComputer;
+bciDecodersParameterPath = fullfile(bciDecodersBasePath, params.bciDecoderXmlParamFolder);
 while true
     
     msg = waitForMessage(udpr, udps);
@@ -179,7 +184,7 @@ while true
         sepTrainFullFilepaths = cellfun(@(rfp) fullfile(dataPath, rfp), sepTrainRelFilepaths, 'uni', 0);
 
         % Train decoder on the files received from the control computer
-        trainedDecoderInfoChar = decoderTrainFunction(nevBaseFullFilepath, sepTrainFullFilepaths, trainParams, subjectName);
+        trainedDecoderInfoChar = decoderTrainFunction(socketsControlComm, nevBaseFullFilepath, sepTrainFullFilepaths, trainParams, subjectName);
         % Send trained decoder info to the control computer as a char (i.e.
         % the location of the decoder, or the location of two decoders
         % split by a newline)
