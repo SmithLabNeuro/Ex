@@ -8,7 +8,8 @@ debug = 0; % 1 to turn on debug mode, 0 to leave it off (or just comment out the
 if isunix
     rootDir = '~';
 else
-    error('RUNEX:BadPlatform','Ex only works on unix');
+    rootDir = '~';
+    warning('RUNEX:BadPlatform','some parameters might only make sense in Unix');
 end
 params.localDataDir = [rootDir,filesep,'exData'];
 params.localExDir = [rootDir,filesep,'Ex_local'];
@@ -67,6 +68,12 @@ params.keyboardName = 'Dell Dell USB Entry Keyboard';
 %% sound params
 params.sampleFreq = 48000; % 48 kHz
 params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds
+
+%% BCI params
+params.neuralRecordingSamplingFrequencyHz = 30000; % Ripple records at 30kHz
+params.nasNetFolderBciComputer = '/home/smithlab/spikesort/nasnet/networks';
+params.bciDecoderBasePathBciComputer = '/home/smithlab/bciParameters';
+params.bciDecoderXmlParamFolder = 'bciXmlParams';
 
 %% calibration params
 params.extent = 250; % spacing of calibration dots in pixels
