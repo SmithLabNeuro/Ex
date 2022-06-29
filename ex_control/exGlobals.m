@@ -61,8 +61,10 @@ params.diodeLoc = [10 10 40 40];
 % is displayed (to notify us that there are timing issues that may warrant attention)
 params.waitForTolerance = 0.01; % in seconds, so 0.01 = 10 ms
 
-%for the lab note taking
-params.keyboardName = 'Dell KB216 Wired Keyboard';
+%for the lab note taking; you can find the name by running 'xinput' on the
+%command line
+% params.keyboardName = 'Dell KB216 Wired Keyboard';
+params.keyboardName = 'Dell Dell USB Entry Keyboard';
 %% sound params
 params.sampleFreq = 48000; % 48 kHz
 params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds

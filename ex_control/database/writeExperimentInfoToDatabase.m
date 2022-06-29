@@ -22,7 +22,7 @@ if ~isempty(varargin)
         updateStr = sprintf('%s = "%s"', fieldToUpdate, valueToPutIn);
         updateStrCell{end+1} = updateStr;
     end
-    updateStrTotal = strjoin(updateStrCell, ' and ');
+    updateStrTotal = strjoin(updateStrCell, ', ');
     sqlDb.exec(sprintf('UPDATE experiment_info SET %s WHERE behavior_output_name = "%s"', updateStrTotal, outfilename));
     %             sqlDb.insert('experiment_info', {'start_time', 'task', 'session', 'behavior_output_name', 'neural_output_name'}, {datestr(now, 'yyyy-mm-dd HH:MM:SS'), xmlBase, sessionInfo, outfilename, neuralOutName})
 else

@@ -1,8 +1,11 @@
-function [success, msgStr, fixWinOutput] = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, msHold)
+function [success, msgStr, fixWinOutput] = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, msHold, successUnlessFail)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
 global codes
 
+if nargin<10
+    successUnlessFail = false;
+end
 success = 0;
 msgStr = '';
 [xVal, yVal, zValAng, ~] = sampleHallEffectJoystick();
@@ -31,7 +34,13 @@ else
     if ~(xySmallEnough && angLargeEnough) % ~(xySmallEnough && buttonPress) %
         success = -1;
     else
-        success = 0;
+        % success unless fail!
+        if successUnlessFail
+            success = 1;
+        else
+            % no success until time passed!
+            success =  0;
+        end
     end
 end
 
