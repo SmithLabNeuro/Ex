@@ -11,7 +11,7 @@ clear all;
 close all;
 addpath(genpath('../'))
 %% Flags
-microornano= 'nano';
+microornano='micro';% 'nano';
 sortflag = 0;
 crossnoiseflag = 0;
 usesoundcardflag = 0;
