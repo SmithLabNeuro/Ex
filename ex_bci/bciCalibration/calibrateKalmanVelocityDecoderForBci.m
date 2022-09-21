@@ -26,17 +26,17 @@ for nevFlInd = 1:length(nevFilesForTrain)
     nev = [nev; nevNx];
     waves = [waves, wavesNx];
 end
-datBase = nev2dat(nevBase, 'nevreadflag', 1);
+datBase = nev2dat(nevBase, 'nevreadflag', true);
 
 [slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName);
 
 
-datStruct = nev2dat(nevLabelledData, 'nevreadflag', 1);
+datStruct = nev2dat(nevLabelledData, 'nevreadflag', true);
 if ~includeBaseForTrain
     nevLabelledData = nevLabelledData(size(nevBase, 1)+1:end, :);
     % adding + 2 skips the background process trial which happens on the
     % overlap
-    datStruct = datStruct(length(datBase)+2:end);%nev2dat(nevLabelledData, 'nevreadflag', 1);
+    datStruct = datStruct(length(datBase)+2:end);%nev2dat(nevLabelledData, 'nevreadflag', true);
 end
 
 bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;

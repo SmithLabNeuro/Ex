@@ -22,10 +22,10 @@ for nevFlInd = 1:length(nevFilesForTrain)
     nev = [nev; nevNx];
     waves = [waves, wavesNx];
 end
-datBase = nev2dat(nevBase, 'nevreadflag', 1);
+datBase = nev2dat(nevBase, 'nevreadflag', true);
 
 [slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName);
-datStruct = nev2dat(nevLabelledData, 'nevreadflag', 1);
+datStruct = nev2dat(nevLabelledData, 'nevreadflag', true);
 
 if ~includeBaseForTrain
     datStruct = datStruct(length(datBase)+1:end);
