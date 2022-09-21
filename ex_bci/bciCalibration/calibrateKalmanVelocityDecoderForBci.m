@@ -205,7 +205,7 @@ switch trainParams.velocityToCalibrateWith
         error('Training parameter velocityToCalibrateWith must either be ''actual'' or ''intended''')
 end
 
-joystickKinMean = nanmean(cat(1, interpJoystickKin{:}), 1)'; % remember to transpose to 2 x 1
+
 
 joystickKinCurrStep = cell(size(spikeTimes));
 joystickKinCurrStep(bciValidTrials) = cellfun(...
@@ -280,8 +280,11 @@ K = Kall{end};
 M1 = A - K*C*A;
 M2 = K * zScoreLatentMat * beta * zScoreSpikesMat;
 % baseline takes care of accounting for mean offsets in training
+% stateModelOffset = nanmean(cat(1, interpJoystickKin{:}), 1)'; % remember to transpose to 2 x 1
 stateModelOffset = [0 0]'; % for model x_t = Ax_{t-1} + stateModelOffset
-M0 = (eye(2) - K*C) * stateModelOffset - M2*estParams.d - K*meanLatProj;
+% note below that estParams.d is computed post-z-scoring, which is why it
+% doesn't get multiplied by zScoreSpikesMat
+M0 = (eye(2) - K*C) * stateModelOffset - K * zScoreLatentMat * beta * estParams.d - K*meanLatProj;
 % M0 = -M1 * joystickKinMean - M2*estParams.d - K*meanLatProj;
 %%
 subjectCamelCase = lower(subject);
@@ -309,15 +312,22 @@ for angInd = 1:length(unAngs)
         spikesTraj = (beta*(binnedSpikesCurrStep{trajInd}' - estParams.d) - meanLatProj);
         trueTraj = joystickKinCurrStep{trajInd}';
         nanTraj = any(isnan(trueTraj), 1);
-        muCurrGivenPrev = nanmean(allJoystickKinCurrTime, 2);
+        muCurrGivenPrev = [0;0];%nanmean(allJoystickKinCurrTime, 2);
         outVel = zeros(size(trueTraj(:, ~nanTraj)));
+        velPrevM = [0;0];
+        outVelM = zeros(size(trueTraj(:, ~nanTraj)));
         for t = find(~nanTraj,1,'first'):size(spikesTraj, 2)
             muCurrGivenCurr = muCurrGivenPrev + K*(spikesTraj(:, t) - C*muCurrGivenPrev);
             outVel(:,t) = muCurrGivenCurr;
-            muCurrGivenPrev = A*(muCurrGivenCurr - joystickKinMean);
+            muCurrGivenPrev = A*(muCurrGivenCurr - stateModelOffset);
+            
+            velCurrM = M0 + M1 * velPrevM + M2 * zScoreSpikesMat^(-1) * binnedSpikesCurrStep{trajInd}(t, :)';
+            outVelM(:,t) = velCurrM;
+            velPrevM = velCurrM;
         end
-        p1 = subplot(2,1,1);title('predicted trajectory');hold on;plot([cumsum(outVel(1, :)* binSizeMs/msPerS)]', [cumsum(outVel(2, :)* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth',1);
-        p2 = subplot(2,1,2);title('true trajectory');hold on;plot([cumsum(trueTraj(1, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', [cumsum( trueTraj(2, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth', .5);
+        p1 = subplot(3,1,1);title('predicted trajectory');hold on;plot([cumsum(outVel(1, :)* binSizeMs/msPerS)]', [cumsum(outVel(2, :)* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth',1);
+        p2 = subplot(3,1,2);title('true trajectory');hold on;plot([cumsum(trueTraj(1, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', [cumsum( trueTraj(2, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth', .5);
+        p3 = subplot(3,1,3);title('predicted trajectory with M');hold on;plot([cumsum(outVelM(1, :)* binSizeMs/msPerS)]', [cumsum(outVelM(2, :)* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth',1);
 
     end
 end
