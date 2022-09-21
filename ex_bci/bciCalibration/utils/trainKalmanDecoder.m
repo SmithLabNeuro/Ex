@@ -1,4 +1,4 @@
-function [M0, M1, M2, A, Q, C, R, K] = trainKalmanDecoder(binnedSpikesCurrStep, bciValidTrials, joystickKinCurrStep, Qvalue, estParams, latDim, rotMat, separateLatentDimensions, latentKToUse)
+function [M0, M1, M2, A, Q, C, R, K] = trainKalmanDecoder(binnedSpikesCurrStep, bciValidTrials, joystickKinCurrStep, Qvalue, trainingMeanActivity, latDim, rotMat, separateLatentDimensions, latentKToUse)
   
     allBinnedCountsCurrTime = cat(1, binnedSpikesCurrStep{bciValidTrials})';
     allJoystickKinCurrTime = rotMat' * cat(1, joystickKinCurrStep{bciValidTrials})';
@@ -14,7 +14,7 @@ function [M0, M1, M2, A, Q, C, R, K] = trainKalmanDecoder(binnedSpikesCurrStep, 
     Tall = Tall - sum(nanTimes);
     TallLessOne = TallLessOne - sum(nanTimes);
 
-    allLatentProj = latDim * (allBinnedCountsCurrTime - estParams.d);
+    allLatentProj = latDim * (allBinnedCountsCurrTime - trainingMeanActivity);
     meanLatProj = mean(allLatentProj, 2);
     allLatentProj = allLatentProj - meanLatProj;
  
@@ -71,7 +71,7 @@ function [M0, M1, M2, A, Q, C, R, K] = trainKalmanDecoder(binnedSpikesCurrStep, 
     M2 = K * latDim;
     % baseline takes care of accounting for mean offsets in training
     stateModelOffset = zeros(size(A, 1), 1); % for model x_t = Ax_{t-1} + stateModelOffset
-    M0 = (A - K*C) * stateModelOffset - M2*estParams.d - K*meanLatProj;
+    M0 = (A - K*C) * stateModelOffset - K*latDim*trainingMeanActivity - K*meanLatProj;
     % M0 = -M1 * joystickKinMean - M2*estParams.d - K*meanLatProj;
 
 
