@@ -140,6 +140,7 @@ end
 latents = estParams.L; % W
 [orthLatents, silde, vilde] = svd(latents);
 orthLatents = orthLatents(:, 1:numLatents);
+[orthLatentsOrigLat, svOrigLat, orthVOrigLat] = svd(modelParams.estParams.L);
 
 %% training
 % grab the neural activity during the BCI
@@ -169,9 +170,62 @@ binnedSpikesPrevStep(bciValidTrials) = cellfun(...
         bS(1:mxBin-binDecoderDelay-1, :),...
     binnedSpikesBci(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
 
-allBinnedCountsCurrTime = cat(1, binnedSpikesCurrStep{bciValidTrials})';
+allBinnedCountsBciValidTrials = cat(1, binnedSpikesCurrStep{bciValidTrials})';
+%% now grab the kinematics we'll be training on and align to neural data
+interpJoystickPos = cell(size(spikeTimes));
+interpJoystickPos(bciValidTrials) = cellfun(...
+    @(jPT, bciStartEndTime)...
+        ... first interpolate the x values
+        [interp1(jPT(:, 3), jPT(:, 1), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))',...
+        ... then interpolate the y values
+        interp1(jPT(:, 3), jPT(:, 2), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))'],...
+    joystickPosAndTime(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
+interpJoystickVel(bciValidTrials) = cellfun(...
+    @(interpPos)...
+    [[0 0]; diff(interpPos)/(binSizeMs/msPerS)],... start with velocity 0, then find velocity in pix/s
+    interpJoystickPos(bciValidTrials), 'uni', 0);
 
-allBinnedCountsCurrTimeZSc = modelParams.zScoreSpikesMat * allBinnedCountsCurrTime;
+switch trainParams.velocityToCalibrateWith
+    case 'actual'
+        interpJoystickKin = interpJoystickVel;
+    case 'intended'
+        interpJoystickKin = interpJoystickVelIntended;
+    case 'intendedPositive'
+        interpJoystickKin = interpJoystickVelIntendedOnlyPos;
+    otherwise
+        error('Training parameter velocityToCalibrateWith must either be ''actual'' or ''intended''')
+end
+
+joystickKinCurrStep = cell(size(spikeTimes));
+joystickKinCurrStep(bciValidTrials) = cellfun(...
+    @(iJP, mxBin)...
+        ... remove binDecoderDelay bins from start as they don't have paired neural data
+        ... go 2 (instead of 1) forward to pair correctly with the neural signal 'current' step
+        iJP(binDecoderDelay+2:mxBin, :),...
+    interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
+joystickKinPrevStep = cell(size(spikeTimes));
+joystickKinPrevStep(bciValidTrials) = cellfun(...
+    @(iJP, mxBin)...
+        ... remove binDecoderDelay bins from start as they don't have paired neural data
+        ... end one before the last step because this is the 'previous' step (so it needs a next one!)
+        iJP(binDecoderDelay+1:mxBin-1, :),...
+    interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
+
+
+allJoystickKinCurrTime = cat(1, joystickKinCurrStep{bciValidTrials})';
+allJoystickKinPrevTime = cat(1, joystickKinPrevStep{bciValidTrials})';
+allBinnedCountsCurrTime = allBinnedCountsBciValidTrials;
+
+nanTimes = any(isnan(allBinnedCountsCurrTime), 1)...
+    | any(isnan(allJoystickKinCurrTime), 1)...
+    | any(isnan(allJoystickKinPrevTime), 1);
+
+allBinnedCountsCurrTime(:, nanTimes) = [];
+allJoystickKinCurrTime(:, nanTimes) = [];
+allJoystickKinPrevTime(:, nanTimes) = [];
+
+%% find neural engagement axis
+allBinnedCountsCurrTimeZSc = modelParams.zScoreSpikesMat * allBinnedCountsBciValidTrials;
 % find posterior: 
 [Z, ~, beta] = fastfa_estep(allBinnedCountsCurrTimeZSc, estParams);
 posterior = Z.mean; % Zdim x N
@@ -184,30 +238,86 @@ zilde = silde(1:numLatents, 1:numLatents) * vilde' * posterior; % numLatents x N
 angsCellPerTrial = cellfun(@(dS) regexp(dS, 'targetAngle*=(\d*);.*', 'tokens'), {trimmedDat.text});
 angsByTrial = cellfun(@(ang) str2num(ang{1}), angsCellPerTrial, 'uni', 0);
 angsByTrial = cat(2, angsByTrial);
+[unAngsByTrial, ~, locsUnAngsByTrial] = unique([angsByTrial{:}]);
+
 angsByBin = cellfun(@(ang, bS) repmat(str2num(ang{1}), 1, size(bS, 1)), angsCellPerTrial, binnedSpikesCurrStep, 'uni', 0);
 angsByBin = cat(2, angsByBin{:});
-[unAngsByTrial, ~, locsUnAngs] = unique(angsByBin);
+[unAngsByTrial, ~, locsUnAngsByBin] = unique(angsByBin);
 
 rezilduals = nan(size(zilde));
 % angsByBin = angsForMoveSpikes(~nanTimes);
 for i=1:length(unAngsByTrial)
     curr_idx = angsByBin==unAngsByTrial(i); 
     curr_trials = zilde(:, curr_idx); 
-    rezilduals(:, curr_idx) = curr_trials - mean(curr_trials, 2);
+    neFaMean(:, i) = mean(curr_trials, 2);
+    rezilduals(:, curr_idx) = curr_trials - neFaMean(:, i);
     covResidualsThisAng = cov(rezilduals(:, curr_idx)', 1);
     [pcOfResidualsInFaThisAng,~,~] = svd(covResidualsThisAng);
     neuralEngagementAxisFaSpaceByAng(:, i) = pcOfResidualsInFaThisAng(:, 1);
 end
 
+
 % PCA
 covResiduals = cov(rezilduals', 1);
 [pcOfResidualsInFa,~,~] = svd(covResiduals);
 
-% neuralEngagementAxisFaSpace = pcOfResidualsInFa(:,1); 
-neuralEngagementAxisFaSpace = mean(neuralEngagementAxisFaSpaceByAng, 2);
-% neuralEngagementAxisFaSpace = neuralEngagementAxisFaSpaceByAng(:, 1);
-neuralEngagementAxisFaSpace = neuralEngagementAxisFaSpace/norm(neuralEngagementAxisFaSpace);
 
+if trainParams.trainNeAsState
+    projToLat =  silde(1:numLatents, 1:numLatents) * vilde' * modelParams.beta * modelParams.zScoreSpikesMat;
+    neValues = cell(size(binnedSpikesCurrStep));
+%     neValues2 = cell(size(binnedSpikesCurrStep));
+    neIndPerTrial = num2cell(locsUnAngsByTrial)';%    cellfun(@(unAngInd, x) repmat(unAngInd, size(x,1), 1), num2cell(locsUnAngsByTrial)', binnedSpikesCurrStep, 'uni', 0);
+%     neValues(bciValidTrials) = cellfun(@(bS) (bS - estParams.d') * neuralEngagementAxisInNeuralSpace, binnedSpikesCurrStep(bciValidTrials), 'uni', 0);
+	neValues(bciValidTrials) = cellfun(@(bS, neInd)  neuralEngagementAxisFaSpaceByAng(:, neInd)' * (diag(diag(svOrigLat)) * orthVOrigLat'*modelParams.beta * (modelParams.zScoreSpikesMat * bS' - estParams.d) - neFaMean(:, neInd)), binnedSpikesCurrStep(bciValidTrials), neIndPerTrial(bciValidTrials), 'uni', 0);
+    separateLatentDimensions = false;
+%     allJoy = cat(1, joystickKinCurrStep{:});
+%     allNe = cat(2, neValues{:});
+%     scaleNe = mean(nanstd(allJoy, [], 1))/std(allNe);
+%     neValues = cellfun(@(ne) scaleNe * ne, neValues, 'uni', 0);
+    stateValues = cellfun(@(jK, nE) [jK nE'], joystickKinCurrStep, neValues, 'uni', 0);
+    rotMat = eye(3);
+    latentKToUse = 0;
+    [M0_1, M1_1, M2_1, A, Q, C, R, K_1] = trainKalmanDecoder(binnedSpikesCurrStep, bciValidTrials, stateValues, Qvalue, estParams, projToLat, rotMat, separateLatentDimensions, latentKToUse);
+    
+%     K(3, :) = K(3, :) * norm(K(1, :))/norm(K(3, :));
+%     M2(3, :) = K(3, :) * projToLat;
+%     allBinnedCountsCurrTime = cat(1, binnedSpikesCurrStep{bciValidTrials})';
+%     allLatentProj = projToLat * (allBinnedCountsCurrTime - estParams.d);
+%     meanLatProj = mean(allLatentProj, 2);
+%     M0(3) = M2(3, :)*estParams.d - K(3, :)*meanLatProj;
+%     projToLat = [-M2_1(1,:)'/norm(M2_1(1, :)) M2_1(3, :)'/norm(M2_1(3, :))]';
+    neuralEngagementAxisInNeuralSpace = M2_1(3, :)'/norm(M2_1(3, :));
+    correctedK_1 = K_1(3, :)*orthVOrigLat*diag(diag(1./svOrigLat(1:numLatents, 1:numLatents)));
+    neuralEngagementAxisFaSpace = K_1(3, :)'/norm(K_1(3, :));
+    % orient axis so most neurons are positive
+    if sum(sign(neuralEngagementAxisInNeuralSpace)==1)<length(neuralEngagementAxisInNeuralSpace)/2
+        neuralEngagementAxisInNeuralSpace = -neuralEngagementAxisInNeuralSpace;
+    end
+    
+%     projToLat = [axisOrthToNeuralEngagementInNeuralSpace M2_1(3, :)']';
+%     binnedCountsInNeuralEngagement = projToLat(2, :) * (allBinnedCountsCurrTime - estParams.d);
+%     binnedCountsInOrthNeuralEngagement = projToLat(1, :) * (allBinnedCountsCurrTime - estParams.d);
+%     angsForMoveSpikes = cellfun(@(ang, bS) repmat(str2num(ang{1}), 1, size(bS, 1)), angsCellPerTrial(bciValidTrials), binnedSpikesCurrStep(bciValidTrials), 'uni', 0);
+%     angsForMoveSpikes = cat(2, angsForMoveSpikes{:});
+%     angsForMoveSpikes(nanTimes) = [];
+%     [unAngsForMoveSpikes, ~, locAngsForMoveSpks] = unique(angsForMoveSpikes);
+%     for unAngInd = 1:length(unAngsForMoveSpikes)
+%         meanOrthNEAct(unAngInd) = mean(binnedCountsInOrthNeuralEngagement( angsForMoveSpikes==unAngsByTrial(unAngInd)));
+%         meanNEAct(unAngInd) = mean(binnedCountsInNeuralEngagement( angsForMoveSpikes==unAngsByTrial(unAngInd)));
+%     end
+%     % we take the amx response, instead of the max absolute response, because we
+%     % want the direction whose positive "thinking" leads to maximal motion
+%     [~, prefAngInd] = max(meanOrthNEAct);
+%     preferredAng = unAngsForMoveSpikes(prefAngInd);
+%     intuitiveAxisPreferredAngle = preferredAng;%mod(180 - preferredAng, 360);%
+%     fprintf('intuitive axis preferred angle is %d\n', preferredAng)
+%     rotMat = [cosd(intuitiveAxisPreferredAngle) -sind(intuitiveAxisPreferredAngle); sind(intuitiveAxisPreferredAngle) cosd(intuitiveAxisPreferredAngle)];
+else
+    neuralEngagementAxisFaSpace = mean(neuralEngagementAxisFaSpaceByAng, 2);
+%     neuralEngagementAxisFaSpace = pcOfResidualsInFa(:,1); 
+    % neuralEngagementAxisFaSpace = neuralEngagementAxisFaSpaceByAng(:, 1);
+    neuralEngagementAxisFaSpace = neuralEngagementAxisFaSpace/norm(neuralEngagementAxisFaSpace);
+end
 % find the other axis:
 covZilde = cov(zilde', 1);
 % normalize the projected axis
@@ -231,7 +341,6 @@ if trainParams.orthToNeOnDecoderPlane
 %     axisOrthToNeuralEngagementInNeuralSpace2 = otherAxes(:, 2);
   
 %     [orthLatentsOrig, svOrig, orthVOrig] = svd(modelParams.beta');
-    [orthLatentsOrigLat, svOrigLat, orthVOrigLat] = svd(modelParams.estParams.L);
 %     orthLatentsOrig = orthLatentsOrig(:, 1:numLatents);
     orthLatentsOrigLat = orthLatentsOrigLat(:, 1:numLatents);
 
@@ -302,60 +411,6 @@ end
 
 
 %%
-% allBinnedCountsCurrTime = cat(1, binnedSpikesCurrStep{bciValidTrials})';
-
-% now grab the kinematics we'll be training on
-interpJoystickPos = cell(size(spikeTimes));
-interpJoystickPos(bciValidTrials) = cellfun(...
-    @(jPT, bciStartEndTime)...
-        ... first interpolate the x values
-        [interp1(jPT(:, 3), jPT(:, 1), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))',...
-        ... then interpolate the y values
-        interp1(jPT(:, 3), jPT(:, 2), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))'],...
-    joystickPosAndTime(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
-interpJoystickVel(bciValidTrials) = cellfun(...
-    @(interpPos)...
-    [[0 0]; diff(interpPos)/(binSizeMs/msPerS)],... start with velocity 0, then find velocity in pix/s
-    interpJoystickPos(bciValidTrials), 'uni', 0);
-
-switch trainParams.velocityToCalibrateWith
-    case 'actual'
-        interpJoystickKin = interpJoystickVel;
-    case 'intended'
-        interpJoystickKin = interpJoystickVelIntended;
-    case 'intendedPositive'
-        interpJoystickKin = interpJoystickVelIntendedOnlyPos;
-    otherwise
-        error('Training parameter velocityToCalibrateWith must either be ''actual'' or ''intended''')
-end
-
-joystickKinCurrStep = cell(size(spikeTimes));
-joystickKinCurrStep(bciValidTrials) = cellfun(...
-    @(iJP, mxBin)...
-        ... remove binDecoderDelay bins from start as they don't have paired neural data
-        ... go 2 (instead of 1) forward to pair correctly with the neural signal 'current' step
-        iJP(binDecoderDelay+2:mxBin, :),...
-    interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
-joystickKinPrevStep = cell(size(spikeTimes));
-joystickKinPrevStep(bciValidTrials) = cellfun(...
-    @(iJP, mxBin)...
-        ... remove binDecoderDelay bins from start as they don't have paired neural data
-        ... end one before the last step because this is the 'previous' step (so it needs a next one!)
-        iJP(binDecoderDelay+1:mxBin-1, :),...
-    interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
-
-
-allJoystickKinCurrTime = cat(1, joystickKinCurrStep{bciValidTrials})';
-allJoystickKinPrevTime = cat(1, joystickKinPrevStep{bciValidTrials})';
-
-nanTimes = any(isnan(allBinnedCountsCurrTime), 1)...
-    | any(isnan(allJoystickKinCurrTime), 1)...
-    | any(isnan(allJoystickKinPrevTime), 1);
-
-allBinnedCountsCurrTime(:, nanTimes) = [];
-allJoystickKinCurrTime(:, nanTimes) = [];
-allJoystickKinPrevTime(:, nanTimes) = [];
-
 binnedCountsInNeuralEngagement = neuralEngagementAxisInNeuralSpace' * (allBinnedCountsCurrTime - estParams.d);
 binnedCountsInOrthNeuralEngagement = axisOrthToNeuralEngagementInNeuralSpace' * (allBinnedCountsCurrTime - estParams.d);
 angsForMoveSpikes = cellfun(@(ang, bS) repmat(str2num(ang{1}), 1, size(bS, 1)), angsCellPerTrial(bciValidTrials), binnedSpikesCurrStep(bciValidTrials), 'uni', 0);
@@ -368,7 +423,7 @@ for unAngInd = 1:length(unAngsForMoveSpikes)
 end
 % we take the amx response, instead of the max absolute response, because we
 % want the direction whose positive "thinking" leads to maximal motion
-[~, prefAngInd] = max(meanOrthNEAct);
+[~, prefAngInd] = max(abs(meanOrthNEAct));
 preferredAng = unAngsForMoveSpikes(prefAngInd);
 fprintf('intuitive axis preferred angle is %d\n', preferredAng)
 
@@ -396,22 +451,17 @@ outputParamsNE = regressionFeaturesNeuralEngagement \ allJoystickKinCurrTimeRotT
 % else
 %%
 if trainParams.trainVelocityKalman
+    rotMat = [cosd(intuitiveAxisPreferredAngle) -sind(intuitiveAxisPreferredAngle); sind(intuitiveAxisPreferredAngle) cosd(intuitiveAxisPreferredAngle)];
+
     projToLat = [axisOrthToNeuralEngagementInNeuralSpace neuralEngagementAxisInNeuralSpace]';
     separateLatentDimensions = trainParams.separateLatentDimensionsInKalman;
     latentKToUse = trainParams.setAllKToValueOfLatent;
-    [M0, M1, M2, A, Q, C, R, K] = trainKalmanDecoder(binnedSpikesCurrStep, bciValidTrials, joystickKinCurrStep, Qvalue, estParams, projToLat, rotMat, separateLatentDimensions, latentKToUse);
+    % FA space was predicted on z-scored activity, but the training is fed
+    % in *un*z-scored activity (i.e. binnedSpikesCurrStep isn't z-scored.
+    % This line puts the estParams.d in the correct (no z-score) units.
+    trainingMeanActivityUnZScored = modelParams.zScoreSpikesMat^(-1) * estParams.d;
+    [M0, M1, M2, A, Q, C, R, K] = trainKalmanDecoder(binnedSpikesCurrStep, bciValidTrials, joystickKinCurrStep, Qvalue, trainingMeanActivityUnZScored, projToLat, rotMat, separateLatentDimensions, latentKToUse);
 %     rotMat = eye(2);
-elseif trainParams.trainNEAsState
-    projToLat = modelParams.beta * modelParams.zScoreSpikesMat;
-    neValues = cell(size(binnedSpikesCurrStep));
-    neValues2 = cell(size(binnedSpikesCurrStep));
-    neValues(bciValidTrials) = cellfun(@(bS) (bS - estParams.d') * neuralEngagementAxisInNeuralSpace, binnedSpikesCurrStep(bciValidTrials), 'uni', 0);
-    neValues2(bciValidTrials) = cellfun(@(bS) neuralEngagementAxisOldFaSpace' * diag(diag(svOrigLat)) * orthVOrigLat' * projToLat * (bS' - estParams.d), binnedSpikesCurrStep(bciValidTrials), 'uni', 0);
-    separateLatentDimensions = false;
-    stateValues = cellfun(@(jK, nE) [jK nE], joystickKinCurrStep, neValues, 'uni', 0);
-    rotMat = eye(3);
-    [M0, M1, M2, A, Q, C, R, K] = trainKalmanDecoder(binnedSpikesCurrStep, bciValidTrials, stateValues, Qvalue, estParams, projToLat, rotMat, separateLatentDimensions, latentKToUse);
-
 else
     neScal = std(binnedCountsInNeuralEngagement)/std(binnedCountsInOrthNeuralEngagement);
     if trainParams.scaleNeuralEngagementAxis
@@ -431,17 +481,6 @@ else
     % M0 explicitly set to zero-mean regression velocities;
     M0 = -mean(M1*allJoystickKinPrevTimeRotToOrthNEPrefAng + M2*allBinnedCountsCurrTime, 2); %[outputParamsOrthNE(1); outputParamsNE(1)] - M2*estParams.d + [0;-158.1555];
 end
-allOnesDir = ones(size(M2,2), 1);
-allOnesDir = allOnesDir ./ norm(allOnesDir);
-allOnesVel = rotMat * M2 * allOnesDir;
-allOnesVelOrigBci = modelParams.M2 * allOnesDir;
-
-% engagePosVel = correctedKSpace' *neuralEngagementAxisOldFaSpace;
-%  correctedKSpace'*svOrigLat(1:numLatents, 1:numLatents) * orthVOrigLat'*modelParams.beta*  neuralEngagementAxisInNeuralSpace
-neDir = neuralEngagementAxisInNeuralSpace;
-neDir = neDir./norm(neDir);
-engagePosVel = rotMat * M2 * neDir;
-engagePosVelOrigBci = modelParams.M2 * neDir;
 %%
 % output: directions for task in save file
 subjectCamelCase = lower(subject);
@@ -451,15 +490,38 @@ save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'M0', 'M1', 'M2', 'intu
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 
 %%
+% M0 = M0_1;
+% M1 = M1_1;
+% M2 = M2_1;
+% rotMat = eye(3);
+% rotMat = [1 0 0;
+%     0 cosd(-intuitiveAxisPreferredAngle) -sind(-intuitiveAxisPreferredAngle); 
+%     0 sind(-intuitiveAxisPreferredAngle) cosd(-intuitiveAxisPreferredAngle)];
+
+indsUse = [1, 2];
+
+allOnesDir = ones(size(M2,2), 1);
+allOnesDir = allOnesDir ./ norm(allOnesDir);
+allOnesVel = rotMat(indsUse, indsUse) * M2(indsUse, :) * allOnesDir;
+allOnesVelOrigBci = modelParams.M2 * allOnesDir;
+
+neDir = neuralEngagementAxisInNeuralSpace;
+neDir = neDir./norm(neDir);
+engagePosVel = rotMat(indsUse, indsUse) * M2(indsUse, :) * neDir;
+engagePosVelOrigBci = modelParams.M2 * neDir;
+
 engagePosVelNorm = engagePosVel/norm(engagePosVel);
+engagePosVelNorm = engagePosVelNorm(1:2);
 allOnesVelNorm = allOnesVel/norm(allOnesVel);
+allOnesVelNorm = allOnesVelNorm(1:2);
 M0Norm = M0/norm(M0);
+M0Norm = M0Norm(1:2);
 
 engagePosVelOrigBciNorm = engagePosVelOrigBci/norm(engagePosVelOrigBci);
 allOnesVelOrigBciNorm = allOnesVelOrigBci/norm(allOnesVelOrigBci);
 M0OrigBciNorm = modelParams.M0/norm(modelParams.M0);
 
-updateVels = rotMat*(M2*allBinnedCountsCurrTime + M0);
+updateVels = rotMat(indsUse,indsUse)*(M2(indsUse,:)*allBinnedCountsCurrTime + M0(indsUse));
 figure;scatter(updateVels(1, :), updateVels(2, :), [], locAngsForMoveSpks, 'filled')
 axH = gca();hold on;
 xdir = [1, 0];
@@ -481,14 +543,20 @@ legend([engX, aoX, m0X], 'engagement dir', 'all ones dir', 'M0 velocity');
 axis equal
 title(sprintf('velocity updates (just from spikes and offset), prefAng %d', preferredAng));
 
-totalVels = rotMat*(M0 + M1*allJoystickKinPrevTimeRotToOrthNEPrefAng + M2*allBinnedCountsCurrTime);
-figure;scatter(totalVels(1, :), totalVels(2, :), [], locAngsForMoveSpks, 'filled')
-axis equal
-title(sprintf('new velocities (with known prior velocities; the regression estimate, prefAng %d', preferredAng));
+% totalVels = rotMat*(M0 + M1*allJoystickKinPrevTimeRotToOrthNEPrefAng + M2*allBinnedCountsCurrTime);
+% figure;scatter(totalVels(1, :), totalVels(2, :), [], locAngsForMoveSpks, 'filled')
+% axis equal
+% title(sprintf('new velocities (with known prior velocities; the regression estimate, prefAng %d', preferredAng));
 
 figure;
 % binnedCountsInNeuralEngagement = neuralEngagementAxisFaSpace' * (rezilduals);
 % binnedCountsInOrthNeuralEngagement = axisOrthToNeuralEngagementInFA' * (rezilduals);
+% binnedCountsInNeuralEngagement = M2(2,:)' * (rezilduals);
+% angsForPlot = angsByBin;
+binnedCountsInOrthNeuralEngagement =  M2(indsUse(1),:)/norm(M2(indsUse(1),:)) * allBinnedCountsCurrTime;% + M0(indsUse(1),:);
+binnedCountsInNeuralEngagement =  M2(indsUse(2),:)/norm(M2(indsUse(2),:)) * allBinnedCountsCurrTime;% + M0(indsUse(2),:);
+meanNEAct = accumarray(locsUnAngsByBin(~nanTimes), binnedCountsInNeuralEngagement', [], @mean);
+meanOrthNEAct = accumarray(locsUnAngsByBin(~nanTimes), binnedCountsInOrthNeuralEngagement', [], @mean);
 angsForPlot = angsForMoveSpikes;
 axONE = subplot(2,1,1);
 scatter(angsForPlot, binnedCountsInOrthNeuralEngagement); hold on
@@ -535,7 +603,7 @@ for angInd = 1:length(unAngs)
         end
         outVelAll = [outVelAll outVel];
         angsByVelAll = [angsByVelAll unAngs(angInd)*ones(1, size(outVel, 2))];
-        subplot(2,1,1);plot([cumsum(outVel(1, :)* binSizeMs/msPerS)]', [cumsum(outVel(2, :)* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth',.5);
+        subplot(2,1,1);plot([cumsum(outVel(indsUse(1), :)* binSizeMs/msPerS)]', [cumsum(outVel(indsUse(2), :)* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth',.5);
         axis equal
         subplot(2,1,2);plot([cumsum(trueTraj(1, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', [cumsum( trueTraj(2, ~any(isnan(trueTraj), 1))* binSizeMs/msPerS)]', 'color', [cols(angInd, :) 1], 'LineWidth', .5);
         axis equal
