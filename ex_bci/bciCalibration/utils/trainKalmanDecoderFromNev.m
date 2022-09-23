@@ -67,10 +67,13 @@ function [M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoderFro
     % this is for running FA to project the data--no need to just use the BCI
     % time points, right?
     binnedSpikesAll = cellfun(...
-            @(trialSpikeTimes, chanNums)... all the inputs
-            ... adding binSizeSamples ensures that the last point is used
-            histcounts2(trialSpikeTimes, chanNums, trialSpikeTimes(1):binSizeSamples:trialSpikeTimes(end)+binSizeSamples, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
-            spikeTimes, spikeChannels, 'uni', 0); % Considers entire trial from start of trial to end of trial
+        @(trialSpikeTimes, chanNums)... all the inputs
+        ... adding binSizeSamples ensures that the last point is used
+        ... while subtracting 0.1 is for a super corner case where a spike overlaps the last bin end
+        ... --histcounts2 includes this in the last bin (unlike what it does for every other bin);
+        ... as spike times are integers the 0.1 subtraction changes no other bins
+        histcounts2(trialSpikeTimes, chanNums, (trialSpikeTimes(1):binSizeSamples:trialSpikeTimes(end)+binSizeSamples)-0.1, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
+        spikeTimes, spikeChannels, 'uni', 0); % Considers entire trial from start of trial to end of trial
     binnedSpikesAll = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesAll, 'uni', 0);
     binnedSpikesAllConcat = cat(1, binnedSpikesAll{:});
     % Consider all timepoints as different samples and find FA space 
@@ -81,10 +84,13 @@ function [M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoderFro
     bciValidTrials = ~cellfun('isempty', bciEndIndex) & ~cellfun('isempty', bciStartIndex) & trainTrials;
     binnedSpikesBci = cell(size(spikeTimes));
     binnedSpikesBci(bciValidTrials) = cellfun(...
-            @(trialSpikeTimes, chanNums, bciStartEndTime)... all the inputs
-            ... adding binSizeSamples/2 ensures that the last point is used
-            histcounts2(trialSpikeTimes, chanNums, bciStartEndTime(1):binSizeSamples:bciStartEndTime(2)+binSizeSamples/2, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel
-            spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
+        @(trialSpikeTimes, chanNums, bciStartEndTime)... all the inputs
+        ... adding binSizeSamples/2 ensures that the last point is used
+        ... while subtracting 0.1 is for a super corner case where a spike overlaps the last bin end
+        ... --histcounts2 includes this in the last bin (unlike what it does for every other bin);
+        ... as spike times are integers the 0.1 subtraction changes no other bins
+        histcounts2(trialSpikeTimes, chanNums, (bciStartEndTime(1):binSizeSamples:bciStartEndTime(2)+binSizeSamples/2)-0.1, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel
+        spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
     binnedSpikesBci(bciValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesBci(bciValidTrials), 'uni', 0);
     %% Kalman Filter 
     binnedSpikesCurrStep = cell(size(spikeTimes));

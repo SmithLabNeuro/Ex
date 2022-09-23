@@ -28,10 +28,10 @@ for nevFlInd = 1:length(nevFilesForTrain)
     nev = [nev; nevNx];
     waves = [waves, wavesNx];
 end
-datBase = nev2dat(nevBase, 'nevreadflag', 1);
+datBase = nev2dat(nevBase, 'nevreadflag', true);
 
 [slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName);
-datStruct = nev2dat(nevLabelledData, 'nevreadflag', 1);
+datStruct = nev2dat(nevLabelledData, 'nevreadflag', true);
 
 if ~includeBaseForTrain
     datStruct = datStruct(length(datBase)+1:end);
@@ -97,7 +97,10 @@ spikeChannels = cellfun(@(spikeInfo) spikeInfo(:, 1), {trimmedDat.spikeinfo}, 'u
 binnedSpikesAll = cellfun(...
         @(trialSpikeTimes, chanNums)... all the inputs
         ... adding binSizeSamples ensures that the last point is used
-        histcounts2(trialSpikeTimes, chanNums, trialSpikeTimes(1):binSizeSamples:trialSpikeTimes(end)+binSizeSamples, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
+        ... while subtracting 0.1 is for a super corner case where a spike overlaps the last bin end
+        ... --histcounts2 includes this in the last bin (unlike what it does for every other bin);
+        ... as spike times are integers the 0.1 subtraction changes no other bins
+        histcounts2(trialSpikeTimes, chanNums, (trialSpikeTimes(1):binSizeSamples:trialSpikeTimes(end)+binSizeSamples)-0.1, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
         spikeTimes, spikeChannels, 'uni', 0);
 binnedSpikesAll = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesAll, 'uni', 0);
 binnedSpikesAllConcat = cat(1, binnedSpikesAll{:});
@@ -110,7 +113,10 @@ binnedSpikesBci = cell(size(spikeTimes));
 binnedSpikesBci(bciValidTrials) = cellfun(...
         @(trialSpikeTimes, chanNums, bciStartEndTime)... all the inputs
         ... adding binSizeSamples/2 ensures that the last point is used
-        histcounts2(trialSpikeTimes, chanNums, bciStartEndTime(1):binSizeSamples:bciStartEndTime(2)+binSizeSamples/2, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel
+        ... while subtracting 0.1 is for a super corner case where a spike overlaps the last bin end
+        ... --histcounts2 includes this in the last bin (unlike what it does for every other bin);
+        ... as spike times are integers the 0.1 subtraction changes no other bins
+        histcounts2(trialSpikeTimes, chanNums, (bciStartEndTime(1):binSizeSamples:bciStartEndTime(2)+binSizeSamples/2)-0.1, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel
         spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
 binnedSpikesBci(bciValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesBci(bciValidTrials), 'uni', 0);
    
