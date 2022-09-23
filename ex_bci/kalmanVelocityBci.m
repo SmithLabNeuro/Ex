@@ -95,9 +95,7 @@ while true
             % check if there's a new decoder or if there's an adjusted
             % velocity! (Important for calibration steps!)
             if strcmp(ctrlMsg, 'decoderParameterFile')
-                controlSocket.sender = controlCompSocket;
-                controlSocket.receiver = controlCompSocket;
-                decoderParameterFileRelativePath = receiveMessageSendAck(controlSocket);
+                decoderParameterFileRelativePath = receiveMessageSendAck(controlCompSocket);
                 decoderParameterFileRelativePath(decoderParameterFileRelativePath=='\') = '/';
 %                 decoderParameterFileRelativePath = 'satchel/21-Mar-2022/KalmanBci_14-02-09.mat';
                 decoderParameterFileFullPath = fullfile(decoderParameterLocation, decoderParameterFileRelativePath);
@@ -114,9 +112,9 @@ while true
                 goodChannelInds = ismember(okelecs, goodChannelNums);
                 fprintf('loaded new parameters from %s\n', decoderParameterFileRelativePath)
             elseif strcmp(ctrlMsg, 'requestParameters')
-                parameterName = receiveMessageSendAck(controlSocket);
+                parameterName = receiveMessageSendAck(controlCompSocket);
                 parameterValue = modelParams.(parameterName);
-                sendMessageWaitAck(controlSocket, typecast(parameterValue,'uint8'));
+                sendMessageWaitAck(controlCompSocket, typecast(parameterValue,'uint8'));
             else
                 velocity = typecast(uint8(ctrlMsg), 'double')';
 %                 fprintf('received constrained velocity\n');
@@ -214,7 +212,7 @@ while true
                     msgToSend = uint8Msg';
 %                     disp(velocity')
                     
-                    matlabUDP2('send',controlCompSocket, msgToSend);
+                    matlabUDP2('send',controlCompSocket.sender, msgToSend);
 %                     fprintf('sent unconstrained velocity\n');
                     
                     % reset the bin spikes by computing how much of the next bin

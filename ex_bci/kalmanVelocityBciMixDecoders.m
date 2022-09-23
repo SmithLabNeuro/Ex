@@ -99,10 +99,8 @@ while true
         if ~isempty(ctrlMsg)
             % check if there's a new decoder or if there's an adjusted
             % velocity! (Important for calibration steps!)
-            if strcmp(ctrlMsg, 'decoderParameterFile') 
-                controlSocket.sender = controlCompSocket;
-                controlSocket.receiver = controlCompSocket;
-                decoderParameterFileRelativePath_1 = receiveMessageSendAck(controlSocket);
+            if strcmp(ctrlMsg, 'decoderParameterFile')
+                decoderParameterFileRelativePath_1 = receiveMessageSendAck(controlCompSocket);
                 decoderParameterFileRelativePath_1(decoderParameterFileRelativePath_1=='\') = '/';
 %                 decoderParameterFileRelativePath = 'satchel/21-Mar-2022/KalmanBci_14-02-09.mat';
                 decoderParameterFileFullPath_1 = fullfile(decoderParameterLocation, decoderParameterFileRelativePath_1);
@@ -125,9 +123,7 @@ while true
                 goodChannelInds_2 = ismember(okelecs, goodChannelNums_2);
                 fprintf('loaded new parameters from %s\n', decoderParameterFileRelativePath_2)
             elseif strcmp(ctrlMsg, 'scaleIndex')
-                controlSocket.sender = controlCompSocket;
-                controlSocket.receiver = controlCompSocket;
-                scaleIndex = str2double(receiveMessageSendAck(controlSocket));  
+                scaleIndex = str2double(receiveMessageSendAck(controlCompSocket));  
                 fprintf('NEW SCALE INDEX: %d\n', scaleIndex);
             else
                 weightedVelocity = typecast(uint8(ctrlMsg), 'double')';
@@ -249,7 +245,7 @@ while true
                     msgToSend = uint8Msg';
 %                     disp(velocity')
                     
-                    matlabUDP2('send',controlCompSocket, msgToSend);
+                    matlabUDP2('send',controlCompSocket.sender, msgToSend);
 %                     fprintf('sent unconstrained velocity\n');
                     
                     % reset the bin spikes by computing how much of the next bin
