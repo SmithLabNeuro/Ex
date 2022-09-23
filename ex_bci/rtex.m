@@ -1,4 +1,4 @@
-function runBci(connectionType, inputBciParamFile)
+function rtex(connectionType, inputBciParamFile)
 
 global params codes
 exGlobals;
