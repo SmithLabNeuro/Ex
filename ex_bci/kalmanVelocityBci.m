@@ -2,8 +2,10 @@ function kalmanVelocityBci(controlCompSocket, expParams, okelecs)
 
 global params codes
 
-digitalCodeTrialStart = codes.START_TRIAL;%1;
-digitalCodeTrialEnd = codes.END_TRIAL;%255;
+digitalCodeNameBciStartsAfter = expParams.bciStartsAfterCode;
+digitalCodeTrialStart = codes.(digitalCodeNameBciStartsAfter);% could be START_TRIAL
+digitalCodeNameBciEndsBy = expParams.bciEndsByCode;
+digitalCodeTrialEnd = codes.(digitalCodeNameBciEndsBy);% could be END_TRIAL
 
 % this could be the code associated with FIX_OFF or TARG_OFF for example,
 % or it could be a BCI specific code. Leaving it open which would be
@@ -25,7 +27,7 @@ samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;%30000;
 binSizeMs = expParams.binSizeMs;%50;
 nasNetwork = expParams.nasNetwork;
 velocity = [0; 0];
-[w1, b1, w2, b2] = loadNasNet(nasNetwork);
+[nasNetParams.w1, nasNetParams.b1, nasNetParams.w2, nasNetParams.b2] = loadNasNet(nasNetwork);
 gamma = expParams.gamma;
 
 decoderParameterLocation = params.bciDecoderBasePathBciComputer;
