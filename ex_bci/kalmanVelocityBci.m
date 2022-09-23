@@ -34,7 +34,14 @@ msPerS = 1000;
 samplesPerBin = binSizeMs/msPerS*samplesPerSecond;
 
 binSpikeCountOverall = zeros(length(okelecs),1);
+binSpikeCountNextOverall = zeros(length(okelecs), 1);
 delValues = '';
+
+tmstpNasSpkAll = [];
+binCntNasTrial = {};
+allTmstmpAll = {};
+tmstpInit = [];
+waveforms = [];
 
 % grab events
 % [count,tmstp,events]=xippmex('digin');
@@ -120,16 +127,31 @@ while true
 %                 fprintf('received constrained velocity\n');
             end
         end
+        % buffering issues cause weird timing--specifically, some channels
+        % will have smaller timestamps then the previous call of other
+        % channels; I think the smaller the buffer the less this is a
+        % problem, so for now calling this every cycle I think is a good
+        % idea
+        prevTmstpInit = tmstpInit;
+        prevWaveforms = waveforms;
+        [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
+
         if ~isempty(modelParams)
             % in case we have two starts/ends, we only want the start related to the current trial
                         
             if ~isempty(tstpBciStart)
                 disp('bci start')
                 timePtBciStarted = tmstpPrlEvt(tstpBciStart);
+%                 tstpBciStartStored = tmstpPrlEvt
+%                 timePtBciStarted
+%                 binSpkCntTrial = zeros(length(goodChannelNums), 0);
+%                 allTmstmpTrl = [];
                 timePtBciStarted = timePtBciStarted(timePtBciStarted>timePtStarted);
                 timePtBinStart = timePtBciStarted;
                 binSpikeCountOverall = zeros(length(goodChannelNums), 1);
+                binSpikeCountNextOverall = zeros(length(goodChannelNums), 1);
                 bciStart = true;
+                bciJustStarted = true; % important for grabbing any early spikes
             end
             if ~isempty(tstpBciEnd)
                 timePtBciEnd = tmstpPrlEvt(tstpBciEnd);
@@ -138,35 +160,49 @@ while true
             
             if timePtBciEnd > timePtBciStarted
                 if bciStart
+%                     binCntNasTrial = [binCntNasTrial binSpkCntTrial];
+%                     allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
                     disp('bci end in trial')
                 end
                 bciStart = false;
                 velocity = [0; 0];
             end
-            
             if bciStart
                 % Note to self: would it work to set okelecs to
                 % goodChannels in some way?
-                [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
                 
                 
                 % only use data from channels that were good for
                 % calibration
-                tmstpGoodChSpk = tmstpInit(goodChannelInds);
-                waveforms = waveforms(goodChannelInds);
+%                 tmstpGoodChSpk = tmstpInit(goodChannelInds);
+%                 allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
+                
                 
                 % run waveforms through NAS net
-                tmstpNasSpk = cellfun(@(wvForms, tms) tms(runNASNetContinuous(w1, b1, w2, b2, wvForms, gamma)), waveforms, tmstpGoodChSpk, 'uni', 0);
-%                 tmstp = cellfun(@(wvForms, tms) tms, waveforms, tmstp, 'uni', 0);
-                spikesThisBinByChannel = cellfun(@(x) x>timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpNasSpk, 'uni', 0);
-                %                 waveformsThisBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesThisBinByChannel, 'uni', 0);
-                spikesNextBinByChannel = cellfun(@(x) x>timePtBinStart+samplesPerBin, tmstpNasSpk, 'uni', 0);
-                %                 waveformsNextBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesNextBinByChannel, 'uni', 0);
-                countsPerChannelCell = cellfun(@(x) sum(x, 2), spikesThisBinByChannel, 'uni', 0);
-                countsExistChannel = ~cellfun('isempty', countsPerChannelCell);
-                countsPerChannel = zeros(length(countsPerChannelCell), 1);
-                countsPerChannel(countsExistChannel) = [countsPerChannelCell{countsExistChannel}];
+%                 tmstpNasSpk = cellfun(@(wvForms, tms) tms(runNASNetContinuous(w1, b1, w2, b2, wvForms, gamma)), waveforms, tmstpGoodChSpk, 'uni', 0);
+% %                 tmstpNasSpkAll = [tmstpNasSpkAll tmstpNasSpk];
+% %                 tmstp = cellfun(@(wvForms, tms) tms, waveforms, tmstp, 'uni', 0);
+%                 spikesThisBinByChannel = cellfun(@(x) x>=timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpNasSpk, 'uni', 0);
+%                 %                 waveformsThisBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesThisBinByChannel, 'uni', 0);
+%                 spikesNextBinByChannel = cellfun(@(x) x>=timePtBinStart+samplesPerBin, tmstpNasSpk, 'uni', 0);
+%                 %                 waveformsNextBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesNextBinByChannel, 'uni', 0);
+%                 countsPerChannelCell = cellfun(@(x) sum(x, 2), spikesThisBinByChannel, 'uni', 0);
+%                 countsExistChannel = ~cellfun('isempty', countsPerChannelCell);
+%                 countsPerChannel = zeros(length(countsPerChannelCell), 1);
+%                 countsPerChannel(countsExistChannel) = [countsPerChannelCell{countsExistChannel}];
+                if bciJustStarted
+                    [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(prevTmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, prevWaveforms, gamma);
+                    binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
+                    % this'll likely just be zero most of the time, but on bin
+                    % edges it'll be needed
+                    binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
+                    bciJustStarted = false;
+                end
+                [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, waveforms, gamma);
                 binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
+                % this'll likely just be zero most of the time, but on bin
+                % edges it'll be needed
+                binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
                 
                 % allTmstps is being used to check bin turnover, rather
                 % than counting spikes, so we want to see as many
@@ -176,30 +212,40 @@ while true
                 % good bin cutoffs)
                 allTmstps = cat(2, tmstpInit{:}, tmstpPrlEvt);
                 if any(allTmstps>(timePtBinStart+2*samplesPerBin))
-                    if any(allTmstps<=(timePtBinStart+samplesPerBin))
-                        % this might happen if the recorded waveforms come from this
-                        % bin, include the next bin, and also have waveforms from two
-                        % bins after...
-                        fprintf('furthest out sample (shooould be less than %d) is %d\n', samplesPerBin, max(allTmstps)-timePtBinStart)
-                        %                     warning('BCI code is running too slow for bin time...')
-                        
-                        %                     fprintf('prl read ran in %0.3f secs\n', prlTm);
-                        %                     fprintf('loop ran in %0.3f secs\n', loopTmAll);
-%                     fprintf('loop current is taking %0.3f secs\n', toc(loopTm));
-
-                    else
-                        fprintf('why am I here?\n');
-%                         timePtBinStart = timePtBinStart + samplesPerBin * floor(max(allTmstps - timePtBinStart)/samplesPerBin);
-                    end
+                    % this might happen if the recorded waveforms include
+                    % the next bin, and also have waveforms from two bins
+                    % after, but we're noting we should really expect at
+                    % most samples in the next bin
+                    fprintf('furthest out sample (shooould be less than %d at most) is %d\n', 2*samplesPerBin, max(allTmstps)-timePtBinStart)
                 end
+                
+                % by checking whether there are timestamps from the *next*
+                % bin, we confirm that we've completed the current bin and
+                % can send off info
                 if any(allTmstps>(timePtBinStart+samplesPerBin))
                     if ~any(allTmstps<=(timePtBinStart+samplesPerBin))
-                        fprintf('(samples, time) past bin end: (%d, %d ms)\n', min(allTmstps-(timePtBinStart+samplesPerBin)), max(allTmstps-(timePtBinStart+samplesPerBin))/samplesPerSecond*msPerS);
+                        fprintf('max (samples, time) past bin end: (%d, %0.2d ms)\n', max(allTmstps-(timePtBinStart+samplesPerBin)), max(allTmstps-(timePtBinStart+samplesPerBin))/samplesPerSecond*msPerS);
                     end
-                    % by checking whether there are timestamps from the
-                    % *next* bin, we confirm that we've completed the
-                    % current bin and can send off info
+                    
+                    % but actually xippmex kind of lies because of how
+                    % threshold crossings are built up--it cycles through
+                    % each channel and updates the buffer, so sometimes one
+                    % channel has spikes from the next bin but another
+                    % channel hasn't quite buffered its own spikes from the
+                    % *current* bin. Hopefully by calling xippmex one more
+                    % time we can catch those extra spikes and make it
+                    % vanishingly unlikely that we miss something...
+                    [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
+%                     allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
+                    [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, waveforms, gamma);
+                    % scoop up last current bin spikes and grow the next
+                    % bin spikes
+                    binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
+                    binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
+                    
                     meanSpikeCount = mean(binSpikeCountOverall,2);
+%                     binSpkCntTrial = [binSpkCntTrial meanSpikeCount];
+%                     tmstpNasSpkAll = [];
                     
 %                     rrMat = [cosd(135) -sind(135); sind(135) cosd(135)];
 %                     rotMat = rrMat * rotMat;
@@ -215,12 +261,22 @@ while true
                     matlabUDP2('send',controlCompSocket.sender, msgToSend);
 %                     fprintf('sent unconstrained velocity\n');
                     
-                    % reset the bin spikes by computing how much of the next bin
-                    % was captured here, and shift the starting point
-                    countsPerChannelNextBin = zeros(size(binSpikeCountOverall));
-                    emptyNextBin = cellfun('isempty', spikesNextBinByChannel);
-                    countsPerChannelNextBin(~emptyNextBin) = cellfun(@(x) sum(x, 2), spikesNextBinByChannel(~emptyNextBin));
-                    binSpikeCountOverall = countsPerChannelNextBin;
+%                     xoutBase = repmat('0', 8, 8);
+%                     bl = dec2bin(typecast(binSpikeCountOverall(1), 'uint8'));
+%                     xoutBase(:, 8-size(bl, 2)+1:8) = bl;
+%                     xout = double(xoutBase(:))-48;
+%                     for i = 2:length(binSpikeCountOverall)
+%                         xoutBase = repmat('0', 8, 8);
+%                         bl = dec2bin(typecast(binSpikeCountOverall(i), 'uint8'));
+%                         xoutBase(:, 8-size(bl, 2)+1:8) = bl;
+%                         xout = xor(double(xoutBase(:))-48, xout);
+%                     end
+%                     find(xout)'
+
+                    % the current bin is now what was the next bin before
+                    binSpikeCountOverall = binSpikeCountNextOverall;
+                    % zero out the counts for the next bin
+                    binSpikeCountNextOverall(:) = 0;
                     timePtBinStart = timePtBinStart+samplesPerBin;
                 end
             end
