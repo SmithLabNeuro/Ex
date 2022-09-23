@@ -23,10 +23,12 @@ x = removeBlanks(x);
 
 % name,repeats,ex,bgcolor must in stimulus
 mainAtt = squeeze(struct2cell(x.Attributes));
-checkAtt = {'name','repeats','ex','bgColor'};
+checkAtt = {'name','repeats','ex','bgColor','bciStyle'};
 for i = 1:length(checkAtt)
     if isempty(find(strcmp(mainAtt,checkAtt{i}),1))
-        error('Missing main attributes:%s',checkAtt{i});
+        if ~(strcmp(checkAtt{i}, 'bciStyle') && ~contains(machine, 'bci'))
+            error('Missing main attributes:%s',checkAtt{i});
+        end
     end
 end
 
@@ -314,6 +316,9 @@ params.rpts = str2double(cell2mat(mainAtt(2,strcmp('repeats',mainAtt(1,:)))));
 params.exFileName = cell2mat(mainAtt(2,strcmp('ex',mainAtt(1,:))));
 if (isempty(find(strcmp(allName,'bgColor'), 1)) && isempty(find(strcmp(subjectName,'bgColor'), 1)))
     params.bgColor = cell2mat(mainAtt(2,strcmp('bgColor',mainAtt(1,:))));
+end
+if contains(machine, 'bci')
+    params.bciStyle = cell2mat(mainAtt(2,strcmp('bciStyle',mainAtt(1,:))));
 end
 
 if ~isempty(randomIndex)

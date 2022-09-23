@@ -79,11 +79,14 @@ while true
             xmlParameterFolder = params.bciDecoderXmlParamFolder;
             bciParamFile = fullfile(decoderParameterLocation, xmlParameterFolder, bciParamFile);
         end
-        [~, expParams, ~, ~] = readExperiment(bciParamFile, subject);
+        [~,machineInit] = system('hostname');
+        machine = lower(deblank(cell2mat(regexp(machineInit,'^[^\.]+','match'))));
+        [~, expParams, ~, ~] = readExperiment(bciParamFile, subject, machine);
+        bciWrapper = str2func([expParams(1).bciStyle 'Bci']);
         % bciFunction does ALL the work, and when it finished it pops us
         % back out here
-        bciFunction = str2func(expParams(1).exFileName);
-        bciFunction(controlCompSocket, expParams, okelecs)
+%         bciFunction = str2func(expParams(1).exFileName);
+        bciWrapper(controlCompSocket, expParams, okelecs)
         disp('BCI function done running, waiting for next one')
     end
     
