@@ -97,7 +97,7 @@ if isfield(params, 'keyboardName')
                     typingNotes = false;
                     updateNotes = true;
                     % update the session with any notes that have been written
-                    sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d ', notes, sessionInfo));
+                    sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionInfo, params.SubjectID));
                     % NOTE: you might think the below is a good idea, but
                     % it is not. It kills the ability to do any inputs to
                     % the trial. Kthx.

@@ -13,10 +13,10 @@ newSessionNumber = lastSessionNumber{1} + 1;
 % to dates and times on computers who knows.)
 infoPossiblyRelated = sqlDb.fetch(sprintf(['SELECT experiment_info.rowid, '... rowid from experiment_info (not experiment_session) to help identify row
     '(strftime(''%%s'', ''now'', ''localtime'') - strftime(''%%s'',start_time))/3600 '... find the number of HOURS between now and the task starts
-    'FROM experiment_info JOIN experiment_session '... we need some stuff from experiment_session as well (namely, the animal), so we're joining tables here
+    'FROM experiment_info LEFT OUTER JOIN experiment_session '... we need some stuff from experiment_session as well (namely, the animal), so we're joining tables here
     'ON experiment_info.session=experiment_session.session_number '... joining on the session being correct
     'WHERE datetime(start_time) >= datetime(''now'', ''-1 day'', ''localtime'') AND '... only grabbing sessions in the past 24 hours
-    'experiment_session.animal=''%s'''], params.SubjectID)); % grabbing sessions for the specific animal
+    'experiment_info.animal=''%s'''], params.SubjectID)); % grabbing sessions for the specific animal
 
 % here's to check if, even if there are no experiments within 1 day, there
 % was an experiment_session *from today* (could happen if we run runex
@@ -47,7 +47,8 @@ elseif ~isempty(infoPossiblyRelated)
         % appropriate? I mean... unless you run a monkey twice in one day
         % and consider it a different session...)
         infoId = infoPossiblyRelated{sortedHours<12, 1};
-        sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d AND experiment_session.animal=''%s''', infoId, params.SubjectID));
+        % 'SELECT session_number, ifnull(notes,"") FROM experiment_session JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = 1958 AND experiment_session.animal='satchel''
+        sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session LEFT OUTER JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d AND experiment_info.animal=''%s''', infoId, params.SubjectID));
         sessionInfo = sessionAllInfo{1};
         sessionNotes = sessionAllInfo{2};
     elseif any(sortedHours<16)
