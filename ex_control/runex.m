@@ -543,9 +543,9 @@ end
 
 % Open a double buffered fullscreen window
 if debug
-    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 500]);
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 600]);
 else
-    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 500]);
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 600]);
 %     [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber,gray);
 end
 
