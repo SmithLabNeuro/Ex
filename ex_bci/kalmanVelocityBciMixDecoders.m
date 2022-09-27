@@ -99,10 +99,8 @@ while true
         if ~isempty(ctrlMsg)
             % check if there's a new decoder or if there's an adjusted
             % velocity! (Important for calibration steps!)
-            if strcmp(ctrlMsg, 'decoderParameterFile') 
-                controlSocket.sender = controlCompSocket;
-                controlSocket.receiver = controlCompSocket;
-                decoderParameterFileRelativePath_1 = receiveMessageSendAck(controlSocket);
+            if strcmp(ctrlMsg, 'decoderParameterFile')
+                decoderParameterFileRelativePath_1 = receiveMessageSendAck(controlCompSocket);
                 decoderParameterFileRelativePath_1(decoderParameterFileRelativePath_1=='\') = '/';
 %                 decoderParameterFileRelativePath = 'satchel/21-Mar-2022/KalmanBci_14-02-09.mat';
                 decoderParameterFileFullPath_1 = fullfile(decoderParameterLocation, decoderParameterFileRelativePath_1);
@@ -125,9 +123,7 @@ while true
                 goodChannelInds_2 = ismember(okelecs, goodChannelNums_2);
                 fprintf('loaded new parameters from %s\n', decoderParameterFileRelativePath_2)
             elseif strcmp(ctrlMsg, 'scaleIndex')
-                controlSocket.sender = controlCompSocket;
-                controlSocket.receiver = controlCompSocket;
-                scaleIndex = str2double(receiveMessageSendAck(controlSocket));  
+                scaleIndex = str2double(receiveMessageSendAck(controlCompSocket));  
                 fprintf('NEW SCALE INDEX: %d\n', scaleIndex);
             else
                 weightedVelocity = typecast(uint8(ctrlMsg), 'double')';
@@ -177,9 +173,9 @@ while true
                 % run waveforms through NAS net
                 tmstpNasSpk_1 = cellfun(@(wvForms, tms) tms(runNASNetContinuous(w1, b1, w2, b2, wvForms, gamma_1)), waveforms_1, tmstpGoodChSpk_1, 'uni', 0);
 %                 tmstp = cellfun(@(wvForms, tms) tms, waveforms, tmstp, 'uni', 0);
-                spikesThisBinByChannel_1 = cellfun(@(x) x>timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpNasSpk_1, 'uni', 0);
+                spikesThisBinByChannel_1 = cellfun(@(x) x>=timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpNasSpk_1, 'uni', 0);
                 %                 waveformsThisBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesThisBinByChannel, 'uni', 0);
-                spikesNextBinByChannel_1 = cellfun(@(x) x>timePtBinStart+samplesPerBin, tmstpNasSpk_1, 'uni', 0);
+                spikesNextBinByChannel_1 = cellfun(@(x) x>=timePtBinStart+samplesPerBin, tmstpNasSpk_1, 'uni', 0);
                 %                 waveformsNextBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesNextBinByChannel, 'uni', 0);
                 countsPerChannelCell_1 = cellfun(@(x) sum(x, 2), spikesThisBinByChannel_1, 'uni', 0);
                 countsExistChannel_1 = ~cellfun('isempty', countsPerChannelCell_1);
@@ -191,9 +187,9 @@ while true
                 % Do same thing but for second set of waveforms
                 tmstpNasSpk_2 = cellfun(@(wvForms, tms) tms(runNASNetContinuous(w1, b1, w2, b2, wvForms, gamma_2)), waveforms_2, tmstpGoodChSpk_2, 'uni', 0);
 %                 tmstp = cellfun(@(wvForms, tms) tms, waveforms, tmstp, 'uni', 0);
-                spikesThisBinByChannel_2 = cellfun(@(x) x>timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpNasSpk_2, 'uni', 0);
+                spikesThisBinByChannel_2 = cellfun(@(x) x>=timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpNasSpk_2, 'uni', 0);
                 %                 waveformsThisBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesThisBinByChannel, 'uni', 0);
-                spikesNextBinByChannel_2 = cellfun(@(x) x>timePtBinStart+samplesPerBin, tmstpNasSpk_2, 'uni', 0);
+                spikesNextBinByChannel_2 = cellfun(@(x) x>=timePtBinStart+samplesPerBin, tmstpNasSpk_2, 'uni', 0);
                 %                 waveformsNextBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesNextBinByChannel, 'uni', 0);
                 countsPerChannelCell_2 = cellfun(@(x) sum(x, 2), spikesThisBinByChannel_2, 'uni', 0);
                 countsExistChannel_2 = ~cellfun('isempty', countsPerChannelCell_2);
@@ -249,7 +245,7 @@ while true
                     msgToSend = uint8Msg';
 %                     disp(velocity')
                     
-                    matlabUDP2('send',controlCompSocket, msgToSend);
+                    matlabUDP2('send',controlCompSocket.sender, msgToSend);
 %                     fprintf('sent unconstrained velocity\n');
                     
                     % reset the bin spikes by computing how much of the next bin
