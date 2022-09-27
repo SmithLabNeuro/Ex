@@ -146,13 +146,15 @@ sendCode(posShiftY);
 
  % compute how close the cursor is to the target
  relPos = ([targX; targY] - cursorPos);
- distToTarget = sqrt(sum(relPos.^2));
  
  switch size(targRadius,1)
      case 1 %circular window
+         distToTarget = sqrt(sum(relPos.^2));
          success = distToTarget < targWinCursRad;
      case 2 %rectangular window
-         success = all(abs(distToTarget)<abs(targRadius),1);
+         success = all(abs(relPos)<abs(targRadius),1);
+     case 3 % rotated rectangle
+         success = all(abs(relPos)<abs(targRadius),1);
      otherwise
          error('EX:waitForFixation:badRadius','Radius must have exactly 1 or 2 rows');
  end
