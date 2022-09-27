@@ -59,38 +59,49 @@ loopTimeDiff = min(loopNow - loopTimeLast, binSizeS);
 % disp(loopTimeDiff)
 
 
-success = 0; % this function just plots in the background, so no fails!
-if matlabUDP2('check', bciSockets.sender)
+receivedMsg = '';
+% this while loop ensures we only get the latest update from the BCI
+% computer, as opposed to being stuck in previous ones, which might cause
+% jumpiness if the control computer isn't fast enough
+ind2 = 0;
+while matlabUDP2('check', bciSockets.sender)
     receivedMsg = matlabUDP2('receive', bciSockets.sender);
-    if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
-        % compute the new cursor position (and don't let it get out of the bounding
-        % box)
-        try
-            velocityNew = typecast(uint8(receivedMsg), 'double')';
-        catch err
-            b = err;
-            keyboard
-        end
-        % constrain the velocity based on automonkey/passive assist
-        centerToTargetVel = centerToTargetBciScale * velocityNew' * normVecCenterToTarget;
-        orthVel = orthogonalBciScale * velocityNew' * normVecOrth;
-        velocityCurr = centerToTargetVel*normVecCenterToTarget + orthVel*normVecOrth + centerOutAssistVel;
-        
-        % send the constrained velocity back to the BCI computer; no heads
-        % up messages or receive accept messages so that the loop can be
-        % tight--but the BCI computer better be ready to receive what we're
-        % sending!
-        try
-            uint8Msg = typecast(velocityCurr, 'uint8');
-        catch err
-            a = err;
-            keyboard
-        end
-        sendMessageWaitAck(bciSockets, uint8Msg');
-        
-    else
-        disp('message waiting but not received?')
+    ind2 = ind2+1;
+end
+if ind2>1
+ind2
+ind2
+ind2
+ind2
+ind2
+end
+if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
+    % compute the new cursor position (and don't let it get out of the bounding
+    % box)
+    try
+        velocityFromBci = typecast(uint8(receivedMsg), 'double')';
+    catch err
+        b = err;
+        keyboard
     end
+    % constrain the velocity based on automonkey/passive assist
+    centerToTargetVel = centerToTargetBciScale * velocityFromBci' * normVecCenterToTarget;
+    orthVel = orthogonalBciScale * velocityFromBci' * normVecOrth;
+    velocityCurr = centerToTargetVel*normVecCenterToTarget + orthVel*normVecOrth + centerOutAssistVel;
+    
+%     % send the constrained velocity back to the BCI computer; no heads
+%     % up messages or receive accept messages so that the loop can be
+%     % tight--but the BCI computer better be ready to receive what we're
+%     % sending!
+%     try
+%         uint8Msg = typecast(velocityCurr, 'uint8');
+%     catch err
+%         a = err;
+%         keyboard
+%     end
+%     sendMessageWaitAck(bciSockets, uint8Msg');
+else
+    velocityFromBci = velocityCurr;
 end
 
 
@@ -101,8 +112,17 @@ cursorPosLimited = signCursor.*min(pixBoxLimit, abs(cursorPosNew));
 posPixelChangeLimit = cursorPosLimited - cursorPos;
 if ~all(abs(posPixelChangeLimit - posPixelChange)<1e-10)
     velocityCurr = posPixelChangeLimit/loopTimeDiff;
-    % send the constrained velocity (now because of the border!) back to
-    % the BCI computer;
+
+    cursorPos = cursorPosLimited;
+else
+    cursorPos = cursorPosNew;
+end
+
+% send the constrained velocity (from both passive assist and border
+% limitations back to the BCI computer; no heads up messages or receive
+% accept messages so that the loop can be tight--but the BCI computer
+% better be ready to receive what we're sending!
+if ~isequal(velocityFromBci, velocityCurr)
     try
         uint8Msg = typecast(velocityCurr, 'uint8');
     catch err
@@ -110,10 +130,8 @@ if ~all(abs(posPixelChangeLimit - posPixelChange)<1e-10)
         keyboard
     end
     sendMessageWaitAck(bciSockets, uint8Msg');
-    cursorPos = cursorPosLimited;
-else
-    cursorPos = cursorPosNew;
 end
+
 
 
 % I think this posShift, a double, gets cast to an int in
