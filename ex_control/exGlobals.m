@@ -97,7 +97,7 @@ params.eyeSmoothing = 5; % 0 for no smoothing, numbers >= 1 are in msec
 params.eyeHistoryBufferSize = 200; %in samples (duration depends on how fast "samp" is called)
 params.drawSaccades = true;
 % used to check hold on joystick
-params.hallEffectZBaseline = 2.5209e+03; % found manually... could consider having a calibration step going forward
+params.hallEffectZBaseline = 2.6409e+03; % found manually... could consider having a calibration step going forward
 params.hallEffectZRotationAngleMaxDegree = 45; % from specs
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
