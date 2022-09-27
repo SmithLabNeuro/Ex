@@ -14,6 +14,7 @@ yVal = yVal * pixBoxLimit;
 cursorPos = [xVal, yVal]; 
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
 
+
 % global button
 
 % check that x, y, and z position are at desired hold positions
@@ -44,9 +45,20 @@ if (xySmallEnough && angLargeEnough)%buttonPress ||
 end
 
 cursorR = 5;
+cursorIndicatorAngle = 20; % degree wedge
+cursAngDispWedgeVals = [cursorR, cursorIndicatorAngle/2, zValAng]';
+
 yellow  = [255 255 0];
 winColors = yellow;
 msgStr = '';
+numWindows = 3;
+maxSizeInfoVals = 3;
+sizeInfo = nan(maxSizeInfoVals, numWindows);
+sizeInfo(1:length(distanceTolerance),1) = distanceTolerance;
+sizeInfo(1:length(cursorR),2) = cursorR;
+sizeInfo(1:length(cursAngDispWedgeVals),3) = cursAngDispWedgeVals;
+
 % drawFixationWindows([positionXHold cursorPosDisp(1)], [positionYHold cursorPosDisp(2)], [distanceTolerance cursorR],winColors);
-fixWinOutput = {[positionXHold cursorPosDisp(1)], [positionYHold cursorPosDisp(2)], [distanceTolerance cursorR],winColors};
+% fixWinOutput = {[positionXHold cursorPosDisp(1)], [positionYHold cursorPosDisp(2)], [distanceTolerance cursorR],winColors};
+fixWinOutput = {[positionXHold cursorPosDisp(1) cursorPosDisp(1)], [positionYHold cursorPosDisp(2) cursorPosDisp(2)], sizeInfo,winColors};
 
