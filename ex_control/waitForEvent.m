@@ -183,8 +183,13 @@ end
 if runOnceMore && ~successIfTimeElapsed
     loopTop = GetSecs;
     funcSuccess = zeros(1,length(eventCheckerFunction));
+    extraFuncOutput = cell(1, length(eventCheckerFunction));
     for funcInd = 1:length(eventCheckerFunction)
-        funcSuccess(funcInd) = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+        if nargout(eventCheckerFunction{funcInd}) == 4
+            [funcSuccess(funcInd), ~, ~, extraFuncOutput{funcInd}] = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+        else
+            funcSuccess(funcInd) = eventCheckerFunction{funcInd}(loopStart, loopTop, eventFunctionInputs{funcInd}{:});
+        end
     end
     
     if all(funcSuccess)

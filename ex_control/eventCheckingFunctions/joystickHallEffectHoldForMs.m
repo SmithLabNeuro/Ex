@@ -1,4 +1,4 @@
-function [success, msgStr, fixWinOutput] = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, msHold, successUnlessFail)
+function [success, msgStr, fixWinOutput, funcOutputs] = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, msHold, successUnlessFail)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
 global codes
@@ -74,6 +74,7 @@ sizeInfo(1:length(cursorR),2) = cursorR;
 sizeInfo(1:length(cursAngDispWedgeVals),3) = cursAngDispWedgeVals;
 fixWinOutput = {[positionXHold cursorPosDisp(1) cursorPosDisp(1)], [positionYHold cursorPosDisp(2) cursorPosDisp(2)], sizeInfo,winColors};
 
+funcOutputs = zValAng;
 end
 
 function passTolCheck = checkWithinTolerance(actual, expected, tolerance, checkInIfTrue)

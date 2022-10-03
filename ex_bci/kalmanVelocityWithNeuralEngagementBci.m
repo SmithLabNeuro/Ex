@@ -1,4 +1,4 @@
-function kalmanVelocityBci(controlCompSocket, expParams, okelecs)
+function kalmanVelocityWithNeuralEngagementBci(controlCompSocket, expParams, okelecs)
 
 global params codes
 
@@ -27,8 +27,10 @@ samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;%30000;
 binSizeMs = expParams.binSizeMs;%50;
 nasNetwork = expParams.nasNetwork;
 velocity = [0; 0];
-[nasNetParams.w1, nasNetParams.b1, nasNetParams.w2, nasNetParams.b2] = loadNasNet(nasNetwork);
+[nasNet.w1, nasNet.b1, nasNet.w2, nasNet.b2] = loadNasNet(nasNetwork);
 gamma = expParams.gamma;
+numBinsPrevNeZscAvg = expParams.numBinsPrevNeZscAvg;
+neuralEngagementValueZscoredPrev = zeros(1, numBinsPrevNeZscAvg);
 
 decoderParameterLocation = params.bciDecoderBasePathBciComputer;
 
@@ -37,11 +39,8 @@ samplesPerBin = binSizeMs/msPerS*samplesPerSecond;
 
 binSpikeCountOverall = zeros(length(okelecs),1);
 binSpikeCountNextOverall = zeros(length(okelecs), 1);
-delValues = '';
 
-tmstpNasSpkAll = [];
-binCntNasTrial = {};
-allTmstmpAll = {};
+delValues = '';
 tmstpInit = [];
 waveforms = [];
 
@@ -65,6 +64,9 @@ while true
     tstpTrlStart = find(prlEvents==digitalCodeTrialStart);
     tstpTrlEnd = find(prlEvents==digitalCodeTrialEnd);
     tstpBciStart = find(prlEvents==digitalCodeBciStart);
+    if length(tstpBciStart) > 1
+        keyboard
+    end
     tstpBciEnd = find(prlEvents==digitalCodeBciEnd);
     prlTm = toc(a);
     
@@ -97,6 +99,7 @@ while true
         trialStarted = false;
         bciStart = false;
         velocity = [0; 0];
+        neuralEngagementValueZscoredPrev = zeros(1, numBinsPrevNeZscAvg);
     end
   
     if trialStarted
@@ -112,6 +115,14 @@ while true
                 M0 = modelParams.M0;
                 M1 = modelParams.M1;
                 M2 = modelParams.M2;
+                interpolatedConditionMeans = modelParams.interpolatedConditionMeans;
+                interpolatedNeuralEngagementAxes = modelParams.interpolatedNeuralEngagementAxes;
+                interpolatedNeuralEngagementValueMeans = modelParams.interpolatedNeuralEngagementValueMeans;
+                interpolatedNeuralEngagementValueStds = modelParams.interpolatedNeuralEngagementValueStds;
+                d = modelParams.d;
+                betaOrthNorm = modelParams.betaOrthNorm;
+                zScoreSpikesMat = modelParams.zScoreSpikesMat;
+                    
                 if isfield(modelParams, 'rotMat')
                     rotMat = modelParams.rotMat;
                 else
@@ -129,6 +140,7 @@ while true
 %                 fprintf('received constrained velocity\n');
             end
         end
+        
         % buffering issues cause weird timing--specifically, some channels
         % will have smaller timestamps then the previous call of other
         % channels; I think the smaller the buffer the less this is a
@@ -138,16 +150,12 @@ while true
         prevWaveforms = waveforms;
         [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
 
+        
         if ~isempty(modelParams)
             % in case we have two starts/ends, we only want the start related to the current trial
-                        
             if ~isempty(tstpBciStart)
                 disp('bci start')
                 timePtBciStarted = tmstpPrlEvt(tstpBciStart);
-%                 tstpBciStartStored = tmstpPrlEvt
-%                 timePtBciStarted
-%                 binSpkCntTrial = zeros(length(goodChannelNums), 0);
-%                 allTmstmpTrl = [];
                 timePtBciStarted = timePtBciStarted(timePtBciStarted>timePtStarted);
                 timePtBinStart = timePtBciStarted;
                 binSpikeCountOverall = zeros(length(goodChannelNums), 1);
@@ -162,27 +170,26 @@ while true
             
             if timePtBciEnd > timePtBciStarted
                 if bciStart
-%                     binCntNasTrial = [binCntNasTrial binSpkCntTrial];
-%                     allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
                     disp('bci end in trial')
                 end
                 bciStart = false;
                 velocity = [0; 0];
+                neuralEngagementValueZscoredPrev = zeros(1, numBinsPrevNeZscAvg);
             end
+            
             if bciStart
                 % Note to self: would it work to set okelecs to
                 % goodChannels in some way?
+%                 [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
                 
                 
                 % only use data from channels that were good for
                 % calibration
 %                 tmstpGoodChSpk = tmstpInit(goodChannelInds);
-%                 allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
-                
-                
-                % run waveforms through NAS net
+%                 waveforms = waveforms(goodChannelInds);
+%                 
+%                 % run waveforms through NAS net
 %                 tmstpNasSpk = cellfun(@(wvForms, tms) tms(runNASNetContinuous(w1, b1, w2, b2, wvForms, gamma)), waveforms, tmstpGoodChSpk, 'uni', 0);
-% %                 tmstpNasSpkAll = [tmstpNasSpkAll tmstpNasSpk];
 % %                 tmstp = cellfun(@(wvForms, tms) tms, waveforms, tmstp, 'uni', 0);
 %                 spikesThisBinByChannel = cellfun(@(x) x>=timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpNasSpk, 'uni', 0);
 %                 %                 waveformsThisBinByChannel = cellfun(@(wvFrm, spksInBin) wvFrm(spksInBin, :), waveforms, spikesThisBinByChannel, 'uni', 0);
@@ -192,15 +199,16 @@ while true
 %                 countsExistChannel = ~cellfun('isempty', countsPerChannelCell);
 %                 countsPerChannel = zeros(length(countsPerChannelCell), 1);
 %                 countsPerChannel(countsExistChannel) = [countsPerChannelCell{countsExistChannel}];
+%                 binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
                 if bciJustStarted
-                    [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(prevTmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, prevWaveforms, gamma);
+                    [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(prevTmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNet, prevWaveforms, gamma);
                     binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
                     % this'll likely just be zero most of the time, but on bin
                     % edges it'll be needed
                     binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
                     bciJustStarted = false;
-                end
-                [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, waveforms, gamma);
+                end                
+                [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNet, waveforms, gamma);
                 binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
                 % this'll likely just be zero most of the time, but on bin
                 % edges it'll be needed
@@ -214,11 +222,21 @@ while true
                 % good bin cutoffs)
                 allTmstps = cat(2, tmstpInit{:}, tmstpPrlEvt);
                 if any(allTmstps>(timePtBinStart+2*samplesPerBin))
-                    % this might happen if the recorded waveforms include
-                    % the next bin, and also have waveforms from two bins
-                    % after, but we're noting we should really expect at
-                    % most samples in the next bin
-                    fprintf('furthest out sample (shooould be less than %d at most) is %d\n', 2*samplesPerBin, max(allTmstps)-timePtBinStart)
+                    if any(allTmstps<=(timePtBinStart+samplesPerBin))
+                        % this might happen if the recorded waveforms come from this
+                        % bin, include the next bin, and also have waveforms from two
+                        % bins after...
+                        fprintf('furthest out sample (shooould be less than %d) is %d\n', samplesPerBin, max(allTmstps)-timePtBinStart)
+                        %                     warning('BCI code is running too slow for bin time...')
+                        
+                        %                     fprintf('prl read ran in %0.3f secs\n', prlTm);
+                        %                     fprintf('loop ran in %0.3f secs\n', loopTmAll);
+%                     fprintf('loop current is taking %0.3f secs\n', toc(loopTm));
+
+                    else
+                        fprintf('why am I here?\n');
+%                         timePtBinStart = timePtBinStart + samplesPerBin * floor(max(allTmstps - timePtBinStart)/samplesPerBin);
+                    end
                 end
                 
                 % by checking whether there are timestamps from the *next*
@@ -226,10 +244,9 @@ while true
                 % can send off info
                 if any(allTmstps>(timePtBinStart+samplesPerBin))
                     if ~any(allTmstps<=(timePtBinStart+samplesPerBin))
-                        fprintf('max (samples, time) past bin end: (%d, %0.2d ms)\n', max(allTmstps-(timePtBinStart+samplesPerBin)), max(allTmstps-(timePtBinStart+samplesPerBin))/samplesPerSecond*msPerS);
+                        fprintf('(samples, time) past bin end: (%d, %d ms)\n', min(allTmstps-(timePtBinStart+samplesPerBin)), max(allTmstps-(timePtBinStart+samplesPerBin))/samplesPerSecond*msPerS);
                     end
-                    
-                    % but actually xippmex kind of lies because of how
+                     % but actually xippmex kind of lies because of how
                     % threshold crossings are built up--it cycles through
                     % each channel and updates the buffer, so sometimes one
                     % channel has spikes from the next bin but another
@@ -238,21 +255,57 @@ while true
                     % time we can catch those extra spikes and make it
                     % vanishingly unlikely that we miss something...
                     [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
-%                     allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
-                    [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, waveforms, gamma);
+                    [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNet, waveforms, gamma);
                     % scoop up last current bin spikes and grow the next
                     % bin spikes
                     binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
                     binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
                     
                     meanSpikeCount = mean(binSpikeCountOverall,2);
-%                     binSpkCntTrial = [binSpkCntTrial meanSpikeCount];
-%                     tmstpNasSpkAll = [];
                     
 %                     rrMat = [cosd(135) -sind(135); sind(135) cosd(135)];
 %                     rotMat = rrMat * rotMat;
+                    
+                    
                     velocity = rotMat*(M0 + M1*rotMat'*velocity + M2 * meanSpikeCount);
-                    uint8Msg = typecast(velocity, 'uint8');
+                    
+                    % Computing neural engagement value
+                    
+                    % Find angle of velocity (from 0 to 360)
+                    intendedAngle = atan2d(velocity(2),velocity(1));
+                    if((intendedAngle<0))
+                        intendedAngle = intendedAngle + 360; % transforms domain from [-180,180] to [0,360]
+                    end
+                    intendedAngle = round(intendedAngle); % makes into integer
+                    if(intendedAngle == 360)
+                        intendedAngle = 0;
+                    end
+                    
+                    % Choose the corresponding neural engagement axis
+                    neuralEngagementAxisForCurrAng  = interpolatedNeuralEngagementAxes(:,intendedAngle+1);
+                    conditionMeanForCurrAng         = interpolatedConditionMeans(:,intendedAngle+1);
+                    
+                    % Project spikes into orthonormalized FA space
+                    factorActivity = betaOrthNorm * ((zScoreSpikesMat * meanSpikeCount)  - d);
+                    
+                    % Subtract condition-specific mean activity and project
+                    % onto the corresponding neural engagement axis
+                    neuralEngagementValue           = (factorActivity - conditionMeanForCurrAng)'*neuralEngagementAxisForCurrAng;
+                    neuralEngagementValueZscored    = (neuralEngagementValue - interpolatedNeuralEngagementValueMeans(intendedAngle+1))...
+                                                        /(interpolatedNeuralEngagementValueStds(intendedAngle+1));
+                    
+                    neuralEngagementValueZscoredTimeAvg = mean([neuralEngagementValueZscoredPrev(1:numBinsPrevNeZscAvg), neuralEngagementValueZscored]);
+                    
+%                     neuralEngagementValueZscoredTimeAvg
+%                     neuralEngagementValueZscoredPrev
+                    
+                    neuralEngagementValueZscoredPrev = [neuralEngagementValueZscored neuralEngagementValueZscoredPrev(1:numBinsPrevNeZscAvg-1)];
+                    
+
+                    velocityAndNeuralEngagement   = velocity;
+                    velocityAndNeuralEngagement(3)   = neuralEngagementValueZscoredTimeAvg;
+                    
+                    uint8Msg = typecast(velocityAndNeuralEngagement, 'uint8');
                     if any(uint8Msg==0)
                         %                     disp(uint8Msg)
                         %                     disp(typecast(meanSpikeCount, 'int8'))
@@ -263,19 +316,7 @@ while true
                     matlabUDP2('send',controlCompSocket.sender, msgToSend);
 %                     fprintf('sent unconstrained velocity\n');
                     
-%                     xoutBase = repmat('0', 8, 8);
-%                     bl = dec2bin(typecast(binSpikeCountOverall(1), 'uint8'));
-%                     xoutBase(:, 8-size(bl, 2)+1:8) = bl;
-%                     xout = double(xoutBase(:))-48;
-%                     for i = 2:length(binSpikeCountOverall)
-%                         xoutBase = repmat('0', 8, 8);
-%                         bl = dec2bin(typecast(binSpikeCountOverall(i), 'uint8'));
-%                         xoutBase(:, 8-size(bl, 2)+1:8) = bl;
-%                         xout = xor(double(xoutBase(:))-48, xout);
-%                     end
-%                     find(xout)'
-
-                    % the current bin is now what was the next bin before
+                     % the current bin is now what was the next bin before
                     binSpikeCountOverall = binSpikeCountNextOverall;
                     % zero out the counts for the next bin
                     binSpikeCountNextOverall(:) = 0;

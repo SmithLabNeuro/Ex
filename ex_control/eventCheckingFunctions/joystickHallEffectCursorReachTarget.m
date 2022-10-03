@@ -1,4 +1,4 @@
-function [success, msgStr, fixWinOutput] = joystickHallEffectCursorReachTarget(~,~, targX,targY,targRadius, cursorObjectId, cursorR, cursorColor, targWinCursRad, pixelDistForMaxJoystickPos, notTargX, notTargY)
+function [success, msgStr, fixWinOutput] = joystickHallEffectCursorReachTarget(~,~, targX,targY,targRadius, cursorObjectId, cursorR, cursorColor, targWinCursRad, pixelDistForMaxJoystickPos, notTargX, notTargY, distTol)
 % success if the cursor reaches the target
 % failure if the cursor *doesn't* reach the target
 
@@ -57,7 +57,7 @@ end
 switch size(targRadius,1)
     case 1 %circular window
         success = distToTarget < targWinCursRad;
-        if ~isempty(notTargX) && ((any(projOnBadTarg>projOnGoodTarg) && (distFromCent > 2*targetDist/3)) || (projOnGoodTarg<0 && distFromCent>targetDist/4)) %qany(distToBadTarg < targWinCursRad)
+        if ~isempty(notTargX) && ((any(projOnBadTarg>projOnGoodTarg) && (distFromCent > targetDist*distTol)) || (projOnGoodTarg<0 && distFromCent>targetDist*distTol)) %qany(distToBadTarg < targWinCursRad)
             success = -1;
         end
 %         if targY==0 && targX > 0 && distToTarget < targWinCursRad
