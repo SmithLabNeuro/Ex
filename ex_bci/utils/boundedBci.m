@@ -213,7 +213,11 @@ while true
                     
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
-                    msgToSend = uint8Msg';
+                    if size(uint8Msg, 1) ~= 1
+                        msgToSend = uint8Msg';
+                    else
+                        msgToSend = uint8Msg;
+                    end
                     matlabUDP2('send',controlCompSocket.sender, msgToSend);
 
                     % the current bin is now what was the next bin before
