@@ -28,7 +28,7 @@ for nevFlInd = 1:length(nevFilesForTrain)
 end
 datBase = nev2dat(nevBase, 'nevreadflag', true);
 
-[slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName);
+[slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName, 'labelSpikesAsWithWrite', true);
 
 
 datStruct = nev2dat(nevLabelledData, 'nevreadflag', true);
