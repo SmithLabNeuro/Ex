@@ -90,7 +90,7 @@ while true
         xmlName = waitForMessage(udpr, udps);
         
         % I call it base because Trellis autoincrememnts...
-        filenameBase = [upper(subjectName(1)) lower(subjectName(2)) datestr(today(), 'YYmmdd') '_s' sessionNum 'a_' xmlName '_'];
+        filenameBase = [upper(subjectName(1)) lower(subjectName(2)) datestr(today(), 'YYmmdd') '_s' sessionNum '_' xmlName '_'];
         fileLoc = fullfile(dataPath, lower(subjectName), filenameBase);
         if isempty(dir([fileLoc, '*']))
             incSt = 1;
