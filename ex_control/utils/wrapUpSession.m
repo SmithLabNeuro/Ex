@@ -1,9 +1,8 @@
 function wrapUpSession()
 
-global sessionInfo sqlDb params
+global sessionNumber sqlDb params
 
 if ~isempty(sqlDb)
-    sessionNumber = sessionInfo;
     subject = params.SubjectID;
     waterAndThresh = inputdlg({'Milliliters water for session:','Trellis RMS spike threshold for session:'});
     
