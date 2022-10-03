@@ -81,13 +81,13 @@ bciDecodersBasePath = params.bciDecoderBasePathDataComputer;
 bciDecodersParameterPath = fullfile(bciDecodersBasePath, params.bciDecoderXmlParamFolder);
 while true
     
-    msg = waitForMessage(udpr, udps);
+    msg = receiveMessageSendAck(socketsControlComm);
 %     if isempty(msg)
 %         continue
     if strcmp(msg, 'record')
-        subjectName = waitForMessage(udpr, udps);
-        sessionNum = waitForMessage(udpr, udps);
-        xmlName = waitForMessage(udpr, udps);
+        subjectName = receiveMessageSendAck(socketsControlComm);
+        sessionNum = receiveMessageSendAck(socketsControlComm);
+        xmlName = receiveMessageSendAck(socketsControlComm);
         
         % I call it base because Trellis autoincrememnts...
         filenameBase = [upper(subjectName(1)) lower(subjectName(2)) datestr(today(), 'YYmmdd') '_s' sessionNum 'a_' xmlName '_'];
@@ -166,13 +166,13 @@ while true
         end
         % Receive filename to use to train decoder from control computer
         % (decoderCalibrationFunctionName)
-        decoderTrainFunctionName = waitForMessage(udpr, udps);
+        decoderTrainFunctionName = receiveMessageSendAck(socketsControlComm);
         decoderTrainFunction = str2func(decoderTrainFunctionName);
         % Receives filename for parameters (file is in a drive shared with
         % between bci/data computer to make it easier to ensure that
         % decoder training and decoder application parameters are the same)
         % to train decoder via bciDecoderParamFile from control
-        decoderTrainParameterFile = waitForMessage(udpr, udps);
+        decoderTrainParameterFile = receiveMessageSendAck(socketsControlComm);
         decoderTrainParameterFilepath = fullfile(bciDecodersParameterPath, decoderTrainParameterFile);
         % Reads in xml files for decoder parameters to cell structs
         [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '');
@@ -183,9 +183,9 @@ while true
         sendStructAsAscii(trainParams, socketsControlComm);
         sendMessageWaitAck(socketsControlComm, 'endSendingAsciiParameters');
         % Receives nev file names to calibrate on from control computer
-        nevBaseRelFilepath = waitForMessage(udpr, udps);
+        nevBaseRelFilepath = receiveMessageSendAck(socketsControlComm);
         nevBaseFullFilepath = fullfile(dataPath, nevBaseRelFilepath);
-        nevFilesForTraining = waitForMessage(udpr, udps);
+        nevFilesForTraining = receiveMessageSendAck(socketsControlComm);
         sepTrainRelFilepaths = strsplit(nevFilesForTraining, '\n');
         sepTrainFullFilepaths = cellfun(@(rfp) fullfile(dataPath, rfp), sepTrainRelFilepaths, 'uni', 0);
 
@@ -218,7 +218,7 @@ while true
     elseif strcmp(msg, 'sendDecoderParameters')
         filePausedInfo = xippmex('trial','paused')
         
-        decoderTrainParameterFile = waitForMessage(udpr, udps);
+        decoderTrainParameterFile = receiveMessageSendAck(socketsControlComm);
         decoderTrainParameterFilepath = fullfile(bciDecodersParameterPath, decoderTrainParameterFile);
         [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '');
         
