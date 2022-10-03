@@ -53,9 +53,9 @@ binDecoderDelay = timeDecoderDelay/binSizeMs;
 % if trainParams.orthToNeOnDecoderPlane
     try
         sendMessageWaitAck(socketsControlComm, 'kalmanDecoderForPlane');
-        intuitiveKalmanDecoderPath = receiveMessageSendAck(socketsControlComm);
+        intuitiveKalmanDecoderPath = receiveMessageSendAck(socketsControlComm)
     catch
-            intuitiveKalmanDecoderPath = 'satchel\Sa220906KalmanBci_09-43-12.mat'
+            intuitiveKalmanDecoderPath = 'satchel\Sa220930KalmanBci_10-57-44.mat'
 %             intuitiveKalmanDecoderPath = 'satchel\Sa220817KalmanBci_10-21-31.mat'
 %         intuitiveKalmanDecoderPath = 'satchel\Sa220819NeuralEngagementBci_10-35-59.mat'
     end
