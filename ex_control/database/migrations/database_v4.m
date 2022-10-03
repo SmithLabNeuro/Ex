@@ -1,4 +1,9 @@
 % correctly referencing new experiment_session from experiment_info
+%   this happened because when primary keys were added to
+%   experiment_session, the first step was to move experiment_session to
+%   experiment_session_old, but all the foreign keys from experiment_info
+%   cascaded into the change--so now we need to relink to the new, correct
+%   experiment_session
 exGlobals;
 localDataDir = params.localDataDir;
 homedirCont = dir('~');
