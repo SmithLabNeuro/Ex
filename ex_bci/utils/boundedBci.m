@@ -143,16 +143,6 @@ while true
                 timePtBciEnd = timePtBciEnd(timePtBciEnd>timePtBoundStarted);
             end
             
-            if timePtBciEnd > timePtBciStarted
-                if bciStart
-                    binCntNasTrial = [binCntNasTrial binSpkCntTrial];
-                    allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
-                    fprintf('bci end in trial after %d bins\n', binNum)
-                end
-                bciStart = false;
-                currReturn = expParams.initReturn';
-                clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
-            end
             if bciStart  
                 if bciJustStarted
                     binNum=1;
@@ -233,6 +223,19 @@ while true
                     binSpikeCountNextOverall(:) = 0;
                     timePtBinStart = timePtBinStart+samplesPerBin;
                 end
+            end
+            
+            % allow the BCI loop to run one final time to see if BCI ended
+            % after a full bin happened
+            if timePtBciEnd > timePtBciStarted
+                if bciStart
+                    binCntNasTrial = [binCntNasTrial binSpkCntTrial];
+                    allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
+                    fprintf('bci end in trial after %d bins\n', binNum)
+                end
+                bciStart = false;
+                currReturn = expParams.initReturn';
+                clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
             end
         end
     end
