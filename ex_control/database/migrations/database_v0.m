@@ -6,13 +6,34 @@ homedirCont = dir('~');
 homedir = homedirCont(1).folder;
 homeTag = find(localDataDir == '~');
 localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
-sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
-destroyDbMaybe = questdlg('Doing this might destroy an existing database!! Continue?');
-switch destroyDbMaybe
-    case 'Yes'
-        sqlDb = sqlite(sqlDbPath, 'create');
-    otherwise
-        error('Not destroying anything here...')
+%sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
+%destroyDbMaybe = questdlg('Doing this might destroy an existing database!! Continue?');
+%switch destroyDbMaybe
+%    case 'Yes'
+%        sqlDb = sqlite(sqlDbPath, 'create');
+%    otherwise
+%        error('Not destroying anything here...')
+%end
+
+databaseDir = fullfile(localDataDir, 'database');
+sqlDbPath = fullfile(databaseDir, 'experimentInfo.db');
+
+% create db directory if its not there
+if ~exist(databaseDir, 'dir')
+    mkdir(databaseDir);
+end
+
+% create DB (or destroy old one and create new one)
+if exist(sqlDbPath, 'file')
+    destroyDbMaybe = questdlg(sprintf('A database file already exists at %s, so running this will destroy an existing database!! Continue?', sqlDbPath));
+    switch destroyDbMaybe
+        case 'Yes'
+            sqlDb = sqlite(sqlDbPath, 'create');
+        otherwise
+            error('Not destroying anything here...')
+    end
+else
+    sqlDb = sqlite(sqlDbPath, 'create');
 end
 
 % create animal table

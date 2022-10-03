@@ -34,7 +34,7 @@ global wins params codes calibration stats;
 global behav outfilename;
 global audioHandle;
 global debug; %#ok<NUSED> This will be assigned by exGlobals
-global sockets socketsDatComp;
+global sockets socketsDatComp bciSockets;
 global bciCursorTraj; % only used when bci cursor is enabled
 global typingNotes;
 global notes;
@@ -295,26 +295,36 @@ if isfield(xmlParams, 'useBci')
 end
 if params.bciEnabled
     try
-        sockets(2) = matlabUDP2('open',params.control2bciIP,params.bci2controlIP,params.control2bciSocket);
+        bciSockets.sender = matlabUDP2('open',params.control2bciIP,params.bci2controlIP,params.control2bciSocket);
+        bciSockets.receiver = bciSockets.sender;
     catch ERR
         disp(ERR.message);
         disp('*ERROR* - No BCI connection, proceeding without BCI computer');
     end
     
     disp('Establishing communication with BCI computer');
-    matlabUDP2('send', sockets(2), 'ready');
-    bciMsg = matlabUDP2('receive', sockets(2));
+    %matlabUDP2('send', sockets(2), 'ready');
+    %bciMsg = matlabUDP2('receive', sockets(2));
+    matlabUDP2('send', bciSockets.sender, 'ready');
+    bciMsg = matlabUDP2('receive', bciSockets.receiver);
+    tm = 0;
     while ~strcmp(bciMsg, 'prepared')
+        tm = tm+1;
         pause(0.1)
-        matlabUDP2('send', sockets(2), 'ready');
-        bciMsg = matlabUDP2('receive', sockets(2));
+        %matlabUDP2('send', sockets(2), 'ready');
+        %bciMsg = matlabUDP2('receive', sockets(2));
+        fprintf('BCI computer communication attempt %d\n', tm)
+        matlabUDP2('send', bciSockets.sender, 'ready');
+        bciMsg = matlabUDP2('receive', bciSockets.receiver);
+
     end
     bciMsg = '';
     % wait for the second ack that happens after the buffer has been
     % cleared
     while ~strcmp(bciMsg, 'flushed')
         pause(0.1)
-        bciMsg = matlabUDP2('receive', sockets(2));
+        %bciMsg = matlabUDP2('receive', sockets(2));
+        bciMsg = matlabUDP2('receive', bciSockets.receiver);
     end
     bciMsg = '';
     disp('Communicating with BCI');
@@ -326,11 +336,15 @@ if params.bciEnabled
     % send bci paramater file that will be used--not 100% clear whether I
     % want this here or in the stim file... but I'm coming around to
     % wanting it here
-    bciSocket.sender = sockets(2);
-    bciSocket.receiver = sockets(2);
-    sendMessageWaitAck(bciSocket, 'readyBciParamFile');
-    sendMessageWaitAck(bciSocket, xmlParams.bciDecoderParamFile);
-    sendMessageWaitAck(bciSocket, params.SubjectID);
+    %bciSocket.sender = sockets(2);
+    %bciSocket.receiver = sockets(2);
+    %sendMessageWaitAck(bciSocket, 'readyBciParamFile');
+    %sendMessageWaitAck(bciSocket, xmlParams.bciDecoderParamFile);
+    %sendMessageWaitAck(bciSocket, params.SubjectID);
+    sendMessageWaitAck(bciSockets, 'readyBciParamFile');
+    sendMessageWaitAck(bciSockets, xmlParams.bciDecoderParamFile);
+    sendMessageWaitAck(bciSockets, params.SubjectID);
+
 
 end
 
@@ -810,7 +824,7 @@ clear plotter;
 Screen('CloseAll');
 
 if params.bciEnabled
-    matlabUDP2('send', sockets(2), 'bciEnd')
+    matlabUDP2('send', bciSockets.sender, 'bciEnd')
 end
 
 matlabUDP2('all_close');
@@ -1067,7 +1081,7 @@ fclose all;
             end
             % shut off BCI
             if params.bciEnabled
-                matlabUDP2('send', sockets(2), 'bciEnd')
+                matlabUDP2('send', bciSockets.sender, 'bciEnd')
             end
 
             % shut off recording
