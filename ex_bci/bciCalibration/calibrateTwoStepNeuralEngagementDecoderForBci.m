@@ -151,43 +151,44 @@ binnedSpikesCurrStep(bciValidTrials) = cellfun(...
 
 allBinnedCountsBciValidTrials = cat(1, binnedSpikesCurrStep{bciValidTrials})';
 %% now grab the kinematics we'll be training on and align to neural data
-% interpJoystickPos = cell(size(spikeTimes));
-% interpJoystickPos(bciValidTrials) = cellfun(...
-%     @(jPT, bciStartEndTime)...
-%         ... first interpolate the x values
-%         [interp1(jPT(:, 3), jPT(:, 1), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))',...
-%         ... then interpolate the y values
-%         interp1(jPT(:, 3), jPT(:, 2), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))'],...
-%     joystickPosAndTime(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
-% interpJoystickVel(bciValidTrials) = cellfun(...
-%     @(interpPos)...
-%     [[0 0]; diff(interpPos)/(binSizeMs/msPerS)],... start with velocity 0, then find velocity in pix/s
-%     interpJoystickPos(bciValidTrials), 'uni', 0);
-% 
-% switch trainParams.velocityToCalibrateWith
-%     case 'actual'
-%         interpJoystickKin = interpJoystickVel;
-%     otherwise
-%         error('Training parameter velocityToCalibrateWith must either be ''actual'' or ''intended''')
-% end
-% 
-% joystickKinCurrStep = cell(size(spikeTimes));
-% joystickKinCurrStep(bciValidTrials) = cellfun(...
-%     @(iJP, mxBin)...
-%         ... remove binDecoderDelay bins from start as they don't have paired neural data
-%         ... go 2 (instead of 1) forward to pair correctly with the neural signal 'current' step
-%         iJP(binDecoderDelay+2:mxBin, :),...
-%     interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
-% joystickKinPrevStep = cell(size(spikeTimes));
-% joystickKinPrevStep(bciValidTrials) = cellfun(...
-%     @(iJP, mxBin)...
-%         ... remove binDecoderDelay bins from start as they don't have paired neural data
-%         ... end one before the last step because this is the 'previous' step (so it needs a next one!)
-%         iJP(binDecoderDelay+1:mxBin-1, :),...
-%     interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
-% 
-% 
-% allJoystickKinCurrTime = cat(1, joystickKinCurrStep{bciValidTrials})';
+interpJoystickPos = cell(size(spikeTimes));
+interpJoystickPos(bciValidTrials) = cellfun(...
+    @(jPT, bciStartEndTime)...
+        ... first interpolate the x values
+        [interp1(jPT(:, 3), jPT(:, 1), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))',...
+        ... then interpolate the y values
+        interp1(jPT(:, 3), jPT(:, 2), bciStartEndTime(1)+binSizeSamples/2:binSizeSamples:bciStartEndTime(2))'],...
+    joystickPosAndTime(bciValidTrials), bciStartEndTimes(bciValidTrials), 'uni', 0);
+interpJoystickVel(bciValidTrials) = cellfun(...
+    @(interpPos)...
+    [[0 0]; diff(interpPos)/(binSizeMs/msPerS)],... start with velocity 0, then find velocity in pix/s
+    interpJoystickPos(bciValidTrials), 'uni', 0);
+
+switch trainParams.velocityToCalibrateWith
+    case 'actual'
+        interpJoystickKin = interpJoystickVel;
+    otherwise
+        error('Training parameter velocityToCalibrateWith must either be ''actual'' or ''intended''')
+end
+
+joystickKinCurrStep = cell(size(spikeTimes));
+joystickKinCurrStep(bciValidTrials) = cellfun(...
+    @(iJP, mxBin)...
+        ... remove binDecoderDelay bins from start as they don't have paired neural data
+        ... go 2 (instead of 1) forward to pair correctly with the neural signal 'current' step
+        iJP(binDecoderDelay+2:mxBin, :),...
+    interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
+joystickKinPrevStep = cell(size(spikeTimes));
+joystickKinPrevStep(bciValidTrials) = cellfun(...
+    @(iJP, mxBin)...
+        ... remove binDecoderDelay bins from start as they don't have paired neural data
+        ... end one before the last step because this is the 'previous' step (so it needs a next one!)
+        iJP(binDecoderDelay+1:mxBin-1, :),...
+    interpJoystickKin(bciValidTrials), cellOfMaxBin(bciValidTrials), 'uni', 0);
+
+
+allJoystickKinCurrTime = cat(1, joystickKinCurrStep{bciValidTrials})';
+velMag = sqrt(sum(allJoystickKinCurrTime.^2,1));
 % allJoystickKinPrevTime = cat(1, joystickKinPrevStep{bciValidTrials})';
 % allBinnedCountsCurrTime = allBinnedCountsBciValidTrials;
 % 
@@ -221,15 +222,26 @@ angsByBin = cat(2, angsByBin{:});
 rezilduals = nan(size(zilde));
 neuralEngagementValue = nan(size(angsByBin));
 % angsByBin = angsForMoveSpikes(~nanTimes);
+figure;
+subplot(2,1,1)
+axis equal
+hold on;
+subplot(2,1,2)
+hold on;
 for i=1:length(unAngsByTrial)
     curr_idx = angsByBin==unAngsByTrial(i); 
     curr_trials = zilde(:, curr_idx); 
     faConditionMean(:, i) = mean(curr_trials, 2);
     rezilduals(:, curr_idx) = curr_trials - faConditionMean(:, i);
     covResidualsThisAng = cov(rezilduals(:, curr_idx)', 1);
-    [pcOfResidualsInFaThisAng,~,~] = svd(covResidualsThisAng);
+    [pcOfResidualsInFaThisAng,s,~] = svd(covResidualsThisAng);
+    subplot(2,1,1)
+    scatter3(2*i*ones(sum(curr_idx), 1),rezilduals(:, curr_idx)'* pcOfResidualsInFaThisAng(:, 1), rezilduals(:, curr_idx)'* pcOfResidualsInFaThisAng(:, 2), 5, velMag(curr_idx)')
+    
     neuralEngagementAxisFaSpaceByAng(:, i) = pcOfResidualsInFaThisAng(:, 1);
     
+    subplot(2,1,2)
+    scatter(rezilduals(:, curr_idx)'*neuralEngagementAxisFaSpaceByAng(:, i), velMag(curr_idx)', 2);
     % Flip axes to have more positive weights (in neural space)
     neuralEngagementAxisNeuralSpaceByAng = orthLatentsOrigLat * neuralEngagementAxisFaSpaceByAng(:, i);
 
@@ -246,6 +258,8 @@ for i=1:length(unAngsByTrial)
     meanNeuralEngagementValue(i) = mean(neuralEngagementValue(curr_idx));
     stdNeuralEngagementValue(i)  = std(neuralEngagementValue(curr_idx));
 end
+subplot(2,1,1)
+axis tight
 propPosUnits
 %% step 2,3 interpolation
 
