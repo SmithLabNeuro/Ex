@@ -6,7 +6,10 @@ function dbResult = readExperimentInfoFromDatabase(outfilename, varargin)
 %   - if it's a double, it's assumed to be the rowid, which SQLite keeps as
 %     an autoincremented value for each row
 % varargin tells us what fields read, and if empty returns everything
-global sqlDb 
+global sqlDb
+if isempty(sqlDb)
+    error('No database linked, so nothing could be read from database.')
+end 
 
 if ischar(outfilename)
     whereClause = sprintf('WHERE behavior_output_name = "%s"', outfilename);

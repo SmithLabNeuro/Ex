@@ -4,6 +4,9 @@ function writeExperimentInfoToDatabase(sessionInfo, xmlParams, outfilename, vara
 % which is indicated by 'varargin' being empty
 % - outfilename lets us locate existing experiment_info's
 global sqlDb params
+if isempty(sqlDb)
+    error('No database linked, so nothing written to database.')
+end
 if ~isempty(varargin)
     % at this point, experiment_info matching these parameters should
     % already have been written, so we link it to the neural data being

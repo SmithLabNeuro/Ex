@@ -1,4 +1,4 @@
-function runex(xmlFile,repeats,outfile,~)
+function runex(xmlFile,repeats,outfile,varargin)
 % function runex(xmlFile,repeats,outfile,demoMode)
 %
 % main Ex function.
@@ -8,10 +8,16 @@ function runex(xmlFile,repeats,outfile,~)
 %   'rpts' in the xml file
 % outfile: if present, the full list of digital codes sent is written to
 %    this filename
-% demoMode: if present, runs in mouse mode with no rewarding or digital codes
+% varargin: for extra flags including:
+%       useDatabase: if true (DEFAULT), a sqlite database will be created/used to
+%            keep track of notes/saved files/times/etc. at a location
+%            defined by: 
+%               fullfile(params.localDataDir, 'database', 'experimentInfo.db')
+%            where params is defined in exGlobals.m
 %
 %
 % LAST MODIFIED:
+% 28 Sept 21 -- on/off flag for database
 % 22Nov19 by MAS/XZ - new version, github release work
 
 %%
@@ -33,8 +39,16 @@ global bciCursorTraj; % only used when bci cursor is enabled
 global typingNotes;
 global notes;
 global sqlDb;
-global sessionInfo;
+global sessionNumber;
 typingNotes = false;
+
+useDatabase = true;
+if any(strcmp(varargin, 'useDatabase'))
+    useDatabase = varargin{[false strcmp(varargin, 'useDatabase')]};
+    if ~islogical(useDatabase) || (useDatabase ~= 1 && useDatabase ~= 0)
+        error('useDatabase input flag must be true, false, 1, or 0');
+    end
+end
 
 %% Startup message
 thisFileInfo = dir(which(mfilename));
@@ -111,13 +125,17 @@ for dx = 1:numel(requiredDirectories)
 end
 
 %% get/open database file
-homedirCont = dir('~');
-homedir = homedirCont(1).folder;
-localDataDir = params.localDataDir;
-homeTag = find(localDataDir == '~');
-localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
-sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
-sqlDb = sqlite(sqlDbPath);
+if useDatabase
+    homedirCont = dir('~');
+    homedir = homedirCont(1).folder;
+    localDataDir = params.localDataDir;
+    homeTag = find(localDataDir == '~');
+    localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
+    sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
+    sqlDb = sqlite(sqlDbPath);
+else
+    sqlDb = [];
+end
 %% Find Ex_local dir, make sure it's there, make sure it has the subdirectories you expect, and add it to the path
 % if exist(params.localExDir,'dir')
 %     requiredLocalDirectories = {'ex','xml','user','control','display'};
@@ -632,6 +650,11 @@ else
     load mouseModeCalibration
 end
 
+% make available the record prompt if we're writing output
+if params.writeFile
+    defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
+end
+
 trialData{4} = defaultRunexPrompt;
 % show the display computer settings on the control computer screen
 trialData{10} = sprintf('Display Settings: %d X %d @ %d Hz - %0.2f ms per frame',params.displayWidth,params.displayHeight,params.displayHz,params.displayFrameTime*1000);
@@ -645,15 +668,17 @@ params.calibVoltX = calibration{2}(:,1)';
 params.calibVoltY = calibration{2}(:,2)';
 
 %% save experiment run to database
-[sessionInfo, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
-notes = sessionNotes;
-if params.writeFile
-    writeExperimentInfoToDatabase(sessionInfo, xmlParams, outfilename)
-    defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
-    trialData{4} = defaultRunexPrompt;
-    
-    notes = sprintf('%s\n%s\n', notes, outfilename);
-    sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d ', notes, sessionInfo));
+if ~isempty(sqlDb)
+    [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
+    notes = sessionNotes;
+    if params.writeFile
+        writeExperimentInfoToDatabase(sessionNumber, xmlParams, outfilename)
+        notes = sprintf('%s\n%s\n', notes, outfilename);
+        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionNumber, params.SubjectID));
+    end
+else
+    sessionNumberStr = input('Enter the subject number:', 's');
+    sessionNumber = str2double(sessionNumberStr);
 end
 
 %% define plotter timer function
@@ -718,7 +743,7 @@ while true
             case 'r'
                 if params.writeFile
                     try
-                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
                             trialData{4} = err.message;
@@ -731,17 +756,16 @@ while true
                         end
                     end
                 end
-%             case 't'
-%                 Screen(wins.info,'FillRect',gray);
-%                 textInput = GetEchoString(wins.w, 'message for database', 0, 0);
             case 'x'
                 if params.writeFile
                     trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
-                    writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                    if ~isempty(sqlDb)
+                        writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                    end
                     % shut off recording
                     if recordingTrueFalse
                         try
-                            [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                            [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                         catch err
                             if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
                                 trialData{4} = err.message;
@@ -1045,7 +1069,7 @@ fclose all;
             if params.writeFile
                 if recordingTrueFalse
                     try
-                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, sessionInfo, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
                             trialData{4} = err.message;
