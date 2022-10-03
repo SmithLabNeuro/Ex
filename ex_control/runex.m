@@ -739,6 +739,11 @@ while true
                 drawCalibration; % draw all calibration points
                 Screen('CopyWindow',wins.voltageBG,wins.voltage,wins.voltageDim,wins.voltageDim);
             case 's'
+                % the BCI *requires* the NEV to be recorded (generally) so
+                % we're ensuring that here...
+                if params.bciEnabled && ~recordingTrueFalse
+                    [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                end
                 exRunExperiment; % see experimental control subfunction
             case 'r'
                 if params.writeFile
