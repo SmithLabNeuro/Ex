@@ -6,9 +6,14 @@ function success = joystickAtariHold(~, ~, joystickButtonX, joystickButtonY, joy
 joystickXY = Gamepad('GetAxis', joystickDevInd, 3:4);
 
 % check for a position change
-if any(joystickXY - [joystickButtonX, joystickButtonY])
-    success = -1;
-else
+if isnan(joystickButtonX) && isnan(joystickButtonY)
+    % allows us to ignore this joystick
     success = 1;
+else
+    if any(joystickXY - [joystickButtonX, joystickButtonY])
+        success = -1;
+    else
+        success = 1;
+    end
 end
 

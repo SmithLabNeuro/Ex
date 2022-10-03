@@ -146,19 +146,6 @@ while true
                 timePtBciEnd = timePtBciEnd(timePtBciEnd>timePtBoundStarted);
             end
             
-            if timePtBciEnd > timePtBciStarted
-                if bciStart
-                    % DEBUGGING
-%                     binCntNasTrial = [binCntNasTrial binSpkCntTrial];
-%                     allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
-                    % END DEBUGGING
-                    fprintf('bci end in trial after %d bins\n', binNum)
-                    binNum = -1;
-                end
-                bciStart = false;
-                currReturn = expParams.initReturn';
-                clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
-            end
             if bciStart  
                 if bciJustStarted
                     binNum=0;
@@ -230,7 +217,11 @@ while true
                     
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
-                    msgToSend = uint8Msg';
+                    if size(uint8Msg, 1) ~= 1
+                        msgToSend = uint8Msg';
+                    else
+                        msgToSend = uint8Msg;
+                    end
                     matlabUDP2('send',controlCompSocket.sender, msgToSend);
 
                     % the current bin is now what was the next bin before
@@ -241,6 +232,22 @@ while true
                     timePtBinStart = timePtBinStart+samplesPerBin;
                     binNum = binNum+1; % keep track of bin number
                 end
+            end
+            
+            % allow the BCI loop to run one final time to see if BCI ended
+            % after a full bin happened
+            if timePtBciEnd > timePtBciStarted
+                if bciStart
+                    % DEBUGGING
+%                     binCntNasTrial = [binCntNasTrial binSpkCntTrial];
+%                     allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
+                    % END DEBUGGING
+                    fprintf('bci end in trial after %d bins\n', binNum)
+                    binNum = -1;
+                end
+                bciStart = false;
+                currReturn = expParams.initReturn';
+                clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
             end
         end
     end

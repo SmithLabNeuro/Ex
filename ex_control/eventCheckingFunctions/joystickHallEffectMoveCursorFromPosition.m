@@ -1,4 +1,4 @@
-function [success, msgStr] = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorR, cursorColor, immediateFailOnReturn)
+function [success, msgStr, fixWinOutput] = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorR, cursorColor, immediateFailOnReturn)
 % success if the cursor leaves positionHold
 % failure if the cursor *doesn't* leave positionHold
 
@@ -55,3 +55,9 @@ else
         success = 0;
     end
 end
+
+cursorR = 5;
+yellow  = [255 255 0];
+winColors = yellow;
+
+fixWinOutput = {[positionXHold cursorPosDisp(1)], [positionYHold cursorPosDisp(2)], [distanceTolerance cursorR],winColors};

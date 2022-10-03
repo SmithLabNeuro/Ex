@@ -1,13 +1,13 @@
 function wrapUpSession()
 
-global sessionInfo sqlDb params
+global sessionNumber sqlDb params
 
-
-sessionNumber = sessionInfo;
-
-waterAndThresh = inputdlg({'Milliliters water for session:','Trellis RMS spike threshold for session:'});
-
-updateExperimentSessionInDatabase(sqlDb, sessionNumber, 'water_ml', waterAndThresh{1}, 'threshold_rms', waterAndThresh{2});
+if ~isempty(sqlDb)
+    subject = params.SubjectID;
+    waterAndThresh = inputdlg({'Milliliters water for session:','Trellis RMS spike threshold for session:'});
+    
+    updateExperimentSessionInDatabase(sqlDb, sessionNumber, subject, 'water_ml', waterAndThresh{1}, 'threshold_rms', waterAndThresh{2});
+end
 
 socketsDatComp.sender = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketSend);
 socketsDatComp.receiver = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketReceive);
