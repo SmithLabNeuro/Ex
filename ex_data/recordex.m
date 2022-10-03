@@ -175,7 +175,9 @@ while true
         decoderTrainParameterFile = receiveMessageSendAck(socketsControlComm);
         decoderTrainParameterFilepath = fullfile(bciDecodersParameterPath, decoderTrainParameterFile);
         % Reads in xml files for decoder parameters to cell structs
-        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '');
+        [~,machineInit] = system('hostname');
+        machine = lower(deblank(cell2mat(regexp(machineInit, '^[^\.]+', 'match'))));
+        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '',machine);
         
         % send over the BCI parameters to Control computer so they can be
         % saved to the NEV
@@ -220,7 +222,9 @@ while true
         
         decoderTrainParameterFile = receiveMessageSendAck(socketsControlComm);
         decoderTrainParameterFilepath = fullfile(bciDecodersParameterPath, decoderTrainParameterFile);
-        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '');
+        [~,machineInit] = system('hostname');
+        machine = lower(deblank(cell2mat(regexp(machineInit, '^[^\.]+', 'match'))));
+        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '',machine);
         
         % send over the BCI parameters so they can be saved to the NEV
         sendMessageWaitAck(socketsControlComm, 'startSendingAsciiParameters');
