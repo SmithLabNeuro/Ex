@@ -6,7 +6,7 @@ function [M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoderFro
     nev(nev(:,1)~=0,2) = slabel(nev(:,1)~=0) + ~slabel(nev(:,1)~=0)*255;
     nevLabelledData = nev;
     % Convert thresholded nevs to dats
-    datStruct = nev2dat(nevLabelledData, 'nevreadflag',1); 
+    datStruct = nev2dat(nevLabelledData, 'nevreadflag',true); 
     % Excludes nevBase containing global parameters if includeBaseForTrain is set to False. 
     if ~includeBaseForTrain
         datStruct = datStruct(length(datBase)+1:end);
