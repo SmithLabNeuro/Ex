@@ -1,7 +1,6 @@
 function boundedBci(controlCompSocket, expParams, okelecs)
 
 global params codes
-global tmstpNasSpkAll
 digitalCodeNameBciStartsAfter = expParams.bciStartsAfterCode;
 digitalCodeTrialStart = codes.(digitalCodeNameBciStartsAfter);% could be START_TRIAL
 digitalCodeNameBciEndsBy = expParams.bciEndsByCode;
@@ -41,21 +40,21 @@ binSpikeCountOverall = zeros(length(okelecs),1);
 binSpikeCountNextOverall = zeros(length(okelecs), 1);
 delValues = '';
 
-tmstpNasSpkAll = [];
+% DEBUGGING
 binCntNasTrial = {};
 allTmstmpAll = {};
 tmstpInit = [];
 waveforms = [];
-binNum = 0;
+binNum = -1;
 
 % grab events
 % [count,tmstp,events]=xippmex('digin');
 % prlEvents = [events.parallel];
 modelParams = [];
-loopTmAll = 0;
+loopTmTotalSec = 0;
 while true
     
-    loopTm = tic;
+    loopTmStart = tic;
     % check for messages or BCI end between trials...
     [bciEnd, ctrlMsg] = checkIfBciEndOrMsg(controlCompSocket);
     if bciEnd
@@ -94,10 +93,13 @@ while true
             disp('trial end')
         end
         if bciStart
-            binCntNasTrial = [binCntNasTrial binSpkCntTrial];
-            allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
+            % DEBUGGING
+%             binCntNasTrial = [binCntNasTrial binSpkCntTrial];
+%             allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
+            % END DEBUGGING
 
             fprintf('bci end  with trial after %d bins\n', binNum)
+            binNum = -1;
         end
         boundStarted = false;
         bciStart = false;
@@ -135,8 +137,9 @@ while true
                 bciStart = true;
                 bciJustStarted = true; % important for grabbing any early spikes
                 % DEBUGGING
-                binSpkCntTrial = zeros(length(goodChannelNums), 0);
-                allTmstmpTrl = [];
+%                 binSpkCntTrial = zeros(length(goodChannelNums), 0);
+%                 allTmstmpTrl = [];
+                % END DEBUGGING
             end
             if ~isempty(tstpBciEnd)
                 timePtBciEnd = tmstpPrlEvt(tstpBciEnd);
@@ -145,9 +148,12 @@ while true
             
             if timePtBciEnd > timePtBciStarted
                 if bciStart
-                    binCntNasTrial = [binCntNasTrial binSpkCntTrial];
-                    allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
+                    % DEBUGGING
+%                     binCntNasTrial = [binCntNasTrial binSpkCntTrial];
+%                     allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
+                    % END DEBUGGING
                     fprintf('bci end in trial after %d bins\n', binNum)
+                    binNum = -1;
                 end
                 bciStart = false;
                 currReturn = expParams.initReturn';
@@ -155,18 +161,18 @@ while true
             end
             if bciStart  
                 if bciJustStarted
-                    binNum=1;
+                    binNum=0;
                     [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(prevTmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, prevWaveforms, gamma);
                     binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
                     % this'll likely just be zero most of the time, but on bin
                     % edges it'll be needed
                     binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
                     bciJustStarted = false;
-                else
-                    binNum = binNum+1;
                 end
                 
-                allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
+                % DEBUGGING
+%                 allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
+                % END DEBUGGING
                 [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, waveforms, gamma);
                 binSpikeCountOverall = binSpikeCountOverall + countsPerChannel;
                 % this'll likely just be zero most of the time, but on bin
@@ -205,7 +211,9 @@ while true
                     % time we can catch those extra spikes and make it
                     % vanishingly unlikely that we miss something...
                     [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
-                    allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
+                    % DEBUGGING
+%                     allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
+                    % END DEBUGGING
                     [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, waveforms, gamma);
                     % scoop up last current bin spikes and grow the next
                     % bin spikes
@@ -214,8 +222,7 @@ while true
                     
                     meanSpikeCount = mean(binSpikeCountOverall,2);
                     % DEBUGGING
-                    binSpkCntTrial = [binSpkCntTrial meanSpikeCount];
-                    tmstpNasSpkAll = [];
+%                     binSpkCntTrial = [binSpkCntTrial meanSpikeCount];
                     % END DEBUGGING
                     
                     % run the BCI decoder
@@ -232,11 +239,20 @@ while true
                     % zero out the counts for the next bin
                     binSpikeCountNextOverall(:) = 0;
                     timePtBinStart = timePtBinStart+samplesPerBin;
+                    binNum = binNum+1; % keep track of bin number
                 end
             end
         end
     end
-    loopTmAll = toc(loopTm);
+    loopTmTotalSec = toc(loopTmStart);
+    if loopTmTotalSec>binSizeMs/1000
+        fprintf('loop time of %d in bin number %d longer than binSizeMs of %d\n', loopTmTotalSec, binNum, binSizeMs);
+        if binNum<0
+            fprintf('bin number of -1 means this happened outside the BCI\n');
+        end
+    end
 end
 
-save('/home/smithlab/tempChecker.mat', 'binCntNasTrial', 'allTmstmpAll');
+% DEBUGGING
+% save('/home/smithlab/tempChecker.mat', 'binCntNasTrial', 'allTmstmpAll');
+% END DEBUGGING

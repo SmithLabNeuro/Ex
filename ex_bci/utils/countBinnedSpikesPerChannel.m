@@ -20,7 +20,6 @@ function [countsCurrentBin, countsNextBin] = countBinnedSpikesPerChannel(timesta
 % output: 
 %   countsCurrentBin : channel x 1 array of spike counts in the current bin
 %   countsNextBin : channel x 1 array of spike counts in the next bin
-% global tmstpNasSpkAll
 if nargin<5 || isempty(nasNetParams)
     useNas = false;
 else
@@ -39,7 +38,6 @@ else
     % pass all waveeforms through
     tmstpFiltered = tmstpGoodChSpk;
 end
-% tmstpNasSpkAll = [tmstpNasSpkAll tmstpFiltered];
 
 % grab timestamps in current bin
 spikesThisBinByChannel = cellfun(@(x) x>=timePtBinStart & x<timePtBinStart+samplesPerBin, tmstpFiltered, 'uni', 0);

@@ -89,9 +89,13 @@ while true
     
     if timePtEnded > timePtStarted
         if trialStarted
+%             save('/home/smithlab/tempChecker.mat', 'binCntNasTrial', 'allTmstmpAll');
             disp('trial end')
         end
         if bciStart
+%             binCntNasTrial = [binCntNasTrial binSpkCntTrial];
+%             allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
+
             disp('bci end with trial')
         end
         trialStarted = false;
@@ -286,3 +290,5 @@ while true
     end
     loopTmAll = toc(loopTm);
 end
+
+% save('/home/smithlab/tempChecker.mat', 'binCntNasTrial', 'allTmstmpAll');
