@@ -66,13 +66,13 @@ elseif ~isempty(infoPossiblyRelated)
         % 12:01 AM vs day 2 at 11:59 PM, but that's still day 2 -
         % day 1 = 1 day...), but >16 hours so not counted as the same
         % session
-        sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
+        sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, params.machine})
         sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE experiment_session.animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
         sessionNumber = sessionNumber{1};
         sessionNotes = [];
     end
 else
-    sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
+    sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, params.machine})
     sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
     sessionNumber = sessionNumber{1};
     sessionNotes = [];

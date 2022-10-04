@@ -243,6 +243,7 @@ if makeDir
     end
 end
 
+
 %% now, prompt for subject ID
 if isfield(params,'SubjectID')
     disp(['Current Subject ID = ',params.SubjectID]);
@@ -262,7 +263,33 @@ else
     params.SubjectID = input('Enter the subject ID:','s');
 end
 params.SubjectID = regexprep(lower(params.SubjectID),'\s',''); %enforce lowercase / no whitespace 
-params.SubjectID = confirmOrAddSubjectToDatabase(params.SubjectID);
+if useDatabase
+    params.SubjectID = confirmOrAddSubjectToDatabase(params.SubjectID);
+end
+
+%% now, prompt for experimenter
+if isfield(params,'experimenter')
+    disp(['Current experimenter = ',params.SubjectID]);
+    yorn = 'q'; %initialize
+    while ~ismember(lower(yorn(1)),{'y','n'})
+        yorn = input('Is that correct (y/n)','s');
+        if (strcmp(yorn(1),'n'))
+            params.experimenter = input('Enter the correct experimenter\n(or press Ctrl+C to exit Runex, then\nchange the experimenter in exGlobals.m):','s');
+        elseif (strcmp(yorn(1),'y'))
+            disp('Continuing with runex ...')
+        else
+            beep
+            fprintf('Reply ''y'' or ''n''\n');
+        end
+    end
+else
+    params.experimenter = input('Enter the main experimenter:','s');
+end
+params.experimenter = regexprep(lower(params.experimenter),'\s',''); %enforce lowercase / no whitespace 
+if useDatabase
+    params.experimenter = confirmExperimenterNameWithDatabase(params.experimenter);
+end
+
 %% quick double-check
 assert(isempty(strfind(params.machine,'_')),'Found an underscore');
 
