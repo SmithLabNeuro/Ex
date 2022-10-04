@@ -7,6 +7,12 @@ exGlobals; % grab the global parameters
 addpath(genpath('C:\Users\rigmdata\Documents\Ex\ex_control'));
 addpath(genpath('C:\Users\rigmdata\spikesort\'))
 
+% The first close (at least under UDP), seems to recognize a connection
+% upon Matlab start (that existed from before Matlab started!) but not
+% close it--this recognition makes the attempt at opening fail, because
+% xippmex is in the wrong state to open new connections. As a result,
+% recordex fails. In any case, a second 'close' seems to fix this...
+xippmex('close');
 xippmex('close');
 if nargin<1
     connectionType = 'tcp';
