@@ -6,6 +6,9 @@ homedir = homedirCont(1).folder;
 homeTag = find(localDataDir == '~');
 localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
 sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
+% we're gonna backup the database to the millisecond, to super minimize
+% chances of someone accidentally double running this code and losing data
+sqlDbBackupPath = fullfile(localDataDir, 'database', sprintf('experimentInfo_%s.db', datestr(now, 'yyyymmdd_HHMMSSFFF')));
 sqlDb = sqlite(sqlDbPath);
 
 %% add field to experiment_info
