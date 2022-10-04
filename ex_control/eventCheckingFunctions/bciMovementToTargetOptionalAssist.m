@@ -3,7 +3,7 @@ function [success, msgStr, fixWinOutput, extraFuncOutput] = bciMovementToTargetO
 % failure if the cursor *doesn't* reach the target
 
 global codes
-persistent cursorPos velocityCurr loopTimeLast
+persistent cursorPos velocityCurr loopTimeLast numBin
 
 
 if nargin < 10
@@ -19,6 +19,7 @@ normVecOrth = null(normVecCenterToTarget');
 
 centerOutAssistVel = normVecCenterToTarget*centerToOutVelForAssist;
 if isempty(cursorPos)
+    numBin = 0;
     cursorPos = initCursorPos;
     velocityCurr = initVelocity;
     if all(velocityCurr == 0)
@@ -80,6 +81,7 @@ if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
     % box)
     try
         velocityFromBci = typecast(uint8(receivedMsg), 'double')';
+        numBin = numBin + 1;
     catch err
         b = err;
         keyboard
@@ -122,7 +124,13 @@ end
 % limitations back to the BCI computer; no heads up messages or receive
 % accept messages so that the loop can be tight--but the BCI computer
 % better be ready to receive what we're sending!
-if ~isequal(velocityFromBci, velocityCurr)
+if any(~ismembertol(velocityFromBci, velocityCurr))
+%     velocityFromBci
+%     velocityCurr
+% velocityFromBci - velocityCurr
+%     numBin
+%     disp('unequal velocities')
+%     disp('womp')
     try
         uint8Msg = typecast(velocityCurr, 'uint8');
     catch err

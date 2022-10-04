@@ -1,5 +1,8 @@
-function updateExperimentSessionInDatabase(sqlDb, sessionNumber, varargin)
+function updateExperimentSessionInDatabase(sqlDb, sessionNumber, subject, varargin)
 
+if isempty(sqlDb)
+    error('No database linked, so nothing written to database.')
+end
 if ~isempty(varargin)
     % write out the update string for the experiment_session with the given
     % sessionNumber
@@ -21,5 +24,5 @@ if ~isempty(varargin)
     updateStrTotal = strjoin(updateStrCell, ', ');
     
     % execute the database update
-    sqlDb.exec(sprintf('UPDATE experiment_session SET %s WHERE session_number = %d', updateStrTotal, sessionNumber));
+    sqlDb.exec(sprintf('UPDATE experiment_session SET %s WHERE session_number = %d AND animal="%s"', updateStrTotal, sessionNumber, subject));
 end

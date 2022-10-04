@@ -1,4 +1,8 @@
-function [sessionInfo, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params)
+function [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params)
+
+if isempty(sqlDb)
+    error('No database linked, so nothing written to database.')
+end
 
 % grabbing the previous session number
 lastSessionNumber = sqlDb.fetch(sprintf('SELECT ifnull(max(session_number), 0) from experiment_session where animal=''%s''', params.SubjectID));
@@ -28,7 +32,7 @@ if size(todaySessionAllInfo, 1)==1
     % this might happen if runex was run but with no
     % experiment--here we avoid writing another row to
     % experiment_session
-    sessionInfo = todaySessionAllInfo{1};
+    sessionNumber = todaySessionAllInfo{1};
     sessionNotes = todaySessionAllInfo{2};
 elseif size(todaySessionAllInfo, 1)>1
     % why would there be multiple sessions from today?
@@ -49,7 +53,7 @@ elseif ~isempty(infoPossiblyRelated)
         infoId = infoPossiblyRelated{sortedHours<12, 1};
         % 'SELECT session_number, ifnull(notes,"") FROM experiment_session JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = 1958 AND experiment_session.animal='satchel''
         sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session LEFT OUTER JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d AND experiment_info.animal=''%s''', infoId, params.SubjectID));
-        sessionInfo = sessionAllInfo{1};
+        sessionNumber = sessionAllInfo{1};
         sessionNotes = sessionAllInfo{2};
     elseif any(sortedHours<16)
         % Not really sure why this exact spacing might happen--maybe if you
@@ -63,13 +67,13 @@ elseif ~isempty(infoPossiblyRelated)
         % day 1 = 1 day...), but >16 hours so not counted as the same
         % session
         sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
-        sessionInfo = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE experiment_session.animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
-        sessionInfo = sessionInfo{1};
+        sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE experiment_session.animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
+        sessionNumber = sessionNumber{1};
         sessionNotes = [];
     end
 else
     sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.machine})
-    sessionInfo = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
-    sessionInfo = sessionInfo{1};
+    sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
+    sessionNumber = sessionNumber{1};
     sessionNotes = [];
 end

@@ -2,6 +2,9 @@ function confirmedName = confirmOrAddSubjectToDatabase(subjectName)
 % adds a new subject to the database--only needs to run once per subject!
 % (or... should...)
 global sqlDb
+if isempty(sqlDb)
+    error('No database linked, so nothing could be read from/written to database.')
+end 
 
 confirmedName = subjectName;
 subjectCheck = sqlDb.fetch(sprintf('SELECT name FROM animal WHERE name=''%s''', subjectName));

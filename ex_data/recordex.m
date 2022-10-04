@@ -7,6 +7,12 @@ exGlobals; % grab the global parameters
 addpath(genpath('C:\Users\rigmdata\Documents\Ex\ex_control'));
 addpath(genpath('C:\Users\rigmdata\spikesort\'))
 
+% The first close (at least under UDP), seems to recognize a connection
+% upon Matlab start (that existed from before Matlab started!) but not
+% close it--this recognition makes the attempt at opening fail, because
+% xippmex is in the wrong state to open new connections. As a result,
+% recordex fails. In any case, a second 'close' seems to fix this...
+xippmex('close');
 xippmex('close');
 if nargin<1
     connectionType = 'tcp';
@@ -81,16 +87,16 @@ bciDecodersBasePath = params.bciDecoderBasePathDataComputer;
 bciDecodersParameterPath = fullfile(bciDecodersBasePath, params.bciDecoderXmlParamFolder);
 while true
     
-    msg = waitForMessage(udpr, udps);
+    msg = receiveMessageSendAck(socketsControlComm);
 %     if isempty(msg)
 %         continue
     if strcmp(msg, 'record')
-        subjectName = waitForMessage(udpr, udps);
-        sessionNum = waitForMessage(udpr, udps);
-        xmlName = waitForMessage(udpr, udps);
+        subjectName = receiveMessageSendAck(socketsControlComm);
+        sessionNum = receiveMessageSendAck(socketsControlComm);
+        xmlName = receiveMessageSendAck(socketsControlComm);
         
         % I call it base because Trellis autoincrememnts...
-        filenameBase = [upper(subjectName(1)) lower(subjectName(2)) datestr(today(), 'YYmmdd') '_s' sessionNum 'a_' xmlName '_'];
+        filenameBase = [upper(subjectName(1)) lower(subjectName(2)) datestr(today(), 'YYmmdd') '_s' sessionNum '_' xmlName '_'];
         fileLoc = fullfile(dataPath, lower(subjectName), filenameBase);
         if isempty(dir([fileLoc, '*']))
             incSt = 1;
@@ -166,16 +172,18 @@ while true
         end
         % Receive filename to use to train decoder from control computer
         % (decoderCalibrationFunctionName)
-        decoderTrainFunctionName = waitForMessage(udpr, udps);
+        decoderTrainFunctionName = receiveMessageSendAck(socketsControlComm);
         decoderTrainFunction = str2func(decoderTrainFunctionName);
         % Receives filename for parameters (file is in a drive shared with
         % between bci/data computer to make it easier to ensure that
         % decoder training and decoder application parameters are the same)
         % to train decoder via bciDecoderParamFile from control
-        decoderTrainParameterFile = waitForMessage(udpr, udps);
+        decoderTrainParameterFile = receiveMessageSendAck(socketsControlComm);
         decoderTrainParameterFilepath = fullfile(bciDecodersParameterPath, decoderTrainParameterFile);
         % Reads in xml files for decoder parameters to cell structs
-        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '');
+        [~,machineInit] = system('hostname');
+        machine = lower(deblank(cell2mat(regexp(machineInit, '^[^\.]+', 'match'))));
+        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '',machine);
         
         % send over the BCI parameters to Control computer so they can be
         % saved to the NEV
@@ -183,9 +191,9 @@ while true
         sendStructAsAscii(trainParams, socketsControlComm);
         sendMessageWaitAck(socketsControlComm, 'endSendingAsciiParameters');
         % Receives nev file names to calibrate on from control computer
-        nevBaseRelFilepath = waitForMessage(udpr, udps);
+        nevBaseRelFilepath = receiveMessageSendAck(socketsControlComm);
         nevBaseFullFilepath = fullfile(dataPath, nevBaseRelFilepath);
-        nevFilesForTraining = waitForMessage(udpr, udps);
+        nevFilesForTraining = receiveMessageSendAck(socketsControlComm);
         sepTrainRelFilepaths = strsplit(nevFilesForTraining, '\n');
         sepTrainFullFilepaths = cellfun(@(rfp) fullfile(dataPath, rfp), sepTrainRelFilepaths, 'uni', 0);
 
@@ -218,9 +226,11 @@ while true
     elseif strcmp(msg, 'sendDecoderParameters')
         filePausedInfo = xippmex('trial','paused')
         
-        decoderTrainParameterFile = waitForMessage(udpr, udps);
+        decoderTrainParameterFile = receiveMessageSendAck(socketsControlComm);
         decoderTrainParameterFilepath = fullfile(bciDecodersParameterPath, decoderTrainParameterFile);
-        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '');
+        [~,machineInit] = system('hostname');
+        machine = lower(deblank(cell2mat(regexp(machineInit, '^[^\.]+', 'match'))));
+        [~, trainParams, ~, ~] = readExperiment(decoderTrainParameterFilepath, '',machine);
         
         % send over the BCI parameters so they can be saved to the NEV
         sendMessageWaitAck(socketsControlComm, 'startSendingAsciiParameters');

@@ -27,7 +27,7 @@ for nevFlInd = 1:length(nevFilesForTrain)
 end
 datBase = nev2dat(nevBase, 'nevreadflag', true);
 
-[slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName);
+[slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName, 'labelSpikesAsWithWrite', true);
 datStruct = nev2dat(nevLabelledData, 'nevreadflag', true);
 
 if ~includeBaseForTrain
@@ -64,8 +64,8 @@ if trainParams.orthToNeOnDecoderPlane
         sendMessageWaitAck(socketsControlComm, 'kalmanDecoderForPlane');
         kalmanDecoderPath = receiveMessageSendAck(socketsControlComm);
     catch
-        %     kalmanDecoderPath = 'satchel\Sa220608KalmanBci_09-55-15.mat'
-        kalmanDecoderPath = 'satchel\Sa220621KalmanBci_11-55-54.mat'
+            kalmanDecoderPath = 'satchel\Sa220822KalmanBci_10-10-02.mat'
+%         kalmanDecoderPath = 'satchel\Sa220629KalmanBci_12-37-21.mat'
     end
     kalmanDecoderFilepath = fullfile(bciDecoderSaveDrive, kalmanDecoderPath);
     modelParams = load(kalmanDecoderFilepath, 'M2', 'M1', 'M0', 'K', 'beta', 'estParams', 'channelsKeep', 'zScoreLatentMat', 'zScoreSpikesMat');

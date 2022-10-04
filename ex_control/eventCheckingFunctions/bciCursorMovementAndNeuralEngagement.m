@@ -3,7 +3,7 @@ function [success, msgStr, fixWinOutput, extraFuncOutput] = bciCursorMovementAnd
 % failure if the cursor *doesn't* reach the target
 
 global codes
-persistent cursorPos velocityCurr loopTimeLast neCurr timestepsCorrect
+persistent cursorPos velocityCurr loopTimeLast neCurr timestepsCorrect 
 
 center = [0; 0];
 vecCenterToTarget = [targX-center(1); targY - center(2)];
@@ -22,6 +22,7 @@ end
 % for the control computer to track where target is
 purple  = [255 0 255];
 winColors = purple;
+binChange = false;
 
 % cursor color
 cursorColorDisp = [cursorColor(1) cursorColor(2) cursorColor(3)];
@@ -66,6 +67,7 @@ if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
         velocityAndNeuralEngagementNew = typecast(uint8(receivedMsg), 'double')';
         velocityFromBci = velocityAndNeuralEngagementNew(1:2);
         neCurr = velocityAndNeuralEngagementNew(3);
+        binChange = true;
         %             disp(neCurr)
     catch err
         b = err;
@@ -110,7 +112,7 @@ cursorAngleDeg = max(cursorAngleDeg, -45);
 % send the constrained velocity back to the BCI computer; no heads up
 % messages or receive accept messages so that the loop can be tight--but
 % the BCI computer better be ready to receive what we're sending!
-if ~isequal(velocityFromBci, velocityCurr)
+if any(~ismembertol(velocityFromBci, velocityCurr))
     try
         uint8Msg = typecast(velocityCurr, 'uint8');
     catch err
@@ -177,8 +179,10 @@ switch size(targRadius,1)
         error('EX:waitForFixation:badRadius','Radius must have exactly 1 or 2 rows');
 end
 
-if targetHit
+if targetHit && binChange
     % add an in-target timepoint when he's in the target
+    disp('change bin!!')
+    disp('change bin!!')
     timestepsCorrect = timestepsCorrect+1;
 else
     % reset timesteps to zero if he ever leaves target

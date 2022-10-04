@@ -44,12 +44,12 @@ for nevFlInd = 1:length(nevFilesForTrain)
 end
 
 % Convert global nev file to dat for use with matlab
-datBase = nev2dat(nevBase, 'nevreadflag', 1);
+datBase = nev2dat(nevBase, 'nevreadflag', true);
 
 % Retrieve network's labels that have not yet been thresholded yet.
 % NevLabelledData is similar to nev and has 3 columns
 [~,~, netLabels] = runNASNet({nev, waves},firstGamma, ...
-    'netFolder', netFolder, 'netname', nasNetName);
+    'netFolder', netFolder, 'netname', nasNetName, 'labelSpikesAsWithWrite', true);
 % Generates Save Folder directory for decoders
 bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;
 bciDecoderRelativeSaveFolder = fullfile(subject);
