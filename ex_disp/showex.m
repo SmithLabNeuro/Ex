@@ -418,7 +418,7 @@ while true % display loop
                 tvblt = Inf; 
                 dropCount = dropCount + 1;
                 frameDrop(dropCount) = frameCount;
-                fprintf('droping %d th frame',frameCount);
+                fprintf('dropping %d th frame',frameCount);
             end
         end
        tvblt = tvbl;
