@@ -16,7 +16,7 @@ function plotDisplay(obj,~)
 %
 % 2013/09/12 by Adam Snyder: removed references to histogram window.
 
-global wins bciCursorTraj params typingNotes notes sqlDb sessionInfo;
+global wins bciCursorTraj params typingNotes notes sqlDb sessionNumber;
 persistent lastSamp lastClick updateNotes;
 
 if isempty(updateNotes)
@@ -98,7 +98,7 @@ if ~isempty(sqlDb)
                         typingNotes = false;
                         updateNotes = true;
                         % update the session with any notes that have been written
-                        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionInfo, params.SubjectID));
+                        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionNumber, params.SubjectID));
                         % NOTE: you might think the below is a good idea, but
                         % it is not. It kills the ability to do any inputs to
                         % the trial. Kthx.
