@@ -28,6 +28,7 @@ infoPossiblyRelated = sqlDb.fetch(sprintf(['SELECT experiment_info.rowid, '... r
 % not taking, etc.)
 todaySessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session WHERE strftime(''%%Y-%%m-%%d'', date) == strftime(''%%Y-%%m-%%d'', ''now'', ''localtime'') and animal=''%s''', params.SubjectID));
 
+
 if size(todaySessionAllInfo, 1)==1
     % this might happen if runex was run but with no
     % experiment--here we avoid writing another row to
@@ -66,13 +67,21 @@ elseif ~isempty(infoPossiblyRelated)
         % 12:01 AM vs day 2 at 11:59 PM, but that's still day 2 -
         % day 1 = 1 day...), but >16 hours so not counted as the same
         % session
-        sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, params.machine})
+        %
+        % grab the rig name from the database to link to the experiment session
+        rigName = sqlDb.fetch(sprintf('SELECT name FROM rig WHERE control_computer_name="%s"', params.machine));
+        rigName = rigName{1};
+        
+        sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, rigName})
         sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE experiment_session.animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
         sessionNumber = sessionNumber{1};
         sessionNotes = [];
     end
 else
-    sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, params.machine})
+    % grab the rig name from the database to link to the experiment session
+    rigName = sqlDb.fetch(sprintf('SELECT name FROM rig WHERE control_computer_name="%s"', params.machine));
+    rigName = rigName{1};
+    sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, rigName})
     sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
     sessionNumber = sessionNumber{1};
     sessionNotes = [];
