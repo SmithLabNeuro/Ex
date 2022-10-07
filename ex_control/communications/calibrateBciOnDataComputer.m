@@ -243,7 +243,10 @@ elseif strcmp(e(1).bciCalibration_bciDecoderFile, 'trainNewOnPreviousNevFiles')
         didTrainDecoder = true;
 %         sendCode(result);
     end
-elseif strfind(e(1).bciCalibration_bciDecoderFile, params.SubjectID)
+elseif ischar(e(1).bciCalibration_bciDecoderFile)
+    if ~contains(e(1).bciCalibration_bciDecoderFile, params.SubjectID)
+        warning('Decoder "%s" might not have been trained on subject "%s"', e(1).bciCalibration_bciDecoderFile, params.SubjectID);
+    end
     % if we already initialized stuff, then decoderTrained gets set to all
     % true, so we can skip this step and keep going
     if ~all(decoderTrained)
