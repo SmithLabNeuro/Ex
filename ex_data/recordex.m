@@ -288,7 +288,7 @@ while true
             sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
     elseif strcmp(msg, 'sessionEnd')
-        copyToRaptorRigM;
+        copyToRaptor;
         close all;
 %         break;
     end
