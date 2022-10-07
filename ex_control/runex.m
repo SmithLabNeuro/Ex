@@ -708,20 +708,6 @@ params.calibPixY = calibration{1}(:,2)';
 params.calibVoltX = calibration{2}(:,1)';
 params.calibVoltY = calibration{2}(:,2)';
 
-%% save experiment run to database
-if ~isempty(sqlDb)
-    [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
-    notes = sessionNotes;
-    if params.writeFile
-        writeExperimentInfoToDatabase(sessionNumber, xmlParams, outfilename)
-        notes = sprintf('%s\n%s\n', notes, outfilename);
-        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionNumber, params.SubjectID));
-    end
-else
-    sessionNumberStr = input('Enter the subject number:', 's');
-    sessionNumber = str2double(sessionNumberStr);
-end
-
 %% define plotter timer function
 
 plotter = timer;
@@ -744,6 +730,21 @@ msgAndWait('bg_color %d %d %d',xmlParams.bgColor);
 KbQueueCreate;
 KbQueueStart;
 
+%% save experiment run to database
+% this needs to happen last, as it potentially requires drawing to the
+% screen if there's a session number ambiguity
+if ~isempty(sqlDb)
+    [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
+    notes = sessionNotes;
+    if params.writeFile
+        writeExperimentInfoToDatabase(sessionNumber, xmlParams, outfilename)
+        notes = sprintf('%s\n%s\n', notes, outfilename);
+        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionNumber, params.SubjectID));
+    end
+else
+    sessionNumberStr = input('Enter the subject number:', 's');
+    sessionNumber = str2double(sessionNumberStr);
+end
 
 %% Keyboard events handling loop:
 while true

@@ -1,5 +1,5 @@
 function [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params)
-
+global trialData typingNotes
 if isempty(sqlDb)
     error('No database linked, so nothing written to database.')
 end
@@ -47,25 +47,72 @@ elseif ~isempty(infoPossiblyRelated)
     hoursFromStart = cell2mat(infoPossiblyRelated(:, 2));
     [sortedHours, sortInd] = sort(hoursFromStart);
     infoPossiblyRelated = infoPossiblyRelated(sortInd, :);
-    if any(sortedHours<12)
-        % Assume anything within 12 hours is the same session (is this
-        % appropriate? I mean... unless you run a monkey twice in one day
-        % and consider it a different session...)
-        infoId = infoPossiblyRelated{sortedHours<12, 1};
+    
+    % Assume anything within 12 hours is the same session (is this
+    % appropriate? I mean... unless you run a monkey twice in one day
+    % and consider it a different session...)
+    numHoursForDefinitelySameSession = 12;
+    
+    % Not really sure why this exact spacing might happen--maybe if you
+    % run a monkey at 6PM one day and start up at 9AM the next, but
+    % oof--"OR if you're testing," says Yuki.
+    numHoursUnclearIfNewSession = 16;
+    
+    if any(sortedHours<numHoursForDefinitelySameSession)
+        infoId = infoPossiblyRelated{sortedHours<numHoursForDefinitelySameSession, 1};
         % 'SELECT session_number, ifnull(notes,"") FROM experiment_session JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = 1958 AND experiment_session.animal='satchel''
         sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session LEFT OUTER JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d AND experiment_info.animal=''%s''', infoId, params.SubjectID));
         sessionNumber = sessionAllInfo{1};
         sessionNotes = sessionAllInfo{2};
-    elseif any(sortedHours<16)
-        % Not really sure why this exact spacing might happen--maybe if you
-        % run a monkey at 6PM one day and start up at 9AM the next, but
-        % oof.
-        keyboard
+    elseif any(sortedHours<numHoursUnclearIfNewSession)
+        infoId = infoPossiblyRelated{sortedHours<numHoursUnclearIfNewSession, 1};
+        sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session LEFT OUTER JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d AND experiment_info.animal=''%s''', infoId, params.SubjectID));
+        sessionNumberCheck = sessionAllInfo{1};
+        
+        currPrompt = trialData{4};
+        promptSt = sprintf('%s was run (session %d) less than %d hours ago--is this a new session? ''y'' for new session/''n'' if same session.', params.SubjectID, sessionNumberCheck, numHoursUnclearIfNewSession);
+        trialData{4} = promptSt;
+        drawTrialData();
+        sessionNumClarified = false;
+        while ~sessionNumClarified
+            [ keyIsDown, keyCode] = KbQueueCheck;
+            if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
+                kyPressed = KbName(keyCode);
+                KbQueueFlush;
+                switch kyPressed
+                    case 'y'
+                        % user says this is a new session, copy the new
+                        % session code from below, basically
+                        rigName = sqlDb.fetch(sprintf('SELECT name FROM rig WHERE control_computer_name="%s"', params.machine));
+                        rigName = rigName{1};
+                        
+                        sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, rigName})
+                        sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE experiment_session.animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
+                        sessionNumber = sessionNumber{1};
+                        sessionNotes = [];
+                        
+                        sessionNumClarified = true;
+                    case 'n'
+                        % user says use the same session, so we grab the
+                        % data we already got from the database with the
+                        % session check
+                        sessionNumber = sessionNumberCheck;
+                        sessionNotes = sessionAllInfo{2};
+                        sessionNumClarified = true;
+                    otherwise
+                        % user's playing games
+                        sessionNumClarified = false;
+                end
+            end
+        end
+        trialData{4} = currPrompt;
+        drawTrialData;
+        
     else
-        % there was an experiment within 1 day (could be up to
-        % 47.9999 hours, since the 'day' metric could be day 1 at
-        % 12:01 AM vs day 2 at 11:59 PM, but that's still day 2 -
-        % day 1 = 1 day...), but >16 hours so not counted as the same
+        % there was an experiment within 1 day (could be up to 47.9999
+        % hours, since the 'day' metric could be day 1 at 12:01 AM vs day 2
+        % at 11:59 PM, but that's still day 2 - day 1 = 1 day...), but
+        % >numHoursUnclearIfNewSession hours so not counted as the same
         % session
         %
         % grab the rig name from the database to link to the experiment session
