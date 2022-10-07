@@ -12,7 +12,7 @@ end
 
 if ~isempty(msgToReceive) && ~strcmp(rcvd,msgToReceive)
     rcvd = '';
-    errorSt = 'Communication with data computer failed--is it running recordFromControl.m?';
+    errorSt = 'Communication with data computer failed--is it running recordex.m?';
     error('communication:waitForData:communicationFailWithDataComputer', errorSt)
 elseif isempty(msgToReceive) && isempty(rcvd)
     % here if it reached a timeout
