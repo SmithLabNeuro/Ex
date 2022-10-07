@@ -84,6 +84,9 @@ elseif ~isempty(infoPossiblyRelated)
                         % user says this is a new session, copy the new
                         % session code from below, basically
                         rigName = sqlDb.fetch(sprintf('SELECT name FROM rig WHERE control_computer_name="%s"', params.machine));
+                        if isempty(rigName)
+                            error('need to add rig "%s" into database table rig!', params.machine);
+                        end
                         rigName = rigName{1};
                         
                         sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, rigName})
@@ -117,6 +120,9 @@ elseif ~isempty(infoPossiblyRelated)
         %
         % grab the rig name from the database to link to the experiment session
         rigName = sqlDb.fetch(sprintf('SELECT name FROM rig WHERE control_computer_name="%s"', params.machine));
+        if isempty(rigName)
+            error('need to add rig "%s" into database table rig!', params.machine);
+        end
         rigName = rigName{1};
         
         sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, rigName})
@@ -127,6 +133,9 @@ elseif ~isempty(infoPossiblyRelated)
 else
     % grab the rig name from the database to link to the experiment session
     rigName = sqlDb.fetch(sprintf('SELECT name FROM rig WHERE control_computer_name="%s"', params.machine));
+    if isempty(rigName)
+        error('need to add rig "%s" into database table rig!', params.machine);
+    end
     rigName = rigName{1};
     sqlDb.insert('experiment_session', {'session_number', 'date', 'animal', 'experimenter', 'rig'}, {newSessionNumber, datestr(today, 'yyyy-mm-dd'), params.SubjectID, params.experimenter, rigName})
     sessionNumber = sqlDb.fetch(sprintf('SELECT session_number FROM experiment_session WHERE animal=''%s'' ORDER BY session_number DESC LIMIT 1', params.SubjectID));
