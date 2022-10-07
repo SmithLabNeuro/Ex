@@ -4,20 +4,39 @@ global params codes
 % do this before adding paths
 exGlobals; % grab the global parameters
 
-addpath(genpath('C:\Users\rigmdata\Documents\Ex\ex_control'));
-addpath(genpath('C:\Users\rigmdata\spikesort\'))
+% addpath(genpath('C:\Users\smithlab\Ex\ex_control'));
+% addpath(genpath('C:\Users\smithlab\spikesort\'))
+
+if nargin<1
+    connectionType = 'tcp';
+end
+
 
 % The first close (at least under UDP), seems to recognize a connection
 % upon Matlab start (that existed from before Matlab started!) but not
 % close it--this recognition makes the attempt at opening fail, because
 % xippmex is in the wrong state to open new connections. As a result,
 % recordex fails. In any case, a second 'close' seems to fix this...
-xippmex('close');
-xippmex('close');
-if nargin<1
-    connectionType = 'tcp';
+% xippmex('close'); BUT! Things get more confusing, so see the comment in
+% the try-catch below.
+try
+    % In a twist of confusion, when you assign an output to
+    % xippmex('close'), xippmex actually errors if everything is fine
+    % because apparently it doesn't assign an output when things are
+    % correctly closed. If it *does* assign an output, apparently that's
+    % an indication that things didn't close correctly, at which point we
+    % need to close again. So, here, if an output is assigned it continues
+    % to the second xippmex('close'), and if an output is not assigned but
+    % we request it, it errors and as long as that output error was what
+    % happened, recordex continues happily.
+    statCheck = xippmex('close');
+    pause(0.1); % pause needed I think to prevent crash
+    xippmex('close')
+catch error
+    if ~contains(error.message, 'One or more output arguments not assigned during call to "xippmex".')
+        rethrow(error)
+    end
 end
-
 
 % go = waitForMessage;
 status = false;
