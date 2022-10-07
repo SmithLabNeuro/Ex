@@ -39,8 +39,9 @@ params.control2bciIP = '192.168.2.11'; % local IP address of control computer
 params.bci2controlIP = '192.168.2.10'; % local IP address of bci computer
 params.control2bciSocket = 4244;
 %
-params.control2dataIP = '128.2.245.223'; % local IP address of control computer (note over the network no direct ethernet connection)
-params.data2controlIP = '128.2.245.219'; % local IP address of data computer (note over the network no direct ethernet connection)
+% CHANGE THESE TWO IN THE RIG XML
+params.control2dataIP = '0.0.0.0'; % local IP address of control computer (note over the network no direct ethernet connection)
+params.data2controlIP = '0.0.0.0'; % local IP address of data computer (note over the network no direct ethernet connection)
 params.control2dataSocketSend = 4245;
 params.control2dataSocketReceive = 4246;
 %
@@ -63,7 +64,8 @@ params.waitForTolerance = 0.01; % in seconds, so 0.01 = 10 ms
 %for the lab note taking; you can find the name by running 'xinput' on the
 %command line
 % params.keyboardName = 'Dell KB216 Wired Keyboard';
-params.keyboardName = 'Dell Dell USB Entry Keyboard';
+% params.keyboardName = 'Dell Dell USB Entry Keyboard';
+params.keyboardName = 'Dell Dell QuietKey Keyboard';
 %% sound params
 params.sampleFreq = 48000; % 48 kHz
 params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds

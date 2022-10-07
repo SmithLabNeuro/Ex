@@ -109,10 +109,6 @@ fprintf('Waiting for showex (CTRL+C to quit) ...');
 msgAndWait('ack',[],60); %wait up to 1 min for showex to start -acs14mar2016
 fprintf(' connected.\n');
 
-%% opening up chatter with the data computer
-socketsDatComp.sender = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketSend);
-socketsDatComp.receiver = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketReceive);
-recordingTrueFalse = false;
 
 %% Find directories and set paths
 thisFile = mfilename('fullpath');
@@ -315,6 +311,13 @@ switch class(xmlParams.bgColor)
     otherwise
         %do nothing
 end
+
+%% opening up chatter with the data computer
+% this needs to happen after the XML params have been loaded for the IP
+% addresses to be changeable among rigs
+socketsDatComp.sender = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketSend);
+socketsDatComp.receiver = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketReceive);
+recordingTrueFalse = false;
 
 %% Initialize BCI Functionality
 if isfield(xmlParams, 'useBci')
