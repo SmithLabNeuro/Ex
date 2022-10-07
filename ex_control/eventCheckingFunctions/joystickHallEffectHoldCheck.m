@@ -1,9 +1,12 @@
-function success = joystickHallEffectHoldCheck(~, ~, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance)
-% success if the *joystick* (not the cursor) reaches correct position
-% failure if the joystick does not reach correct position
+function success = joystickHallEffectHoldCheck(~, ~, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos)
+% success if the *joystick* (not the cursor) stays at correct position/twist
+% failure if the joystick does not stay correct position/twist
 
 success = 0;
 [xVal, yVal, zValAng, ~] = sampleHallEffectJoystick();
+pixBoxLimit = pixelDistForMaxJoystickPos;
+xVal = xVal * pixBoxLimit;
+yVal = yVal * pixBoxLimit;
 
 % check that x, y, and z position are at desired hold positions
 distanceFromHoldLoc = sqrt(sum(([xVal, yVal] - [positionXHold, positionYHold]).^2));

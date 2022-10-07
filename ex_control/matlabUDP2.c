@@ -83,7 +83,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         /* done with command */
         mxFree(command);
         
-        int dims[2],i;
+        int i;
+        mwSize dims[2];
         unsigned short *outPtr;
         socketindex = (int)mxGetScalar(prhs[1]);
         dims[0] = 1;
@@ -104,8 +105,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
             }
 
             /* always provide at least an empty return value */
+//             mexPrintf("num Bytes: %d\n", i);
             dims[1] = i;
-            if(!(plhs[0] = mxCreateCharArray(2, dims)))
+            const mwSize finalDims[2] = { dims[0],  dims[1]};
+            if(!(plhs[0] = mxCreateCharArray(2, finalDims)))
                 mexErrMsgTxt("matlabUDP: mxCreateCharArray failed.");
             
             /* fill in report with any new bytes */
@@ -125,17 +128,34 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         socketindex = (int)mxGetScalar(prhs[1]);
         
         if(mat_UDP_sockfd[socketindex]<0){
-            
             /* warn that no message was not sent */
             mexWarnMsgTxt("matlabUDP: Message not sent.  No socket is open.");
+            
+
             
         } else {
             
             /* only send message if message arg is a 1-by-N char array */
-            if(nrhs==3 && mxIsChar(prhs[2]) && mxGetM(prhs[2])==1 && mxGetN(prhs[2])>0){
+            if(nrhs==3 && (mxIsChar(prhs[2]) || mxIsUint8(prhs[2])) && mxGetM(prhs[2])==1 && mxGetN(prhs[2])>0){
                 
                 /* format ye string and send forth */
-                mxGetString(prhs[2],&mat_UDP_messBuff[socketindex][0],mxGetN(prhs[2])+1);
+                mxClassID classID = mxGetClassID(prhs[2]);
+                switch (classID) {
+                    case mxUINT8_CLASS:
+                    {
+                        buf_len = mxGetN(prhs[2]);
+                        unsigned char *uintArrayMsg;
+                        uintArrayMsg = (unsigned char*)mxGetUint8s(prhs[2]);
+                        memcpy(&mat_UDP_messBuff[socketindex][0], uintArrayMsg, mxGetN(prhs[2])*sizeof(unsigned char));
+                        break;
+                    }
+                    case mxCHAR_CLASS:
+                    {
+                        mxGetString(prhs[2],&mat_UDP_messBuff[socketindex][0],mxGetN(prhs[2])+1);
+                        break;
+                    }
+                }
+                /*mexPrintf("sending...\n");*/
                 mat_UDP_send(socketindex, &mat_UDP_messBuff[socketindex][0], mxGetN(prhs[2]));
                 
             }else{

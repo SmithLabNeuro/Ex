@@ -1,11 +1,14 @@
-function success = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, cursorR, cursorColor)
-% success if the cursor reaches the target
-% failure if the cursor *doesn't* reach the target
+function [success, msgStr, fixWinOutput] = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorR, cursorColor, immediateFailOnReturn)
+% success if the cursor leaves positionHold
+% failure if the cursor *doesn't* leave positionHold
 
 global codes
 
-pixBoxLimit = 300;
+pixBoxLimit = pixelDistForMaxJoystickPos;
 
+if nargin < 8
+    immediateFailOnReturn = false;
+end
 
 % cursor color
 cursorColorDisp = [cursorColor(1) cursorColor(2) cursorColor(3)];
@@ -33,15 +36,10 @@ sendCode(posShiftY);
 
 % compute how close the cursor is to the target
 
-if keyboardEvents()
-    success = -1;
-end
 
 % draw the cursor
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-msgStr = sprintf('mset 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
-
-msgAndWait(msgStr);
+msgStr = sprintf('set 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
 
 positionXHold = positionHold(1);
 positionYHold = positionHold(2);
@@ -51,5 +49,15 @@ xyLargeEnough = checkWithinTolerance(distanceFromHoldLoc, 0, distanceTolerance, 
 if xyLargeEnough
     success = 1;
 else
-    success = 0;
+    if immediateFailOnReturn
+        success = -1;
+    else
+        success = 0;
+    end
 end
+
+cursorR = 5;
+yellow  = [255 255 0];
+winColors = yellow;
+
+fixWinOutput = {[positionXHold cursorPosDisp(1)], [positionYHold cursorPosDisp(2)], [distanceTolerance cursorR],winColors};

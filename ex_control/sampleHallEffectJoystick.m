@@ -2,10 +2,10 @@ function [xVal, yVal, zValAng, buttonPress] = sampleHallEffectJoystick()
 
 global params behav
 
-buttonAnalogChannel = 6;
-xAnalogChannel = 3;
-yAnalogChannel = 4;
-zAnalogChannel = 5;
+buttonAnalogChannel = 6; % follow colors on joystick pinout
+xAnalogChannel = 3; % follow colors on joystick pinout
+yAnalogChannel = 4; % follow colors on joystick pinout
+zAnalogChannel = 5; % follow colors on joystick pinout
 
 button = unixGetAnalogInput(buttonAnalogChannel); % in mV
 xVal = unixGetAnalogInput(xAnalogChannel); % in mV
@@ -27,8 +27,14 @@ zValAng = (zVal-params.hallEffectZBaseline)/mvPer45Degrees*45; % convert to degr
 
 behav.zValAngle(find(isnan(behav.zValAngle), 1)) = zValAng;
 
-if button < 10
-    buttonPress = true;
-else
-    buttonPress = false;
-end
+% the button (at least on our original joystick) is very finicky, so I'm
+% just defaulting to it not being pressed... can return later once we
+% figure out any electrical problems (or if in a new joystick this
+% works...)
+buttonPress = false;
+
+% if button > 0 && button < 20
+%     buttonPress = true;
+% else
+%     buttonPress = false;
+% end

@@ -30,7 +30,7 @@ function modelParams = train_lowd_kf(trainDat,modelParams,varargin)
     lowd_x = nan(modelParams.zDim,nTimePoints,nTrials);
     for i_trial = 1:nTrials
         tmp = fastfa_estep(squeeze(allCounts(:,:,i_trial)),modelParams.fa_params);
-        tmp = orthogonalize(tmp.mean,modelParams.fa_params.L);
+arnew.sig = sig_1_0 - kt*C*sig_1_        tmp = orthogonalize(tmp.mean,modelParams.fa_params.L);
         lowd_x(:,:,i_trial) = tmp;
     end
     

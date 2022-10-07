@@ -1,4 +1,4 @@
-function success = joystickAtariAcquirePosition(~, ~, joystickButtonX, joystickButtonY, joystickDevInd, checkAll, joystickOnMsgs, joystickOffMsgs)
+function [success] = joystickAtariAcquirePosition(~, ~, joystickButtonX, joystickButtonY, joystickDevInd, checkAll, joystickOnMsgs, joystickOffMsgs)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
 sendMessages = false; 
@@ -12,24 +12,30 @@ elseif nargin == 8
 end
 
 successCheck = zeros(length(joystickDevInd), 1);
-for i=1:length(joystickDevInd)
-    currDevInd = joystickDevInd(i);
-    joystickXY = Gamepad('GetAxis', currDevInd, 3:4);
-    % check for position being correct
-    if ~sum(abs(joystickXY - [joystickButtonX, joystickButtonY]))
-        successCheck(i) = 1;
-        if sendMessages
-            msgAndWait(joystickOnMsgs{i});
-        end
-    else
-        successCheck(i) = 0;
-        if sendMessages
-            msgAndWait(joystickOffMsgs{i});        
+if isnan(joystickButtonX) && isnan(joystickButtonY)
+    % allows us to ignore this joystick
+    success = 1;
+else
+    for i=1:length(joystickDevInd)
+        currDevInd = joystickDevInd(i);
+        joystickXY = Gamepad('GetAxis', currDevInd, 3:4);
+        % check for position being correct
+        if ~sum(abs(joystickXY - [joystickButtonX, joystickButtonY]))
+            successCheck(i) = 1;
+            if sendMessages
+                msgAndWait(joystickOnMsgs{i});
+            end
+        else
+            successCheck(i) = 0;
+            if sendMessages
+                msgAndWait(joystickOffMsgs{i});
+            end
         end
     end
+    if checkAll
+        success = all(successCheck);
+    else
+        success = any(successCheck);
+    end
 end
-if checkAll
-    success = all(successCheck);
-else
-    success = any(successCheck);
-end
+

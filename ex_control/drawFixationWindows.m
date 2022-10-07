@@ -1,4 +1,4 @@
-function drawFixationWindows(fixX,fixY,r,varargin)
+function drawFixationWindows(fixX,fixY,rAll,varargin)
 % function drawFixationWindows(fixX,fixY,r)
 % function drawFixationWindows(fixX,fixY,r,winColors)
 % 
@@ -21,7 +21,7 @@ global calibration wins;
     Screen('CopyWindow',wins.eyeBG,wins.eye,wins.eyeDim,wins.eyeDim);
     if nargin > 0
         fixY = -fixY; %flip y coordinate because PTB's native coordinate space has negative up, but Ex uses negative down. -ACS13Mar2012
-        numWindows = unique([length(fixX) length(fixY) size(r,2)]); 
+        numWindows = unique([length(fixX) length(fixY) size(rAll,2)]); 
         assert(numel(numWindows)==1,'Fixation window parameters X, Y and R must be same size');
         if nargin > 3
             winColors = varargin{1};
@@ -34,9 +34,10 @@ global calibration wins;
             winColors = repmat([255 255 0],numWindows,1);
         end;                
         for i = 1:numWindows
+            r = rAll(~isnan(rAll(:, i)), i);
             if size(r,1)==1 %indicates a circle is desired
-%                 fixationWindow = r(i).*[-1 -1; -1 1; 1 1; 1 -1] + repmat([fixX(i) fixY(i)],4,1); 
-                fixationWindow = r(i).*[-1 -1 1 1]' + [fixX(i) fixY(i) fixX(i) fixY(i)]'; 
+%                 fixationWindow = r.*[-1 -1; -1 1; 1 1; 1 -1] + repmat([fixX(i) fixY(i)],4,1); 
+                fixationWindow = r.*[-1 -1 1 1]' + [fixX(i) fixY(i) fixX(i) fixY(i)]'; 
                 Screen('FrameOval',wins.eye,winColors(i,:),fixationWindow.*repmat(wins.pixelsPerPixel,1,2)'+repmat(wins.midE,1,2)');
                 fixationWindow = reshape(fixationWindow,2,[])'; %put X values in one column and Y values in another...
                 vPoints(:,1) = [fixationWindow ones(size(fixationWindow,1),1)] * calibration{5};
@@ -44,9 +45,9 @@ global calibration wins;
                 vPoints = sort(vPoints,'ascend'); %forces corners defined to be bottom-left and upper-right -ACS 24OCT2013
                 vPoints = reshape(vPoints',[],1); %put back to column form
 %                 disp(vPoints);
-                Screen('FrameOval',wins.voltage,winColors(i,:),vPoints); clear vPoints
+                Screen('FrameOval',wins.voltage,winColors(i,:),vPoints);
             elseif size(r,1)==2
-                fixationWindow = bsxfun(@times,r(:,i)',[-1 -1; -1 1; 1 1; 1 -1]) + repmat([fixX(i) fixY(i)],4,1); 
+                fixationWindow = bsxfun(@times,r',[-1 -1; -1 1; 1 1; 1 -1]) + repmat([fixX(i) fixY(i)],4,1); 
                 Screen('FramePoly',wins.eye,winColors(i,:),fixationWindow.*repmat(wins.pixelsPerPixel,4,1)+repmat(wins.midE,4,1));
                 vPoints(:,1) = [fixationWindow ones(size(fixationWindow,1),1)] * calibration{5};
                 vPoints(:,2) = [bsxfun(@times,fixationWindow,[1 -1]) ones(size(fixationWindow,1),1)] * calibration{6};
@@ -54,8 +55,8 @@ global calibration wins;
                 Screen('FramePoly',wins.voltage,winColors(i,:),vPoints);
             elseif size(r,1)==3
                 % wedge
-                if i == 1 || i == 2
-                    fixationWindow = r(1,i).*[-1 -1 1 1]' + [fixX(i) fixY(i) fixX(i) fixY(i)]'; 
+                if false%i == 1 || i == 2
+                    fixationWindow = r(1).*[-1 -1 1 1]' + [fixX(i) fixY(i) fixX(i) fixY(i)]'; 
                     Screen('FrameOval',wins.eye,winColors(i,:),fixationWindow.*repmat(wins.pixelsPerPixel,1,2)'+repmat(wins.midE,1,2)');
                     fixationWindow = reshape(fixationWindow,2,[])'; %put X values in one column and Y values in another...
                     vPoints(:,1) = [fixationWindow ones(size(fixationWindow,1),1)] * calibration{5};
@@ -65,9 +66,9 @@ global calibration wins;
 %                 disp(vPoints);
                     Screen('FrameOval',wins.voltage,winColors(i,:),vPoints); clear vPoints
                 else
-                    inrad = r(1,i); % in pixels
-                    width = r(2,i); % width from middle of wedge to one side of wedge in degrees
-                    ang = r(3,i); % angle of wedge middle in degrees
+                    inrad = r(1); % in pixels
+                    width = r(2); % width from middle of wedge to one side of wedge in degrees
+                    ang = r(3); % angle of wedge middle in degrees
                     [px,py] = pol2cart(deg2rad([ang-width;ang-width;ang;ang+width;ang+width])',[1000;inrad;inrad;inrad;1000]');
                     fixationWindow = [px',-py'] ;%+ repmat([fixX(i) fixY(i)],length(px),1); 
                     Screen('FramePoly',wins.eye,winColors(i,:),fixationWindow.*repmat(wins.pixelsPerPixel,length(px),1)+repmat(wins.midE,length(px),1));
@@ -106,6 +107,7 @@ global calibration wins;
             else
                 error('''r'' is expected to be either 1xNwindows (circles) or 2xNwindows (rectangles)');
             end;
+            clear vPoints
         end;
     end
 end
