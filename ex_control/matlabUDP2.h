@@ -37,7 +37,7 @@ static int                      mat_UDP_sockfd[MAX_SOCKETS]={-1,-1,-1,-1},      
                 				mat_UDP_addr_len        =sizeof(struct sockaddr),
                                 mat_UDP_numBytes[MAX_SOCKETS];       /*length of return message*/
                                 
-static char mat_UDP_messBuff[MAX_SOCKETS][MAX_NUM_BYTES];            /*used by send and receive*/
+static unsigned char mat_UDP_messBuff[MAX_SOCKETS][MAX_NUM_BYTES];            /*used by send and receive*/
 
 static struct sockaddr_in       mat_UDP_LOCAL_addr[MAX_SOCKETS],     /*holds LOCAL IP address */
                                 mat_UDP_REMOTE_addr[MAX_SOCKETS];	/*holds REMOTE IP address*/

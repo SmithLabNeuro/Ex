@@ -11,5 +11,5 @@ function sendCode(code)
         unixSendByte(code);
     end
     
-    thisTrialCodes(end+1,:) = [code toc(trialTic)];
+    thisTrialCodes(end+1:end+length(code),:) = [code(:) ones(length(code),1).*toc(trialTic)];
 end

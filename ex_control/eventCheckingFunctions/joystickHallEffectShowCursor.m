@@ -1,10 +1,10 @@
-function success = joystickHallEffectShowCursor(loopStart, loopNow, cursorR, cursorColor, msHold)
+function success = joystickHallEffectShowCursor(loopStart, loopNow, cursorR, cursorColor, pixelDistForMaxJoystickPos, msHold)
 % success if the cursor reaches the target
 % failure if the cursor *doesn't* reach the target
 
 global codes
 
-pixBoxLimit = 300;
+pixBoxLimit = pixelDistForMaxJoystickPos;
 
 
 % cursor color

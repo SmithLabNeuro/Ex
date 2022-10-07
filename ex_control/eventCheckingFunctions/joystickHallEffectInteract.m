@@ -1,11 +1,11 @@
-function success = joystickHallEffectInteract(~, ~, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance)
+function success = joystickHallEffectInteract(~, ~, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
 
 success = 0;
 [xVal, yVal, zValAng, buttonPress] = sampleHallEffectJoystick();
 
-pixBoxLimit = 300;
+pixBoxLimit = pixelDistForMaxJoystickPos;
 xVal = xVal * pixBoxLimit;
 yVal = yVal * pixBoxLimit;
 

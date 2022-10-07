@@ -10,7 +10,7 @@ global debug params sockets;
 if nargin<1, timeout = 10; end;
 
 thisStart = tic;
-
+warnOn = false;
 while true
     loopTop = GetSecs;
     
@@ -25,6 +25,9 @@ while true
         break; %message received
     elseif toc(thisStart)>timeout
         error('waitFor:aborted','Timeout waiting for return message');
+    else
+        s = '';
     end;
-    if (GetSecs-loopTop)>params.waitForTolerance, warning('waitFor:tooSlow','waitFor exceeded latency tolerance - %s',datestr(now)); end; %warn tolerance exceeded -acs22dec2012
+    chk = GetSecs-loopTop;
+    if (chk)>params.waitForTolerance, warning('waitFor:tooSlow','waitFor exceeded latency tolerance - %s - by %0.01f msecs',datestr(now), 1000*(chk - params.waitForTolerance)); warnOn = true;  end; %warn tolerance exceeded -acs22dec2012
 end

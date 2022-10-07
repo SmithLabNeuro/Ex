@@ -1,4 +1,4 @@
-function runex(xmlFile,repeats,outfile,~)
+function runex(xmlFile,repeats,outfile,varargin)
 % function runex(xmlFile,repeats,outfile,demoMode)
 %
 % main Ex function.
@@ -8,10 +8,16 @@ function runex(xmlFile,repeats,outfile,~)
 %   'rpts' in the xml file
 % outfile: if present, the full list of digital codes sent is written to
 %    this filename
-% demoMode: if present, runs in mouse mode with no rewarding or digital codes
+% varargin: for extra flags including:
+%       useDatabase: if true (DEFAULT), a sqlite database will be created/used to
+%            keep track of notes/saved files/times/etc. at a location
+%            defined by: 
+%               fullfile(params.localDataDir, 'database', 'experimentInfo.db')
+%            where params is defined in exGlobals.m
 %
 %
 % LAST MODIFIED:
+% 28 Sept 21 -- on/off flag for database
 % 22Nov19 by MAS/XZ - new version, github release work
 
 %%
@@ -19,16 +25,30 @@ function runex(xmlFile,repeats,outfile,~)
 
 %% initialize global variables
 clear global behav allCodes params;
+clear plotDisplay;
 
 global eyeHistory eyeHistoryCurrentPos;
 global trialCodes thisTrialCodes trialTic allCodes;
 global trialMessage trialData;
 global wins params codes calibration stats;
-global behav;
+global behav outfilename;
 global audioHandle;
 global debug; %#ok<NUSED> This will be assigned by exGlobals
-global sockets;
+global sockets socketsDatComp bciSockets;
 global bciCursorTraj; % only used when bci cursor is enabled
+global typingNotes;
+global notes;
+global sqlDb;
+global sessionNumber;
+typingNotes = false;
+
+useDatabase = true;
+if any(strcmp(varargin, 'useDatabase'))
+    useDatabase = varargin{[false strcmp(varargin, 'useDatabase')]};
+    if ~islogical(useDatabase) || (useDatabase ~= 1 && useDatabase ~= 0)
+        error('useDatabase input flag must be true, false, 1, or 0');
+    end
+end
 
 %% Startup message
 thisFileInfo = dir(which(mfilename));
@@ -84,9 +104,11 @@ assert(sum(isspace(params.machine))==0,'Machine name must not have spaces');
 %% UDP initialization for showex
 matlabUDP2('all_close'); %first close any open UDP sessions.
 sockets(1) = matlabUDP2('open',params.control2displayIP,params.display2controlIP,params.control2displaySocket);
+
 fprintf('Waiting for showex (CTRL+C to quit) ...');
 msgAndWait('ack',[],60); %wait up to 1 min for showex to start -acs14mar2016
 fprintf(' connected.\n');
+
 
 %% Find directories and set paths
 thisFile = mfilename('fullpath');
@@ -98,6 +120,18 @@ for dx = 1:numel(requiredDirectories)
     addpath([runexDirectory{:},requiredDirectories{dx}]);
 end
 
+%% get/open database file
+if useDatabase
+    homedirCont = dir('~');
+    homedir = homedirCont(1).folder;
+    localDataDir = params.localDataDir;
+    homeTag = find(localDataDir == '~');
+    localDataDir = [localDataDir(1:homeTag-1) homedir localDataDir(homeTag+1:end)];
+    sqlDbPath = fullfile(localDataDir, 'database', 'experimentInfo.db');
+    sqlDb = sqlite(sqlDbPath);
+else
+    sqlDb = [];
+end
 %% Find Ex_local dir, make sure it's there, make sure it has the subdirectories you expect, and add it to the path
 % if exist(params.localExDir,'dir')
 %     requiredLocalDirectories = {'ex','xml','user','control','display'};
@@ -205,6 +239,7 @@ if makeDir
     end
 end
 
+
 %% now, prompt for subject ID
 if isfield(params,'SubjectID')
     disp(['Current Subject ID = ',params.SubjectID]);
@@ -224,6 +259,32 @@ else
     params.SubjectID = input('Enter the subject ID:','s');
 end
 params.SubjectID = regexprep(lower(params.SubjectID),'\s',''); %enforce lowercase / no whitespace 
+if useDatabase
+    params.SubjectID = confirmOrAddSubjectToDatabase(params.SubjectID);
+end
+
+%% now, prompt for experimenter
+if isfield(params,'experimenter')
+    disp(['Current experimenter = ',params.SubjectID]);
+    yorn = 'q'; %initialize
+    while ~ismember(lower(yorn(1)),{'y','n'})
+        yorn = input('Is that correct (y/n)','s');
+        if (strcmp(yorn(1),'n'))
+            params.experimenter = input('Enter the correct experimenter\n(or press Ctrl+C to exit Runex, then\nchange the experimenter in exGlobals.m):','s');
+        elseif (strcmp(yorn(1),'y'))
+            disp('Continuing with runex ...')
+        else
+            beep
+            fprintf('Reply ''y'' or ''n''\n');
+        end
+    end
+else
+    params.experimenter = input('Enter the main experimenter:','s');
+end
+params.experimenter = regexprep(lower(params.experimenter),'\s',''); %enforce lowercase / no whitespace 
+if useDatabase
+    params.experimenter = confirmExperimenterNameWithDatabase(params.experimenter);
+end
 
 %% quick double-check
 assert(isempty(strfind(params.machine,'_')),'Found an underscore');
@@ -251,18 +312,70 @@ switch class(xmlParams.bgColor)
         %do nothing
 end
 
+%% opening up chatter with the data computer
+% this needs to happen after the XML params have been loaded for the IP
+% addresses to be changeable among rigs
+socketsDatComp.sender = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketSend);
+socketsDatComp.receiver = matlabUDP2('open',params.control2dataIP,params.data2controlIP,params.control2dataSocketReceive);
+recordingTrueFalse = false;
+
 %% Initialize BCI Functionality
+if isfield(xmlParams, 'useBci')
+    params.bciEnabled = xmlParams.useBci;
+end
 if params.bciEnabled
     try
-        sockets(2) = matlabUDP2('open',params.control2bciIP,params.bci2controlIP,params.control2bciSocket);
+        bciSockets.sender = matlabUDP2('open',params.control2bciIP,params.bci2controlIP,params.control2bciSocket);
+        bciSockets.receiver = bciSockets.sender;
     catch ERR
         disp(ERR.message);
         disp('*ERROR* - No BCI connection, proceeding without BCI computer');
     end
     
+    disp('Establishing communication with BCI computer');
+    %matlabUDP2('send', sockets(2), 'ready');
+    %bciMsg = matlabUDP2('receive', sockets(2));
+    matlabUDP2('send', bciSockets.sender, 'ready');
+    bciMsg = matlabUDP2('receive', bciSockets.receiver);
+    tm = 0;
+    while ~strcmp(bciMsg, 'prepared')
+        tm = tm+1;
+        pause(0.1)
+        %matlabUDP2('send', sockets(2), 'ready');
+        %bciMsg = matlabUDP2('receive', sockets(2));
+        fprintf('BCI computer communication attempt %d\n', tm)
+        matlabUDP2('send', bciSockets.sender, 'ready');
+        bciMsg = matlabUDP2('receive', bciSockets.receiver);
+
+    end
+    bciMsg = '';
+    % wait for the second ack that happens after the buffer has been
+    % cleared
+    while ~strcmp(bciMsg, 'flushed')
+        pause(0.1)
+        %bciMsg = matlabUDP2('receive', sockets(2));
+        bciMsg = matlabUDP2('receive', bciSockets.receiver);
+    end
+    bciMsg = '';
+    disp('Communicating with BCI');
+    
     if params.bciCursorEnabled
         bciCursorTraj = [];
     end
+    
+    % send bci paramater file that will be used--not 100% clear whether I
+    % want this here or in the stim file... but I'm coming around to
+    % wanting it here
+    %bciSocket.sender = sockets(2);
+    %bciSocket.receiver = sockets(2);
+    %sendMessageWaitAck(bciSocket, 'readyBciParamFile');
+    %sendMessageWaitAck(bciSocket, xmlParams.bciDecoderParamFile);
+    %sendMessageWaitAck(bciSocket, params.SubjectID);
+    sendMessageWaitAck(bciSockets, 'readyBciParamFile');
+    sendMessageWaitAck(bciSockets, xmlParams.bciDecoderParamFile);
+    sendMessageWaitAck(bciSockets, params.SubjectID);
+
+
 end
 
 %% Initialize Sound Functionality
@@ -342,7 +455,8 @@ retry = struct('CORRECT',       0,...
     'SHOWEX_TIMINGERROR',  1,...    
     'BCI_ABORT',     1,...
     'BCI_CORRECT',   0,...
-    'BCI_MISSED',    1);
+    'BCI_MISSED',    1,...
+    'BACKGROUND_PROCESS_TRIAL', 1);
 
 allFields = fieldnames(xmlParams);
 retryFields = cellfun(@cell2mat,regexp(allFields,'(?<=retry_)\w*','match'),'uniformoutput',0);
@@ -356,6 +470,7 @@ stats = zeros(numel(availableOutcomes),1);
 
 %Define standard prompt strings:
 defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, e(x)it';
+
 setJuicePrompt = 'juice (x), juice (d)uration, juice (i)nterval, (q)uit';
 calibrationInProgressPrompt = 'Calibrating...(g)ood position, (b)ack up, (q)uit, (j)uice, (r)efresh dot'; 
 calibrationDonePrompt = '(f)inished calibration, (b)ack up, (q)uit, (j)uice';
@@ -489,7 +604,12 @@ if params.displayHz~=100
 end
 
 % Open a double buffered fullscreen window
-[wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray);
+if debug
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 600]);
+else
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 600]);
+%     [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber,gray);
+end
 
 % some default values for the control display only (no effect on subject display)
 wins.textSize = 14; 
@@ -514,19 +634,23 @@ cRes = wins.controlResolution;
 dispRat = wins.displayResolution(2) / wins.displayResolution(1);
 eyePortion = 0.5; % Top half of display is for eye windows, bottom for status
 eyeMargin = 0.05; % Extra margin between info and eye displays
+infoHorizontalPortion = 0.75; % Bottom-left of screen is for info
 wins.voltageSize = ceil([0 0 cRes(2)*eyePortion cRes(2)*eyePortion]); 
 wins.eyeSize = ceil([cRes(1)-1-((cRes(2)*eyePortion)/dispRat) 0 cRes(1)-1 cRes(2)*eyePortion]);
-wins.infoSize = ceil([cRes(2)*eyeMargin cRes(2)*(eyePortion+eyeMargin) cRes(1)-1 cRes(2)-1]);
+wins.infoSize = ceil([cRes(2)*eyeMargin cRes(2)*(eyePortion+eyeMargin) infoHorizontalPortion*cRes(1)-1 cRes(2)-1]);
+wins.labNotesSize = ceil([infoHorizontalPortion*cRes(1)-1 + (1-infoHorizontalPortion)*eyeMargin cRes(2)*(eyePortion+eyeMargin) cRes(1)-1 cRes(2)-1]);
 
 % Create the control display windows
 wins.voltageDim = [0 0 wins.voltageSize(3:4)-wins.voltageSize(1:2)];
 wins.eyeDim = [0 0 wins.eyeSize(3:4)-wins.eyeSize(1:2)];
 wins.infoDim = [0 0 wins.infoSize(3:4)-wins.infoSize(1:2)];
+wins.labNotesDim = [0 0 wins.labNotesSize(3:4)-wins.labNotesSize(1:2)];
 [wins.voltage, vRect] = Screen('OpenOffscreenWindow',wins.w,gray,wins.voltageDim);
 wins.voltageBG = Screen('OpenOffscreenWindow',wins.w,gray,wins.voltageDim);
 wins.eye = Screen('OpenOffscreenWindow',wins.w,gray,wins.eyeDim);
 [wins.eyeBG,  eRect] = Screen('OpenOffscreenWindow',wins.w,gray,wins.eyeDim);
 wins.info = Screen('OpenOffscreenWindow',wins.w,gray,wins.infoDim);
+wins.labNotes = Screen('OpenOffscreenWindow',wins.w,gray,wins.infoDim);
 
 % scale factors to convert from eye tracker volts or full-screen
 % pixel coordinates into the two control display screens
@@ -552,7 +676,7 @@ if params.getEyes
         [~,outfilename,outfileext] = fileparts(outfile);
         trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ', Filename: ' outfilename outfileext];
     else 
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile];
+        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' ; NOT RECORDING DATA'];
     end
     if exist(localCalibrationFilename,'file')
         load(localCalibrationFilename);
@@ -565,9 +689,14 @@ else
         [~,outfilename,outfileext] = fileparts(outfile);
         trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE), Filename: ' outfilename outfileext];
     else
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE)'];
+        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE); NOT RECORDING DATA'];
     end
     load mouseModeCalibration
+end
+
+% make available the record prompt if we're writing output
+if params.writeFile
+    defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
 end
 
 trialData{4} = defaultRunexPrompt;
@@ -604,13 +733,29 @@ msgAndWait('bg_color %d %d %d',xmlParams.bgColor);
 KbQueueCreate;
 KbQueueStart;
 
+%% save experiment run to database
+% this needs to happen last, as it potentially requires drawing to the
+% screen if there's a session number ambiguity
+if ~isempty(sqlDb)
+    [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
+    notes = sessionNotes;
+    if params.writeFile
+        writeExperimentInfoToDatabase(sessionNumber, xmlParams, outfilename)
+        notes = sprintf('%s\n%s\n', notes, outfilename);
+        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionNumber, params.SubjectID));
+    end
+else
+    sessionNumberStr = input('Enter the subject number:', 's');
+    sessionNumber = str2double(sessionNumberStr);
+end
+
 %% Keyboard events handling loop:
 while true
     % MATT - should setup KbQueue so it only detects keys that we
     % use, it's supposed to be faster. Doesn't matter here but
     % would be more important in the functions that run during a trial
     [ keyIsDown, keyCode] = KbQueueCheck;
-    if keyIsDown
+    if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
         c = KbName(keyCode);
         KbQueueFlush;
         if numel(c)>1; continue; end %keyboard mash and other weirdness
@@ -639,8 +784,52 @@ while true
                 drawCalibration; % draw all calibration points
                 Screen('CopyWindow',wins.voltageBG,wins.voltage,wins.voltageDim,wins.voltageDim);
             case 's'
+                % the BCI *requires* the NEV to be recorded (generally) so
+                % we're ensuring that here...
+                if params.bciEnabled && ~recordingTrueFalse
+                    [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                end
                 exRunExperiment; % see experimental control subfunction
+            case 'r'
+                if params.writeFile
+                    try
+                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                    catch err
+                        if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
+                            trialData{4} = err.message;
+                            drawTrialData();
+                            pause(2)
+                            trialData{4} = defaultRunexPrompt;
+                            drawTrialData();
+                        else
+                            rethrow(err)
+                        end
+                    end
+                end
             case 'x'
+                if params.writeFile
+                    trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
+                    if ~isempty(sqlDb)
+                        writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                    end
+                    % shut off recording
+                    if recordingTrueFalse
+                        try
+                            [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                        catch err
+                            if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
+                                trialData{4} = err.message;
+                                drawTrialData();
+                                pause(2)
+                                trialData{4} = defaultRunexPrompt;
+                                drawTrialData();
+                            else
+                                error(err.identifier, err.message)
+                            end
+                        end
+                    end
+                end
+                
                 try
                     TimingTest(allCodes);
                     break;
@@ -665,7 +854,12 @@ clear plotter;
 
 Screen('CloseAll');
 
+if params.bciEnabled
+    matlabUDP2('send', bciSockets.sender, 'bciEnd')
+end
+
 matlabUDP2('all_close');
+
 % for n= 1:length(sockets)
 %     matlabUDP2('close',sockets(n)); %NB: Does this matlapUDP call close/affect the xippmex socket??
 % end
@@ -780,6 +974,7 @@ fclose all;
                         e{I} = exCatstruct(xmlParams,e{I});
                         e{I}.('currentBlock')=j;
                         e{I}.('currentCnd')=cnd(I);
+                        e{I}.trialCounter = trialCounter;
                     end
                     e = cell2mat(e);
                     try
@@ -915,6 +1110,30 @@ fclose all;
             for stk = 1:length(err.stack)
                 fprintf('In ==> %s %s %i\n',err.stack(stk).file,err.stack(stk).name,err.stack(stk).line);
             end
+            % shut off BCI
+            if params.bciEnabled
+                matlabUDP2('send', bciSockets.sender, 'bciEnd')
+            end
+
+            % shut off recording
+            if params.writeFile
+                if recordingTrueFalse
+                    try
+                        [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
+                    catch err
+                        if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
+                            trialData{4} = err.message;
+                            drawTrialData();
+                            pause(2)
+                            trialData{4} = defaultRunexPrompt;
+                            drawTrialData();
+                        else
+                            error(err.identifier, err.message)
+                        end
+                    end
+                end
+
+            end
             beep;
         end
     end
@@ -925,7 +1144,7 @@ fclose all;
         drawTrialData();
         while true
             [ keyIsDown, keyCode] = KbQueueCheck;
-            if keyIsDown
+            if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
                 c = KbName(keyCode);
                 KbQueueFlush;
                 switch c
@@ -973,7 +1192,7 @@ fclose all;
         while true
             [ keyIsDown, keyCode] = KbQueueCheck;
             keyCode = find(keyCode, 1);
-            if keyIsDown                
+            if keyIsDown && (~isempty(typingNotes) && ~typingNotes)                
                 if keyCode == 66 % space bar
                     break;
                 end
@@ -1039,7 +1258,7 @@ fclose all;
             end
             samp; % make sure the eyeHistory buffer gets filled with recent samples
             [ keyIsDown, keyCode] = KbQueueCheck;
-            if keyIsDown
+            if keyIsDown && (~isempty(typingNotes) && ~typingNotes)
                 c = KbName(keyCode);
                 KbQueueFlush;
                 if numel(c)>1, continue; end
@@ -1135,12 +1354,13 @@ fclose all;
             [~,outfilename,outfileext] = fileparts(outfile);
             trialData{1} = sprintf('Subject: %s - %s%s, Filename: %s%s',upper(params.SubjectID),xmlFile,mmString,outfilename,outfileext);
         else
-            trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile mmString];
+            trialData{1} = sprintf('Subject: %s - %s%s; NOT RECORDING DATA', upper(params.SubjectID), xmlFile, mmString);
         end
         drawTrialData();
         setWindowBackground(wins.voltageBG);
     end
-    
+
+
 %%
     function cleanUp()
         Priority(origPriority);

@@ -7,6 +7,9 @@
  * specifically the PCIM-DAS1602.  Uses ports A & B for the
  * 16 bits, and sends a strobe on the first bit of port C.
  *
+ *
+ * 2022.01.26 - MAS - Set port bits to zero after write
+ *
  ***************************************************************************/
 
 #include <stdio.h>
@@ -27,7 +30,7 @@
 #define HIGHPORTMASK 0xFF /* 8 0's and 8 1's - high port open */
 
 /* These variables set the lag between bit flips (ms) */
-/* 20-50 uS is the range needed for the Ripple system */
+/* 20-50 uS is the range needed for the Ripple system (30 kHz) */
 /* faster than that will likely cause dropped codes */
 #define WAIT1_MICROSEC 0.050 /* between setting bits and the strobe */
 #define WAIT2_MICROSEC 0.050 /* between setting the strobe to 1 and back to 0 */
@@ -123,6 +126,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                         return;
                     }
                 }
+                /* After we've written all the data, set all the port bits to zero */
+                byteToSend = 0;
+                flag=comedi_dio_bitfield(it,SUBDEV,WRITEMASK,&byteToSend);
+                    
                 break;
             case mxCHAR_CLASS:
                 charData = (mxChar*)mxGetData(prhs[0]);
@@ -151,6 +158,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
                         return;
                     }
                 }
+                /* After we've written all the data, set all the port bits to zero */
+                byteToSend = 0;
+                flag=comedi_dio_bitfield(it,SUBDEV,WRITEMASK,&byteToSend);                
+                
                 break;
             default:
                 mexPrintf("Sorry, this data type cannot be transmitted.\n");

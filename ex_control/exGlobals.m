@@ -7,7 +7,8 @@ debug = 0; % 1 to turn on debug mode, 0 to leave it off (or just comment out the
 if isunix
     rootDir = '~';
 else
-    error('RUNEX:BadPlatform','Ex only works on unix');
+    rootDir = '~';
+    warning('RUNEX:BadPlatform','some parameters might only make sense in Unix');
 end
 params.localDataDir = [rootDir,filesep,'exData'];
 params.localExDir = [rootDir,filesep,'Ex_local'];
@@ -25,7 +26,7 @@ params.eyeTrackerAnalog = true; % true for using analog card, false for eyelink 
 params.sendingCodes = true; % sending digital codes
 params.rewarding = true; % providing rewards
 params.writeFile = true; % write trial data to file
-params.bciEnabled = true; % enable BCI computer communication
+params.bciEnabled = false; % enable BCI computer communication
 params.bciCursorEnabled = true; % enable BCI cursor on runex computer
 params.statusUpdates = false; % writing a status file of behavioral info
 params.soundEnabled = true; % enable sound capabilities
@@ -37,6 +38,12 @@ params.control2displaySocket = 4243;
 params.control2bciIP = '192.168.2.11'; % local IP address of control computer
 params.bci2controlIP = '192.168.2.10'; % local IP address of bci computer
 params.control2bciSocket = 4244;
+%
+% CHANGE THESE TWO IN THE RIG XML
+params.control2dataIP = '0.0.0.0'; % local IP address of control computer (note over the network no direct ethernet connection)
+params.data2controlIP = '0.0.0.0'; % local IP address of data computer (note over the network no direct ethernet connection)
+params.control2dataSocketSend = 4245;
+params.control2dataSocketReceive = 4246;
 %
 params.screenDistance = 36; % distance from eye to screen in cm
 params.pixPerCM = 27.03; % pixels per centimeter of screen
@@ -54,9 +61,22 @@ params.diodeLoc = [10 10 40 40];
 % is displayed (to notify us that there are timing issues that may warrant attention)
 params.waitForTolerance = 0.01; % in seconds, so 0.01 = 10 ms
 
+%for the lab note taking; you can find the name by running 'xinput' on the
+%command line
+% params.keyboardName = 'Dell KB216 Wired Keyboard';
+% params.keyboardName = 'Dell Dell USB Entry Keyboard';
+params.keyboardName = 'Dell Dell QuietKey Keyboard';
 %% sound params
 params.sampleFreq = 48000; % 48 kHz
 params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds
+
+%% BCI params
+params.neuralRecordingSamplingFrequencyHz = 30000; % Ripple records at 30kHz
+params.nasNetFolderDataComputer = 'C:\Users\rigmdata\spikesort\nasnet\networks';
+params.bciDecoderBasePathDataComputer = 'X:\';
+params.nasNetFolderBciComputer = '/home/smithlab/spikesort/nasnet/networks';
+params.bciDecoderBasePathBciComputer = '/home/smithlab/bciParameters';
+params.bciDecoderXmlParamFolder = 'bciXmlParams';
 
 %% calibration params
 params.extent = 250; % spacing of calibration dots in pixels
@@ -78,8 +98,8 @@ params.eyeSmoothing = 5; % 0 for no smoothing, numbers >= 1 are in msec
 params.eyeHistoryBufferSize = 200; %in samples (duration depends on how fast "samp" is called)
 params.drawSaccades = true;
 % used to check hold on joystick
-params.hallEffectZBaseline = 2.5209e+03; % found manually... could consider having a calibration step going forward
-params.hallEffectZRotationAngleMaxDegree = 45; % found manually... could consider having a calibration step going forward
+params.hallEffectZBaseline = 2.6409e+03; % found manually... could consider having a calibration step going forward
+params.hallEffectZRotationAngleMaxDegree = 45; % from specs
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                 DIGITAL CODES LIST (0-255)            %
@@ -94,6 +114,7 @@ codes = struct();
 
 % trial boundaries
 codes.START_TRIAL = 1;
+codes.BACKGROUND_PROCESS_TRIAL = 250; % use to indicate this is a 'special' trial whose timing/results should not be analyzed--i.e. training a BCI decoder
 codes.SHOWEX_TIMINGERROR = 251;
 codes.BCI_ABORT = 252;  % use to indicate that BCI computer is not working
 codes.ALIGN = 253; % use if you want to align your data to a time point
@@ -179,6 +200,7 @@ codes.CURSOR_OFF = 136;
 codes.FIXATE  = 140 ;	% attained fixation 
 codes.SACCADE = 141 ;	% initiated saccade
 codes.CURSOR_POS = 142; % indicates next codes will define cursor position
+codes.BCI_CURSOR_POS = 143; % indicates next codes will define cursor position from BCI
 
 % trial outcome codes
 codes.CORRECT = 150 ;	% Independent of whether reward is given
