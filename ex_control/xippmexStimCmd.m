@@ -33,6 +33,9 @@ if numel(stim_amp) > 1
     end
 end
 
+%enable fast settle
+fs=1;
+
 clock_cycle = 1/30 * 1000; % clock ticks in microseconds
 delay_length = clock_cycle / 32; % length of a single unit of delay in microseconds
 
@@ -99,10 +102,10 @@ for thisChan = 1:numel(stim_cmd),
     % setup the cathodic phase - 1 clock cycle for the first 33.3 uS, then fill
     % in the rest of the pulse to get exactly the length you want (with near-uS
     % precision)
-    stim_cmd(thisChan).seq(1) = struct('length', full_pulses, 'ampl', nstim_steps(thisChan), 'pol', 0,'fs', 1, 'enable', 1, 'delay', 0, 'ampSelect', 1);
+    stim_cmd(thisChan).seq(1) = struct('length', full_pulses, 'ampl', nstim_steps(thisChan), 'pol', 0,'fs', fs, 'enable', 1, 'delay', 0, 'ampSelect', 1);
     cath_remaining = pulse_width - (full_pulses * clock_cycle);
     cath_delay = floor(cath_remaining / delay_length);
-    stim_cmd(thisChan).seq(2) = struct('length', 1, 'ampl', nstim_steps(thisChan), 'pol', 0,'fs', 1, 'enable', 0, 'delay', cath_delay, 'ampSelect', 1);
+    stim_cmd(thisChan).seq(2) = struct('length', 1, 'ampl', nstim_steps(thisChan), 'pol', 0,'fs', fs, 'enable', 0, 'delay', cath_delay, 'ampSelect', 1);
     
     % could setup an interphase interval here, but we don't usually use one
     % MATT - optional here, this code as is will wait for the end of the clock
@@ -110,10 +113,10 @@ for thisChan = 1:numel(stim_cmd),
     % 250 uS (for example).
     
     % setup the anodic phase
-    stim_cmd(thisChan).seq(3) = struct('length', full_pulses, 'ampl', nstim_steps(thisChan), 'pol', 1,'fs', 1, 'enable', 1, 'delay', 0, 'ampSelect', 1);
+    stim_cmd(thisChan).seq(3) = struct('length', full_pulses, 'ampl', nstim_steps(thisChan), 'pol', 1,'fs', fs, 'enable', 1, 'delay', 0, 'ampSelect', 1);
     an_remaining = pulse_width - (full_pulses * clock_cycle);
     an_delay = floor(an_remaining / delay_length);
-    stim_cmd(thisChan).seq(4) = struct('length', 1, 'ampl', nstim_steps(thisChan), 'pol', 1,'fs', 1, 'enable', 0, 'delay', an_delay, 'ampSelect', 1);
+    stim_cmd(thisChan).seq(4) = struct('length', 1, 'ampl', nstim_steps(thisChan), 'pol', 1,'fs', fs, 'enable', 0, 'delay', an_delay, 'ampSelect', 1);
     
 end;
 
