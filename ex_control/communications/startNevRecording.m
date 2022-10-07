@@ -12,7 +12,7 @@ end
 
 rc = sendMessageWaitAck(socketsDatComp, params.SubjectID, timeout);
 if isempty(rc)
-    returnneuralOutName
+    return
 end
 
 sessionNum = sessionNumber;
