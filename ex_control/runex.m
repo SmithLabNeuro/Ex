@@ -50,6 +50,10 @@ if any(strcmp(varargin, 'useDatabase'))
     end
 end
 
+p = inputParser;
+p.addOptional('fullScreen',true,@islogical);
+p.parse(varargin{:});
+fullScreenFlag = p.Results.fullScreen;
 %% Startup message
 thisFileInfo = dir(which(mfilename));
 fprintf('*****Running RUNEX (last modified %s). Started %s*****\n\n',thisFileInfo.date,datestr(now));
@@ -407,13 +411,13 @@ end
 
 %set 'params' defaults:
 if ~isfield(params,'randomizeCalibration'), params.randomizeCalibration = false; end %whether or not to present the calibration positions in a random order. -ACS 03Sep2013
-if nargin > 3 %"demo mode"
-    params.getEyes = 0;
-    params.sendingCodes = 0;
-    params.rewarding = 0;
-    params.getSpikes = 0;
-    params.writeFile = 0;
-end
+% if nargin > 3 %"demo mode"
+%     params.getEyes = 0;
+%     params.sendingCodes = 0;
+%     params.rewarding = 0;
+%     params.getSpikes = 0;
+%     params.writeFile = 0;
+% end
 
 %trial control variables:
 eyeHistory = nan(params.eyeHistoryBufferSize,3); %3 cols are x, y, time
@@ -604,11 +608,10 @@ if params.displayHz~=100
 end
 
 % Open a double buffered fullscreen window
-if debug
+if ~fullScreenFlag % PTB window is not full screen
     [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 600]);
 else
-    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 600]);
-%     [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber,gray);
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber,gray);
 end
 
 % some default values for the control display only (no effect on subject display)
