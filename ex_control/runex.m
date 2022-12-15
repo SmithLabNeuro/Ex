@@ -978,6 +978,7 @@ fclose all;
                         e{I}.('currentBlock')=j;
                         e{I}.('currentCnd')=cnd(I);
                         e{I}.trialCounter = trialCounter;
+                        e{I}.ordering = ordering;
                     end
                     e = cell2mat(e);
                     try
