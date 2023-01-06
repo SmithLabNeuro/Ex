@@ -1,0 +1,25 @@
+<stimulus name="natural" repeats="200" ex="ex_activeFixation" bgColor="0 0 0">
+    <params type="movie" runline="movieprefix,suffix numframes dwell startframe centerx centery" movieprefix="example/natural_">
+        <suffix>[11336 32370]</suffix>
+        <numframes>100</numframes>
+        <dwell>4</dwell>
+        <startframe>1</startframe>
+        <centerx>[-4 34 74]</centerx>
+        <centery>[61 1]</centery>
+    
+        <fixX>0</fixX>
+        <fixY>0</fixY>
+        <fixRad>5</fixRad>
+        <fixColor>[0;0;255]</fixColor>
+        <preStimFix>150</preStimFix>
+        <timeToFix>1000</timeToFix>
+        <saccadeInitiate>500</saccadeInitiate>
+        <saccadeTime>200</saccadeTime>
+        <stayOnTarget>150</stayOnTarget>
+        <saccadeLength>150</saccadeLength>
+        <noFixTimeout>1000</noFixTimeout>
+    </params>
+    <randoms>
+        <saccadeDir>0:359</saccadeDir>
+    </randoms>
+</stimulus>
