@@ -9,6 +9,6 @@ This is an example "Ex_local" directory. You can move this directory into the sa
 This command should do what is necessary:
 
 cd /home/username/Ex
-mv misc/exlocal_template ../Ex_local
+cp -r misc/exlocal_template ../Ex_local
 
 Ex will automatically add this to your path and you can place your experiment files and XML configuration files here. This enables you to keep the "Ex" directory synchronized from github while not overwriting your own custom experiment files.
