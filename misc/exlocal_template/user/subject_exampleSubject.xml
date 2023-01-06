@@ -1,0 +1,33 @@
+<subject name="exampleSubject">
+    <globals>
+        <fixWinRad>80</fixWinRad>
+        <sacWinRad>25</sacWinRad>
+        <recenterFixWin>false</recenterFixWin>
+        <targWinRad>60</targWinRad>
+        <juiceTTLDuration>150</juiceTTLDuration>
+        <juiceInterval>50</juiceInterval>
+        <calibDotSize>5</calibDotSize>
+    </globals>
+  
+    <experiment name="dirmem_withhelp.xml">
+        <params>
+            <size>10</size>
+            <helperTargetColor>[128;128;128]</helperTargetColor>
+            <timeToFix>1000</timeToFix>
+            <targetDuration>200</targetDuration>
+            <noFixTimeout>1000</noFixTimeout>
+            <noChoiceTimeout>0</noChoiceTimeout>
+            <targetOnsetDelay>600</targetOnsetDelay>
+            <saccadeInitiate>500</saccadeInitiate>
+            <saccadeTime>200</saccadeTime>
+            <stayOnTarget>175</stayOnTarget>
+            <isi>1000</isi>
+            <distance>[170]</distance>
+            <angle>[0:45:315]</angle>           
+        </params>
+        <randoms>
+            <fixDuration>[1300 1400 1500]</fixDuration>
+        </randoms>
+    </experiment>
+
+</subject>
