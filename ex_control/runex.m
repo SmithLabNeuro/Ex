@@ -1,27 +1,37 @@
-function runex(xmlFile,repeats,outfile,varargin)
-% function runex(xmlFile,repeats,outfile,demoMode)
+function runex(xmlFile,varargin)
+% function runex(xmlFile,varargin)
 %
 % main Ex function.
 %
 % xmlFile: the xml file name for the desired experiment
-% repeats (optional): the number of blocks to run. overrides the variable
-%   'rpts' in the xml file
-% outfile: if present, the full list of digital codes sent is written to
-%    this filename
-% varargin: for extra flags including:
-%       useDatabase: if true (DEFAULT), a sqlite database will be created/used to
-%            keep track of notes/saved files/times/etc. at a location
-%            defined by: 
-%               fullfile(params.localDataDir, 'database', 'experimentInfo.db')
-%            where params is defined in exGlobals.m
+%
+% Optional arguments:
+%
+% repeats: the number of blocks to run. overrides the variable
+%   'rpts' in the xml file. Must be a positive integer.
+% saveMat (default true): if true, data (including the trial-by-trial event
+%   codes) are written to a local .mat file. if false, no file is created.
+% useDatabase (default true): if true, a sqlite database will be created/used 
+%   to keep track of notes/saved files/times/etc. at a location defined by: 
+%      fullfile(params.localDataDir, 'database', 'experimentInfo.db')
+%   where params is defined in exGlobals.m
+% fullScreen (default true): runs the local runex interface GUI in full
+%   screen mode (strongly recommended for good timing)
+% demoMode (default false): if true, turns off file saving and many other
+%   parameters for system testing.
+% subjectID: a string of that is the subject ID (default will prompt you)
+% experimenter: a string of that is the experimenter (default will prompt you)
+% sessionNumber: a non-negative value that is the session number (default
+%   is that this is determined by the database, or prompted)
 %
 %
 % LAST MODIFIED:
+% 05 Jan 23 -- revamped input parameters and outfile saving
 % 28 Sept 21 -- on/off flag for database
 % 22Nov19 by MAS/XZ - new version, github release work
 
-%%
-%Screen('Preference', 'SkipSyncTests', 1);
+%% Can uncomment this if you want to speed up PTB startup (but has a risk if any system software/hardware changes)
+Screen('Preference', 'SkipSyncTests', 1);
 
 %% initialize global variables
 clear global behav allCodes params;
@@ -39,33 +49,69 @@ global bciCursorTraj; % only used when bci cursor is enabled
 global typingNotes;
 global notes;
 global sqlDb;
-global sessionNumber;
+%global sessionNumber;
 typingNotes = false;
 
-useDatabase = true;
-if any(strcmp(varargin, 'useDatabase'))
-    useDatabase = varargin{[false strcmp(varargin, 'useDatabase')]};
-    if ~islogical(useDatabase) || (useDatabase ~= 1 && useDatabase ~= 0)
-        error('useDatabase input flag must be true, false, 1, or 0');
-    end
-end
-
-p = inputParser;
-p.addOptional('fullScreen',true,@islogical);
-p.parse(varargin{:});
-fullScreenFlag = p.Results.fullScreen;
 %% Startup message
 thisFileInfo = dir(which(mfilename));
 fprintf('*****Running RUNEX (last modified %s). Started %s*****\n\n',thisFileInfo.date,datestr(now));
 
 %% Check we're on linux only
-assert(isunix,'Runex only supports linux');
+assert(isunix,'RUNEX only supports linux');
 
-%% Error-checking on the input arguments to runex
+%% parse input parameters
+
 if nargin < 1
-    error('Inputs not specified. Must at least use this syntax: runex(xmlFile,repeats)');
+    error('Inputs not specified. Must at least use this syntax: runex(xmlFile)');
 end
-assert(repeats > 0,'Must have > 0 repeats'); % Don't allow zero repeats
+
+p = inputParser;
+p.addOptional('fullScreen',true,@islogical);
+p.addOptional('useDatabase',true,@islogical);
+p.addOptional('repeats',0,@(x) mod(x,1)==0 && (x>=0));
+p.addOptional('saveMat',true,@islogical);
+p.addOptional('demoMode',false,@islogical);
+p.addOptional('sessionNumber',NaN,@(x) mod(x,1)==0 && (x>=0));
+p.addOptional('subjectID','',@ischar);
+p.addOptional('experimenter','',@ischar);
+p.parse(varargin{:});
+fullScreen = p.Results.fullScreen;
+useDatabase = p.Results.useDatabase;
+repeats = p.Results.repeats;
+saveMat = p.Results.saveMat;
+demoMode = p.Results.demoMode;
+
+if demoMode
+    params.getEyes = 0;
+    params.sendingCodes = 0;
+    params.rewarding = 0;
+    params.getSpikes = 0;
+    params.writeFile = 0;
+    useDatabase = false;
+    fullScreen = false;
+    saveMat = false;
+    warning('Ex is running in Demo Mode. Many features are disabled.');
+end
+
+if ~isnan(p.Results.sessionNumber)
+    if ~useDatabase
+        params.sessionNumber = p.Results.sessionNumber;
+    else
+        error('You cannot specify the session number as an argument if you have the database enabled');
+    end
+end
+
+if ~isempty(p.Results.subjectID)
+    params.SubjectID= p.Results.subjectID;
+end
+
+if ~isempty(p.Results.experimenter)
+    params.experimenter = p.Results.experimenter;
+end
+
+if ~fullScreen
+    warning('PTB can have degraded graphics performance when not running full screen. Please use full screen for data collection.');
+end
 
 %% Put our code in high-priority/realtime mode
 origPriority = Priority(1); % 1 or > is realtime mode; 0 is normal
@@ -113,13 +159,12 @@ fprintf('Waiting for showex (CTRL+C to quit) ...');
 msgAndWait('ack',[],60); %wait up to 1 min for showex to start -acs14mar2016
 fprintf(' connected.\n');
 
-
 %% Find directories and set paths
 thisFile = mfilename('fullpath');
 [runexDirectory,~,~] = fileparts(thisFile); clear thisFile;
 % everything up to and including the last file separator:
 runexDirectory = regexp(runexDirectory,sprintf('.*(?!\\%c).*\\%c',filesep,filesep),'match'); 
-requiredDirectories = {'ex','ex_control','xml','user','xippmex'};
+requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
 for dx = 1:numel(requiredDirectories)
     addpath([runexDirectory{:},requiredDirectories{dx}]);
 end
@@ -244,50 +289,42 @@ if makeDir
 end
 
 
-%% now, prompt for subject ID
+%% prompt for subject ID if needed
 if isfield(params,'SubjectID')
+    params.SubjectID = regexprep(lower(params.SubjectID),'\s',''); %enforce lowercase / no whitespace 
     disp(['Current Subject ID = ',params.SubjectID]);
-    yorn = 'q'; %initialize
-    while ~ismember(lower(yorn(1)),{'y','n'})
-        yorn = input('Is that correct (y/n)','s');
-        if (strcmp(yorn(1),'n'))
-            params.SubjectID = input('Enter the correct subject ID\n(or press Ctrl+C to exit Runex, then\nchange the subject ID in exGlobals.m):','s');
-        elseif (strcmp(yorn(1),'y'))
-            disp('Continuing with runex ...')
-        else
-            beep
-            fprintf('Reply ''y'' or ''n''\n');
-        end
-    end
 else
     params.SubjectID = input('Enter the subject ID:','s');
+    params.SubjectID = regexprep(lower(params.SubjectID),'\s',''); %enforce lowercase / no whitespace 
 end
-params.SubjectID = regexprep(lower(params.SubjectID),'\s',''); %enforce lowercase / no whitespace 
+
 if useDatabase
     params.SubjectID = confirmOrAddSubjectToDatabase(params.SubjectID);
 end
 
-%% now, prompt for experimenter
+%% prompt for experimenter
 if isfield(params,'experimenter')
-    disp(['Current experimenter = ',params.SubjectID]);
-    yorn = 'q'; %initialize
-    while ~ismember(lower(yorn(1)),{'y','n'})
-        yorn = input('Is that correct (y/n)','s');
-        if (strcmp(yorn(1),'n'))
-            params.experimenter = input('Enter the correct experimenter\n(or press Ctrl+C to exit Runex, then\nchange the experimenter in exGlobals.m):','s');
-        elseif (strcmp(yorn(1),'y'))
-            disp('Continuing with runex ...')
-        else
-            beep
-            fprintf('Reply ''y'' or ''n''\n');
-        end
-    end
+    params.experimenter = regexprep(lower(params.experimenter),'\s',''); %enforce lowercase / no whitespace
+    disp(['Current experimenter = ',params.experimenter]);
 else
     params.experimenter = input('Enter the main experimenter:','s');
+    params.experimenter = regexprep(lower(params.experimenter),'\s',''); %enforce lowercase / no whitespace
 end
-params.experimenter = regexprep(lower(params.experimenter),'\s',''); %enforce lowercase / no whitespace 
+
 if useDatabase
     params.experimenter = confirmExperimenterNameWithDatabase(params.experimenter);
+end
+    
+%% prompt for session number
+if useDatabase
+    disp(['Current session number = ',params.sessionNumber]);
+else
+    if isfield(params,'sessionNumber')
+        disp(['Current session number = ',num2str(params.sessionNumber)]);
+    else
+        sessionNumberStr = input('Enter the session number:', 's');
+        params.sessionNumber = str2double(sessionNumberStr);
+    end
 end
 
 %% quick double-check
@@ -297,6 +334,16 @@ assert(isempty(strfind(params.machine,'_')),'Found an underscore');
 try
     [expt, xmlParams, xmlRand, xmlGlobals] = readExperiment(xmlFile,params.SubjectID,params.machine);
     xmlParams.xmlFile = xmlFile;
+    
+    % read in ex_ Function to text to be saved w/ the .mat outfile
+    exFileString = [xmlParams.exFileName,'.m'];
+    exfid=fopen(exFileString,'r');
+    if exfid == -1
+        error('Cannot open file %s',exFileString);
+    end
+    exFileText = fscanf(exfid,'%c',inf);
+    fclose(exfid);
+    
 catch ME
     fprintf(ME.message);
     return;
@@ -379,7 +426,6 @@ if params.bciEnabled
     sendMessageWaitAck(bciSockets, xmlParams.bciDecoderParamFile);
     sendMessageWaitAck(bciSockets, params.SubjectID);
 
-
 end
 
 %% Initialize Sound Functionality
@@ -411,20 +457,13 @@ end
 
 %set 'params' defaults:
 if ~isfield(params,'randomizeCalibration'), params.randomizeCalibration = false; end %whether or not to present the calibration positions in a random order. -ACS 03Sep2013
-% if nargin > 3 %"demo mode"
-%     params.getEyes = 0;
-%     params.sendingCodes = 0;
-%     params.rewarding = 0;
-%     params.getSpikes = 0;
-%     params.writeFile = 0;
-% end
 
 %trial control variables:
 eyeHistory = nan(params.eyeHistoryBufferSize,3); %3 cols are x, y, time
 eyeHistoryCurrentPos = 1;
 currentBlock = 1;
 pauseFlag = false;
-if nargin > 1
+if repeats > 0 % if repeats > 0 the user passed it in at the command line, otherwise use what the XML file says
     xmlParams.rpts = repeats;
 end
 
@@ -541,35 +580,15 @@ msgAndWait(sprintf('eval_str sv.localDir = ''%s'';',regexptranslate('escape',loc
 msgAndWait('eval_str if ~logical(exist(sv.localDir,''dir'')), mkdir(sv.localDir); end;'); %check if the directory exists on the display side and create it if needed
 msgAndWait('eval_str addpath(sv.localDir);'); %add the directory to the path on the display side
 
-%% define default outfile name
+%% define default outfile name and turn on/off saving based on input param
 [~,xmlname,~] = fileparts(xmlFile);
 defaultoutfile=[params.SubjectID,'_',datestr(now, 'yyyy.mmm.DD.HH.MM.SS'),'_',xmlname,'.mat'];
-if nargin > 2 % outfile is specified at the command line
-    if ~ischar(outfile)
-        if outfile == 0 || isempty(params.SubjectID) %changed so that no outfile is written if no subject id is input
-            params.writeFile = 0;
-            outfile = defaultoutfile;
-        elseif outfile == 1
-            params.writeFile = 1;
-            outfile = defaultoutfile;
-        else
-            error('Must specify 0 or 1 for outfile flag.');
-        end
-    else % user specified an outfile name at the command
-         % MATT - should consider improving this. The point is to
-         % be able to link one behavioral session to the next, but
-         % with our automated file names it would be hard to
-         % reload. 
-        params.writeFile = 1;
-        % check if file exists
-        if exist(outfile,'file')
-            load(outfile); %<-NB: change this to binary read fcn when appending to binary files is implemented. -ACS
-            % do error-checking here to check this wasn't wrong .mat file
-            warning('RUNEX:outfileExists','*** Output file exists, so it was loaded and will be appended. ***');
-        end
-    end
-else %nothing specified for the outfile
-    outfile = defaultoutfile;
+if saveMat
+    outfile=defaultoutfile;
+    params.writeFile=true;
+else
+    outfile='noFileSaved';
+    params.writeFile=false;
 end
 
 %% Declare window layout and open window for control computer display
@@ -608,15 +627,33 @@ if params.displayHz~=100
 end
 
 % Open a double buffered fullscreen window
-if ~fullScreenFlag % PTB window is not full screen
-    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1000 600]);
-else
+if fullScreen % this is the default
     [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber,gray);
+else % this is not recommended due to worse timing/performance
+    [wins.w, wins.controlResolution] = Screen('OpenWindow',wins.screenNumber, gray, [0 0 1035 621]);
 end
 
 % some default values for the control display only (no effect on subject display)
-wins.textSize = 14; 
-wins.lineSpacing = 1.8;
+if fullScreen
+    wins.textSize = 14;
+    wins.lineSpacing = 1.6;
+else
+    wins.textSize = 11;
+    wins.lineSpacing = 1.2;
+end
+wins.trialData.lines = 21; % max number of lines to show
+wins.trialData.lineColor = zeros(wins.trialData.lines,3);
+wins.trialData.subjectLine = 1;
+wins.trialData.displayLine = 2;
+wins.trialData.juiceLine = 3;
+wins.trialData.trialLine = 4;
+wins.trialData.promptLine = 5;
+wins.trialData.errorLine = 6;
+wins.trialData.outcomesLine = 7;
+wins.trialData.userLine = 12;
+wins.trialData.lineColor(wins.trialData.promptLine,:)=[102, 51, 153];
+wins.trialData.lineColor(wins.trialData.errorLine,:)=[170, 51, 106];
+wins.trialData.lineColor(wins.trialData.outcomesLine:wins.trialData.userLine-1,:)=repmat([50,50,50],wins.trialData.userLine - wins.trialData.outcomesLine,1);
 wins.controlResolution = wins.controlResolution(3:4);
 wins.displayResolution = [ts{1} ts{2}]; % from showex computer
 wins.voltScale = 5000; % voltage display is +/- this value
@@ -671,15 +708,16 @@ Screen('CopyWindow',wins.voltageBG,wins.voltage,wins.voltageDim,wins.voltageDim)
 Screen('CopyWindow',wins.eyeBG,wins.eye,wins.eyeDim,wins.eyeDim);
 
 %% initialize trialData and load appropriate default calibration:
-trialData = cell(4,1);
+trialData = cell(wins.trialData.lines,1);
 localCalibrationFilename = sprintf('%s_calibration.mat',params.machine);
 localCalibrationFilename = fullfile(params.localExDir,'control',localCalibrationFilename);
 if params.getEyes
     if params.writeFile
         [~,outfilename,outfileext] = fileparts(outfile);
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ', Filename: ' outfilename outfileext];
+        trialData{wins.trialData.subjectLine} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ', Filename: ' outfilename outfileext];
     else 
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' ; NOT RECORDING DATA'];
+        trialData{wins.trialData.subjectLine} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' ; NOT RECORDING DATA'];
+        wins.trialData.lineColor(wins.trialData.subjectLine,:) = [150,0,0];
     end
     if exist(localCalibrationFilename,'file')
         load(localCalibrationFilename);
@@ -690,9 +728,10 @@ if params.getEyes
 else
     if params.writeFile
         [~,outfilename,outfileext] = fileparts(outfile);
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE), Filename: ' outfilename outfileext];
+        trialData{wins.trialData.subjectLine} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE), Filename: ' outfilename outfileext];
     else
-        trialData{1} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE); NOT RECORDING DATA'];
+        trialData{wins.trialData.subjectLine} = ['Subject: ' upper(params.SubjectID) ' - ' xmlFile ' (MOUSE MODE); NOT RECORDING DATA'];
+        wins.trialData.lineColor(wins.trialData.subjectLine,:) = [150,0,0];
     end
     load mouseModeCalibration
 end
@@ -702,10 +741,10 @@ if params.writeFile
     defaultRunexPrompt = '(s)timulus, set juice (n)umber, (c)alibrate, toggle (m)ouse mode, (r)ecord neural data, e(x)it';
 end
 
-trialData{4} = defaultRunexPrompt;
+trialData{wins.trialData.promptLine} = defaultRunexPrompt;
 % show the display computer settings on the control computer screen
-trialData{10} = sprintf('Display Settings: %d X %d @ %d Hz - %0.2f ms per frame',params.displayWidth,params.displayHeight,params.displayHz,params.displayFrameTime*1000);
-trialData{11} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
+trialData{wins.trialData.displayLine} = sprintf('Display Settings: %d X %d @ %d Hz - %0.2f ms per frame',params.displayWidth,params.displayHeight,params.displayHz,params.displayFrameTime*1000);
+trialData{wins.trialData.juiceLine} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
 
 % This makes sure that the calibration values are stored with the
 % data (via the sendStruct call)
@@ -730,6 +769,7 @@ drawCalibration; %draw dots for all calibration points
 Screen('CopyWindow',wins.voltageBG,wins.voltage,wins.voltageDim,wins.voltageDim);
 drawTrialData();
 
+% ask the display to change to the specified background color
 msgAndWait('bg_color %d %d %d',xmlParams.bgColor);
 
 %% Start a keyboard queue for user input
@@ -739,17 +779,14 @@ KbQueueStart;
 %% save experiment run to database
 % this needs to happen last, as it potentially requires drawing to the
 % screen if there's a session number ambiguity
-if ~isempty(sqlDb)
-    [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
+if useDatabase
+    [params.sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
     notes = sessionNotes;
     if params.writeFile
-        writeExperimentInfoToDatabase(sessionNumber, xmlParams, outfilename)
+        writeExperimentInfoToDatabase(params.sessionNumber, xmlParams, outfilename)
         notes = sprintf('%s\n%s\n', notes, outfilename);
-        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionNumber, params.SubjectID));
+        sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, params.sessionNumber, params.SubjectID));
     end
-else
-    sessionNumberStr = input('Enter the subject number:', 's');
-    sessionNumber = str2double(sessionNumberStr);
 end
 
 %% Keyboard events handling loop:
@@ -771,7 +808,7 @@ while true
                 %disabled for now: -ACS 06Nov2013
                 %             automaticCalibration;
                 %             save(localCalibrationFilename,'calibration');
-                %             trialData{4} = defaultRunexPrompt;
+                %             trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                 %             drawTrialData;
                 %             FlushEvents;
             case 'c'
@@ -799,10 +836,8 @@ while true
                         [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                            trialData{4} = err.message;
-                            drawTrialData();
-                            pause(2)
-                            trialData{4} = defaultRunexPrompt;
+                            trialData{wins.trialData.errorLine} = err.message;
+                            trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                             drawTrialData();
                         else
                             rethrow(err)
@@ -810,6 +845,7 @@ while true
                     end
                 end
             case 'x'
+                disp('hi');
                 if params.writeFile
                     trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
                     if ~isempty(sqlDb)
@@ -821,10 +857,8 @@ while true
                             [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                         catch err
                             if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                                trialData{4} = err.message;
-                                drawTrialData();
-                                pause(2)
-                                trialData{4} = defaultRunexPrompt;
+                                trialData{wins.trialData.errorLine} = err.message;
+                                trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                                 drawTrialData();
                             else
                                 error(err.identifier, err.message)
@@ -833,13 +867,15 @@ while true
                     end
                 end
                 
-                try
-                    TimingTest(allCodes);
-                    break;
-                catch ME
-                    break;
-                    rethrow(ME);
-                end
+                break;
+% This code could report timing errors for us, but need to work on it                
+%                 try
+%                     TimingTest(allCodes);
+%                     break;
+%                 catch ME
+%                     break;
+%                     rethrow(ME);
+%                 end
         end
     end
 end
@@ -933,10 +969,13 @@ fclose all;
                     else
                         resetTicFlag = 1;
                     end
-                    
-                    trialData{2} = sprintf('Block %i/%i',j,xmlParams.rpts);
-                    trialData{3} = [sprintf('Trial %i/%i, condition(s) ',trialCounter,length(ordering)+trialCounter-1) sprintf('%i ',cnd)];
-                    trialData{4} = runningPrompt;
+
+                    if exist('trialResultStrings','var')
+                        trialData{wins.trialData.trialLine} = [sprintf('Session %i, ',params.sessionNumber),sprintf('Block %i/%i, ',j,xmlParams.rpts),sprintf('Trial %i/%i, Condition(s) ',trialCounter,length(ordering)+trialCounter-1) sprintf('%i ',cnd),sprintf('   *Previous Trial Outcome =  %s *',char(trialResultStrings(end)))];
+                    else
+                        trialData{wins.trialData.trialLine} = [sprintf('Session %i, ',params.sessionNumber),sprintf('Block %i/%i, ',j,xmlParams.rpts),sprintf('Trial %i/%i, Condition(s) ',trialCounter,length(ordering)+trialCounter-1) sprintf('%i ',cnd)];
+                    end
+                    trialData{wins.trialData.promptLine} = runningPrompt;
                     drawTrialData();
                     
                     % setup the allCodes struct for this trial
@@ -1020,6 +1059,20 @@ fclose all;
                     trialResult(trialResult==2) = codes.BROKE_FIX; %for backwards compatibility
                     trialResult(trialResult==3) = codes.IGNORED; %for backwards compatibility
                     trialResultStrings = exDecode(trialResult(:));
+
+                    % MATT
+                    %                    trialData{wins.trialData.userLine} = ['Last Trial Outcome=',char(trialResultStrings(end))];
+                    trialData{12}='hi1';
+                    trialData{13}='hi2';
+                    trialData{14}='hi3';
+                    trialData{15}='hi4';
+                    trialData{16}='hi5';
+                    trialData{17}='hi6';
+                    trialData{18}='hi7';
+                    trialData{19}='hi8';
+                    trialData{20}='hi9';
+                    trialData{21}='hi10';
+
                     for ox = 1:numel(availableOutcomes) %new scoring -ACS 23Oct2012
                         if retry.(availableOutcomes{ox})
                             stats(ox) = stats(ox)+any(ismember(trialResultStrings,availableOutcomes{ox})); %only count these once per fix
@@ -1027,7 +1080,7 @@ fclose all;
                             stats(ox) = stats(ox)+sum(ismember(trialResultStrings,availableOutcomes{ox})); %sum these per fix
                         end
                         nOutcomesPerLine = 5; %for display purposes...
-                        currentLine = 5+floor((ox-1)/nOutcomesPerLine);
+                        currentLine = wins.trialData.outcomesLine+floor((ox-1)/nOutcomesPerLine);
                         if mod(ox,nOutcomesPerLine)==1
                             trialData{currentLine}=sprintf('%i %s',stats(ox),availableOutcomes{ox});
                         else
@@ -1035,7 +1088,6 @@ fclose all;
                         end
                     end
                     
-                    %msgAndWait('prealloff')
                     msg('all_off');
                     msgAndWait('rem_all');
                     
@@ -1084,7 +1136,7 @@ fclose all;
                     % Can use the behav struct to keep track of behavior if you
                     % like. Contents of behav are user-defined in ex-functions
                     if params.writeFile
-                        save(fullfile(localDataDir,outfile),'allCodes','behav','-v6'); % '-v6' for speed -MAS 27Feb2016
+                        save(fullfile(localDataDir,outfile),'allCodes','behav','exFileText','-v6'); % '-v6' for speed -MAS 27Feb2016
                     end
                     
                     if trialMessage == -1
@@ -1102,11 +1154,11 @@ fclose all;
                 currentBlock = currentBlock + 1;
             end
             matlabUDP2('send',sockets(1), 'q');
-            trialData{4} = defaultRunexPrompt;
+            trialData{wins.trialData.promptLine} = defaultRunexPrompt;
             drawTrialData();
         catch err %Graceful error handling within runex
-            trialData{4} = defaultRunexPrompt;
-            trialData{5} = sprintf('Error: %s. Quit to diagnose.', err.message);
+            trialData{wins.trialData.promptLine} = defaultRunexPrompt;
+            trialData{wins.trialData.errorLine} = sprintf('Error: %s. Quit to diagnose.', err.message);
             trialMessage = -1;
             msg('all_off');
             drawTrialData();
@@ -1126,10 +1178,8 @@ fclose all;
                         [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                            trialData{4} = err.message;
-                            drawTrialData();
-                            pause(2)
-                            trialData{4} = defaultRunexPrompt;
+                            trialData{wins.trialData.errorLine} = err.message;
+                            trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                             drawTrialData();
                         else
                             error(err.identifier, err.message)
@@ -1144,7 +1194,7 @@ fclose all;
 
 %% setJuice
     function setJuice
-        trialData{4} = setJuicePrompt;
+        trialData{wins.trialData.promptLine} = setJuicePrompt;
         drawTrialData();
         while true
             [ keyIsDown, keyCode] = KbQueueCheck;
@@ -1153,41 +1203,41 @@ fclose all;
                 KbQueueFlush;
                 switch c
                     case 'x'
-                        trialData{4} = 'Press the number of juice drops, then the SPACE bar.';
+                        trialData{wins.trialData.promptLine} = 'Press the number of juice drops, then the SPACE bar.';
                         drawTrialData();
                         theparam = getParams;
                         if ~isnan(theparam)
                             params.juiceX = theparam;
                         end
-                        trialData{4} = setJuicePrompt;
-                        trialData{11} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
+                        trialData{wins.trialData.promptLine} = setJuicePrompt;
+                        trialData{wins.trialData.juiceLine} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
                         drawTrialData();
                     case 'd'
-                        trialData{4} = 'Press the duration of juice drops (in milliseconds), then the SPACE bar.';
+                        trialData{wins.trialData.promptLine} = 'Press the duration of juice drops (in milliseconds), then the SPACE bar.';
                         drawTrialData();
                         theparam = getParams;
                         if ~isnan(theparam)
                             params.juiceTTLDuration = theparam;
                         end
-                        trialData{11} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
-                        trialData{4} = setJuicePrompt;
+                        trialData{wins.trialData.juiceLine} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
+                        trialData{wins.trialData.promptLine} = setJuicePrompt;
                         drawTrialData();
                     case 'i'
-                        trialData{4} = 'Press the interval between juice drops (in milliseconds), then the SPACE bar.';
+                        trialData{wins.trialData.promptLine} = 'Press the interval between juice drops (in milliseconds), then the SPACE bar.';
                         drawTrialData();
                         theparam = getParams;
                         if ~isnan(theparam)
                             params.juiceInterval = theparam;
                         end
-                        trialData{11} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
-                        trialData{4} = setJuicePrompt;
+                        trialData{wins.trialData.juiceLine} = sprintf('JUICEX = %d drops, JUICEDURATION = %d ms, JUICEINTERVAL= %d ms',params.juiceX,params.juiceTTLDuration,params.juiceInterval);
+                        trialData{wins.trialData.promptLine} = setJuicePrompt;
                         drawTrialData();
                     case 'q'
                         break;
                 end
             end
         end
-        trialData{4} = defaultRunexPrompt;
+        trialData{wins.trialData.promptLine} = defaultRunexPrompt;
         drawTrialData();
     end
 % how to detect enter
@@ -1214,7 +1264,7 @@ fclose all;
         msg(sprintf('eval_str sv.localDir = ''%s'';',regexptranslate('escape',localShowexDir))); %store directory name in a variable in showex
         msgAndWait('ack');
         
-        trialData{4} = calibrationInProgressPrompt;
+        trialData{wins.trialData.promptLine} = calibrationInProgressPrompt;
         drawTrialData();
         
         setWindowBackground(wins.voltageBG);
@@ -1251,12 +1301,12 @@ fclose all;
                     matlabUDP2('send', sockets(1),sprintf('set 1 oval 0 %i %i %i %i %i %i',[posX(posShuffle(pt)),posY(posShuffle(pt)),wins.displayCalibDotRad,wins.displayCalibDotColor])); %changed to shuffle -
                 end
                 matlabUDP2('send',sockets(1), 'all_on');
-                trialData{4} = calibrationInProgressPrompt;
+                trialData{wins.trialData.promptLine} = calibrationInProgressPrompt;
                 drawTrialData();
                 lastPt = pt;
             elseif (pt ~= lastPt) && (pt > length(posX)) %last pt
                 matlabUDP2('send',sockets(1), 'all_off');
-                trialData{4} = calibrationDonePrompt;
+                trialData{wins.trialData.promptLine} = calibrationDonePrompt;
                 drawTrialData();
                 lastPt = pt;
             end
@@ -1332,7 +1382,7 @@ fclose all;
                 end %end switch c
             end
         end %end while true
-        trialData{4} = defaultRunexPrompt;
+        trialData{wins.trialData.promptLine} = defaultRunexPrompt;
         drawTrialData();
         matlabUDP2('send',sockets(1), 'all_off');
     end

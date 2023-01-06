@@ -18,6 +18,6 @@ if flag
     plot(miss,1,'r*')
     xlim([1 length(allCodes)]);
     text(miss,ones(size(miss)),num2cell(miss),'VerticalAlignment','bottom','HorizontalAlignment','right');
-    title(sprintf('Droped %d times in %d trials',length(miss),length(allCodes)-length(miss)));
+    title(sprintf('Dropped %d times in %d trials',length(miss),length(allCodes)-length(miss)));
 end
 
