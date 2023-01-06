@@ -49,12 +49,13 @@ The first step is configuring the two computers. In brief, this process typicall
 (3) Configure Ubuntu (disable screensaver and automatic suspend, turn off notifications, turn off automatic updates, set refresh rate and resolution to desired values)<BR>
 (4) Configure Matlab (add the appropriate Ex directory [ex_control, ex_disp, etc] to path, run “PsychLinuxConfiguration” from PsychToolbox)<BR>
 (5) Configure ethernet ports on each computer for direct communication (use 192.168.1.10 for control and 192.168.1.11 for display by default)<BR>
+(6) copy the exlocal_template files to an Ex_local directory for your computer ('cp -r misc/exlocal_template ../Ex_local')
 
 Once the ethernet ports of the two computers are configured properly (use “ping” at the terminal to test the connection), you should first run “showex” on the display computer, followed by “runex” on the control computer. The control computer checks for communication with the display before proceeding. Example syntax for the “runex” command would be as follows:<P>
 
-runex(‘demotest.xml’,10);<BR>
+runex(‘demotest.xml’);<BR>
 
-The “10” in this case specifies the number of blocks of the task to run (must be >=1). When you first execute this “runex” command an “exData” directory will be created in the user’s root directory, where Matlab-native data files (.mat) with a record of the task parameters and behavioral events will be saved (one file for each time you execute “runex”). If you don’t want to save this file, pass an optional “0” argument after the number of blocks - runex(‘demotest.xml’,10,0);<P>
+When you first execute this “runex” command an “exData” directory will be created in the user’s root directory, where Matlab-native data files (.mat) with a record of the task parameters and behavioral events will be saved (one file for each time you execute “runex”). There are other optional arguments to runex, see the comments at the top of runex.m to learn more about them.<P>
 
 ——<BR>
 <B>Controlling runex</B><BR>
