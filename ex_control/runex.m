@@ -39,7 +39,7 @@ clear plotDisplay;
 
 global eyeHistory eyeHistoryCurrentPos;
 global trialCodes thisTrialCodes trialTic allCodes;
-global trialMessage trialData;
+global trialMessage trialData exPrint;
 global wins params codes calibration stats;
 global behav outfilename;
 global audioHandle;
@@ -709,6 +709,7 @@ Screen('CopyWindow',wins.eyeBG,wins.eye,wins.eyeDim,wins.eyeDim);
 
 %% initialize trialData and load appropriate default calibration:
 trialData = cell(wins.trialData.lines,1);
+exPrint = cell(wins.trialData.lines-wins.trialData.userLine+1,1);
 localCalibrationFilename = sprintf('%s_calibration.mat',params.machine);
 localCalibrationFilename = fullfile(params.localExDir,'control',localCalibrationFilename);
 if params.getEyes
@@ -1060,19 +1061,17 @@ fclose all;
                     trialResult(trialResult==3) = codes.IGNORED; %for backwards compatibility
                     trialResultStrings = exDecode(trialResult(:));
 
-                    % MATT
-                    %                    trialData{wins.trialData.userLine} = ['Last Trial Outcome=',char(trialResultStrings(end))];
-                    trialData{12}='hi1';
-                    trialData{13}='hi2';
-                    trialData{14}='hi3';
-                    trialData{15}='hi4';
-                    trialData{16}='hi5';
-                    trialData{17}='hi6';
-                    trialData{18}='hi7';
-                    trialData{19}='hi8';
-                    trialData{20}='hi9';
-                    trialData{21}='hi10';
-
+%                     exPrint{1}='hi1';
+%                     exPrint{10}='hi2';
+                    
+                    % Copy the exPrint data (meant to be written from
+                    % within an ex function) into trialData so it's printed
+                    if size(exPrint,1)~=(wins.trialData.lines-wins.trialData.userLine+1)
+                        warning('The size of the exPrint cell array was modified - this is not recommended');
+                    end
+                    % trialData user lines should get exPrint copied in
+                    trialData(wins.trialData.userLine:wins.trialData.lines) = exPrint;
+                    
                     for ox = 1:numel(availableOutcomes) %new scoring -ACS 23Oct2012
                         if retry.(availableOutcomes{ox})
                             stats(ox) = stats(ox)+any(ismember(trialResultStrings,availableOutcomes{ox})); %only count these once per fix
