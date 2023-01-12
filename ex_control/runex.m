@@ -317,7 +317,8 @@ end
     
 %% prompt for session number
 if useDatabase
-    disp(['Current session number = ',params.sessionNumber]);
+    %disp(['Current session number = ',params.sessionNumber]); % can't do this as it's not known from database yet
+    disp('Current session number will be found in the database');
 else
     if isfield(params,'sessionNumber')
         disp(['Current session number = ',num2str(params.sessionNumber)]);
@@ -638,7 +639,7 @@ if fullScreen
     wins.textSize = 14;
     wins.lineSpacing = 1.6;
 else
-    wins.textSize = 11;
+    wins.textSize = 12;
     wins.lineSpacing = 1.2;
 end
 wins.trialData.lines = 21; % max number of lines to show
@@ -782,6 +783,7 @@ KbQueueStart;
 % screen if there's a session number ambiguity
 if useDatabase
     [params.sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
+    disp(['Found session number ',num2str(params.sessionNumber),' in database']);
     notes = sessionNotes;
     if params.writeFile
         writeExperimentInfoToDatabase(params.sessionNumber, xmlParams, outfilename)
@@ -846,7 +848,6 @@ while true
                     end
                 end
             case 'x'
-                disp('hi');
                 if params.writeFile
                     trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
                     if ~isempty(sqlDb)
