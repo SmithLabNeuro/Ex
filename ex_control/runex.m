@@ -164,7 +164,7 @@ thisFile = mfilename('fullpath');
 [runexDirectory,~,~] = fileparts(thisFile); clear thisFile;
 % everything up to and including the last file separator:
 runexDirectory = regexp(runexDirectory,sprintf('.*(?!\\%c).*\\%c',filesep,filesep),'match'); 
-requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
+requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database','ex_control/communications'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
 for dx = 1:numel(requiredDirectories)
     addpath([runexDirectory{:},requiredDirectories{dx}]);
 end
@@ -649,11 +649,12 @@ wins.trialData.displayLine = 2;
 wins.trialData.juiceLine = 3;
 wins.trialData.trialLine = 4;
 wins.trialData.promptLine = 5;
-wins.trialData.errorLine = 6;
+wins.trialData.statusLine = 6;
 wins.trialData.outcomesLine = 7;
 wins.trialData.userLine = 12;
+wins.trialData.exPrintLines=wins.trialData.lines-wins.trialData.userLine+1;
 wins.trialData.lineColor(wins.trialData.promptLine,:)=[102, 51, 153];
-wins.trialData.lineColor(wins.trialData.errorLine,:)=[170, 51, 106];
+wins.trialData.lineColor(wins.trialData.statusLine,:)=[170, 51, 106];
 wins.trialData.lineColor(wins.trialData.outcomesLine:wins.trialData.userLine-1,:)=repmat([50,50,50],wins.trialData.userLine - wins.trialData.outcomesLine,1);
 wins.controlResolution = wins.controlResolution(3:4);
 wins.displayResolution = [ts{1} ts{2}]; % from showex computer
@@ -710,7 +711,7 @@ Screen('CopyWindow',wins.eyeBG,wins.eye,wins.eyeDim,wins.eyeDim);
 
 %% initialize trialData and load appropriate default calibration:
 trialData = cell(wins.trialData.lines,1);
-exPrint = cell(wins.trialData.lines-wins.trialData.userLine+1,1);
+exPrint = cell(wins.trialData.exPrintLines,1);
 localCalibrationFilename = sprintf('%s_calibration.mat',params.machine);
 localCalibrationFilename = fullfile(params.localExDir,'control',localCalibrationFilename);
 if params.getEyes
@@ -839,7 +840,7 @@ while true
                         [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                            trialData{wins.trialData.errorLine} = err.message;
+                            trialData{wins.trialData.statusLine} = err.message;
                             trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                             drawTrialData();
                         else
@@ -859,7 +860,7 @@ while true
                             [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                         catch err
                             if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                                trialData{wins.trialData.errorLine} = err.message;
+                                trialData{wins.trialData.statusLine} = err.message;
                                 trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                                 drawTrialData();
                             else
@@ -1067,10 +1068,19 @@ fclose all;
                     
                     % Copy the exPrint data (meant to be written from
                     % within an ex function) into trialData so it's printed
-                    if size(exPrint,1)~=(wins.trialData.lines-wins.trialData.userLine+1)
-                        warning('The size of the exPrint cell array was modified - this is not recommended');
+                    % first some argument checking
+                    % should we also make sure there are no numeric values?
+                    if size(exPrint,2)~=1
+                        warning('exPrint must be Nx1 - runex is overwriting it to avoid an error');
+                        exPrint = cell(wins.trialData.exPrintLines,1);
+                    elseif size(exPrint,1)>wins.trialData.exPrintLines
+                        warning('The size of the exPrint cell array was increased - runex is trimming it to avoid an error');
+                        exPrint = exPrint(1:wins.trialData.exPrintLines,1);
+                    elseif size(exPrint,1)<wins.trialData.exPrintLines
+                        warning('The size of the exPrint cell array was reduced - runex is overwriting it to avoid an error');
+                        exPrint = cell(wins.trialData.exPrintLines,1);
                     end
-                    % trialData user lines should get exPrint copied in
+                    % trialData user lines get exPrint copied in so it will print
                     trialData(wins.trialData.userLine:wins.trialData.lines) = exPrint;
                     
                     for ox = 1:numel(availableOutcomes) %new scoring -ACS 23Oct2012
@@ -1158,7 +1168,7 @@ fclose all;
             drawTrialData();
         catch err %Graceful error handling within runex
             trialData{wins.trialData.promptLine} = defaultRunexPrompt;
-            trialData{wins.trialData.errorLine} = sprintf('Error: %s. Quit to diagnose.', err.message);
+            trialData{wins.trialData.statusLine} = sprintf('Error: %s. Quit to diagnose.', err.message);
             trialMessage = -1;
             msg('all_off');
             drawTrialData();
@@ -1178,7 +1188,7 @@ fclose all;
                         [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                            trialData{wins.trialData.errorLine} = err.message;
+                            trialData{wins.trialData.statusLine} = err.message;
                             trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                             drawTrialData();
                         else

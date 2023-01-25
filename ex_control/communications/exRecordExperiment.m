@@ -4,7 +4,7 @@
         timeout = 10;
         
         promptSt = 'Communicating with data computer to start recording...';
-        trialData{wins.trialData.errorLine} = promptSt;
+        trialData{wins.trialData.statusLine} = promptSt;
         drawTrialData();
         
         if ~isRecording
