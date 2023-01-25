@@ -1,7 +1,7 @@
 function [recStarted, recFileName] = startNevRecording(socketsDatComp, xmlFile, outfilename)
 % does the communication dance with the data computer to record the
 % experiment to an NEV
-global params sessionNumber notes sqlDb
+global params notes sqlDb
 timeout = 10;
 recStarted = false;
 
@@ -9,13 +9,12 @@ rc = sendMessageWaitAck(socketsDatComp, 'record', timeout);
 if isempty(rc)
     return
 end
-
 rc = sendMessageWaitAck(socketsDatComp, params.SubjectID, timeout);
 if isempty(rc)
     return
 end
 
-sessionNum = sessionNumber;
+sessionNum = params.sessionNumber;
 if ~isnan(sessionNum)
     rc = sendMessageWaitAck(socketsDatComp, num2str(sessionNum), timeout);
     if isempty(rc)
@@ -54,7 +53,7 @@ if ~isempty(sqlDb)
     else
         notes = sprintf('%s\n%s\n', notes, neuralOutName);
     end
-    sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, sessionNumber, params.SubjectID));
+    sqlDb.exec(sprintf('UPDATE experiment_session SET notes = "%s" WHERE session_number = %d AND animal = "%s"', notes, params.sessionNumber, params.SubjectID));
 end
 
 % if it got here we assume the recording started

@@ -106,7 +106,7 @@ bciDecodersBasePath = params.bciDecoderBasePathDataComputer;
 bciDecodersParameterPath = fullfile(bciDecodersBasePath, params.bciDecoderXmlParamFolder);
 while true
     
-    msg = receiveMessageSendAck(socketsControlComm);
+    msg = receiveMessageSendAck(socketsControlComm)
 %     if isempty(msg)
 %         continue
     if strcmp(msg, 'record')

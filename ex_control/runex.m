@@ -165,6 +165,7 @@ thisFile = mfilename('fullpath');
 % everything up to and including the last file separator:
 runexDirectory = regexp(runexDirectory,sprintf('.*(?!\\%c).*\\%c',filesep,filesep),'match'); 
 requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database','ex_control/communications'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
+%requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database','ex_control/communications','ex_control/utils'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
 for dx = 1:numel(requiredDirectories)
     addpath([runexDirectory{:},requiredDirectories{dx}]);
 end
@@ -852,7 +853,8 @@ while true
                 if params.writeFile
                     trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
                     if ~isempty(sqlDb)
-                        writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                        writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([1:end]), '\n'));
+                        %writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
                     end
                     % shut off recording
                     if recordingTrueFalse
@@ -1062,9 +1064,6 @@ fclose all;
                     trialResult(trialResult==2) = codes.BROKE_FIX; %for backwards compatibility
                     trialResult(trialResult==3) = codes.IGNORED; %for backwards compatibility
                     trialResultStrings = exDecode(trialResult(:));
-
-%                     exPrint{1}='hi1';
-%                     exPrint{10}='hi2';
                     
                     % Copy the exPrint data (meant to be written from
                     % within an ex function) into trialData so it's printed

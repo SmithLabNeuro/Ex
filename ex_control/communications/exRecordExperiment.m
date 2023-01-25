@@ -4,7 +4,7 @@
         timeout = 10;
         
         promptSt = 'Communicating with data computer to start recording...';
-        trialData{wins.trialData.statusLine} = promptSt;
+        trialData{wins.trialData.promptLine} = promptSt;
         drawTrialData();
         
         if ~isRecording
@@ -27,7 +27,7 @@
         defaultRunexPrompt(promptSt:promptSt+length(currPrompt)-1) = [];
         defaultRunexPrompt = [defaultRunexPrompt(1:promptSt-1), nextPrompt, defaultRunexPrompt(promptSt:end)];
         isRecording = ~isRecording;
-        trialData{wins.trialData.errorLine} = defaultRunexPrompt;
+        trialData{wins.trialData.promptLine} = defaultRunexPrompt;
         drawTrialData();
 
     end
