@@ -1,4 +1,3 @@
-@@ -0,0 +1,91 @@
 function [success, msgStr, fixWinOutput, funcOutputs] = joystickHallEffectHoldTargetForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, msHold, cursorObjectId, cursorR, cursorColorDisp)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
