@@ -1,13 +1,12 @@
-function [success, msgStr, fixWinOutput, funcOutputs] = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, msHold, successUnlessFail)
+function [success, msgStr, fixWinOutput, funcOutputs] = joystickHallEffectHoldForMs(loopStart, loopNow, positionXHold, positionYHold, angleZHold, distanceTolerance, angleTolerance, pixelDistForMaxJoystickPos, cursorObjectId, cursorR, cursorColorDisp, drawCursor, msHold, successUnlessFail)
 % success if the *joystick* (not the cursor) reaches correct position
 % failure if the joystick does not reach correct position
 global codes
 
-if nargin<10
+if nargin<14
     successUnlessFail = false;
 end
 success = 0;
-msgStr = '';
 [xVal, yVal, zValAng, ~] = sampleHallEffectJoystick();
 pixBoxLimit = pixelDistForMaxJoystickPos;
 xVal = xVal * pixBoxLimit;
@@ -19,11 +18,11 @@ xySmallEnough = checkWithinTolerance(distanceFromHoldLoc, 0, distanceTolerance, 
 % angLargeEnough = zValAng > (angleZHold-angleTolerance);
 angLargeEnough = abs(zValAng) > (angleZHold-angleTolerance);%checkWithinTolerance(zValAng, angleZHold, -angleTolerance, false);
 
-prStr = sprintf('angle %6.2f\n', zValAng);
-prStrB = prStr(1:end);
-prStrB(:) = sprintf('\b');
-fprintf(prStrB)
-fprintf(prStr)
+% prStr = sprintf('angle %6.2f\n', zValAng);
+% prStrB = prStr(1:end);
+% prStrB(:) = sprintf('\b');
+% fprintf(prStrB)
+% fprintf(prStr)
 
 % if the hold time has passed, success no matter what (so this function
 % doesn't care what you do past the hold time)
@@ -57,14 +56,23 @@ posShiftForCode = [posX0 posY0];
 posShift = posShiftForCode + cursorPos;
 posShiftX = posShift(1);
 posShiftY = posShift(2);
-sendCode(codes.CURSOR_POS);
-sendCode(posShiftX);
-sendCode(posShiftY);
+if drawCursor
+    % Doesn't need to send these positions when being held
+    sendCode(codes.CURSOR_POS);
+    sendCode(posShiftX);
+    sendCode(posShiftY);
+end
 
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-cursorR = 5;
 cursorIndicatorAngle = 20; % degree wedge
 cursAngDispWedgeVals = [cursorR, cursorIndicatorAngle/2, zValAng]';
+
+if drawCursor
+    % draw the cursor
+    msgStr = sprintf('set %d oval 0 %i %i %i %i %i %i', [cursorObjectId cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
+else
+    msgStr = '';
+end
 
 numWindows = 3;
 maxSizeInfoVals = 3;

@@ -1,4 +1,4 @@
-function [success, msgStr, fixWinOutput] = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorR, cursorColor, immediateFailOnReturn)
+function [success, msgStr, fixWinOutput] = joystickHallEffectMoveCursorFromPosition(~, ~, positionHold, distanceTolerance, pixelDistForMaxJoystickPos, cursorObjId, cursorR, cursorColor, immediateFailOnReturn)
 % success if the cursor leaves positionHold
 % failure if the cursor *doesn't* leave positionHold
 
@@ -6,12 +6,17 @@ global codes
 
 pixBoxLimit = pixelDistForMaxJoystickPos;
 
-if nargin < 8
+if nargin < 9
     immediateFailOnReturn = false;
 end
 
 % cursor color
 cursorColorDisp = [cursorColor(1) cursorColor(2) cursorColor(3)];
+
+% if focusFlag
+%     % focus object must be drawn
+%     focusColorDisp = [focusColor(1) focusColor(2) focusColor(3)];
+% end
 
 % these are the 0 values around which we'll determine cursor position (for
 % saving to the NEV file and also the MAT file)
@@ -39,8 +44,7 @@ sendCode(posShiftY);
 
 % draw the cursor
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-msgStr = sprintf('set 3 oval 0 %i %i %i %i %i %i', [cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
-
+msgStr = sprintf('set %i oval 0 %i %i %i %i %i %i', [cursorObjId cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
 positionXHold = positionHold(1);
 positionYHold = positionHold(2);
 distanceFromHoldLoc = sqrt(sum(([xVal, yVal] - [positionXHold, positionYHold]).^2));

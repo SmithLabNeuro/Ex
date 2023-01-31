@@ -15,7 +15,7 @@ if strcmp(optstr,'setup')
     a = sscanf(arg,'%i %i %i %i %f %i %i %i');
     % arguments: (1) FrameCount
     %            (2) screenYpix
-    %            (3) rcircles
+    %            (3) width (rcircles)
     %            (4) tcircles
     %            (5) alpha (0-255)
     %            (6) stimX
@@ -39,7 +39,8 @@ if strcmp(optstr,'setup')
     at = atan2(y, x);
     checks = ((1 + sign(sin(at * tcycles) + eps)...
         .* sign(sin(sqrt(x.^2 + y.^2)))) / 2) * (white - black) + black;
-    circle = x.^2 + y.^2 <= xylim^2;
+  circle = x.^2 + y.^2 >= xylim^2;
+    %circle = abs(x) <=xylim & abs(y)<=xylim;
     checks = circle .* checks + grey * ~circle;
     
     not_checks=255-checks;

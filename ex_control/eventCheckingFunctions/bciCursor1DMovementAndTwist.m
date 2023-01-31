@@ -1,6 +1,9 @@
-function [success, msgStr, fixWinOutput, extraFuncOutput] = bciCursorMovementAndNeuralEngagement(~, loopNow, bciSockets, binSizeMs, initCursorPos, initVelocity, initNeuralEngagement, pixBoxLimit, targX,targY,targRadius, cursorObjId, cursorSizeInfo, cursorColor, targWinCursRad, timestepsInTargetForCorrect)
-% success if the cursor reaches the target
+function [success, msgStr, fixWinOutput, extraFuncOutput] = bciCursor1DMovementAndTwist(~, loopNow, bciSockets, binSizeMs, initCursorPos, initVelocity, initNeuralEngagement, pixBoxLimit, targX,targY,targRadius, cursorObjId, cursorSizeInfo, cursorColor, targWinCursRad, timestepsInTargetForCorrect)
+% success if the cursor reaches the target with twist
 % failure if the cursor *doesn't* reach the target
+
+% STOPPING THIS HERE UNTIL CODE FIXED UP
+return
 
 global codes
 persistent cursorPos velocityCurr loopTimeLast neCurr timestepsCorrect 
@@ -14,7 +17,6 @@ normVecOrth = null(normVecCenterToTarget');
 if isempty(cursorPos)
     cursorPos = initCursorPos;
     velocityCurr = initVelocity;  
-    neCurr = initNeuralEngagement;
     loopTimeLast = loopNow;
     timestepsCorrect = 0;
 end
@@ -36,11 +38,13 @@ cursorRectHalfHeight = cursorSizeInfo(2);
 posX0 = 10000;
 posY0 = 10000;
 posNE0 = 10000;
+% posShiftForCode = [posX0 posY0 posEng];
 
 % grab the loop time delta for the move
 msPerS = 1000;
 binSizeS = binSizeMs/msPerS;
 loopTimeDiff = min(loopNow - loopTimeLast, binSizeS);
+% disp(loopTimeDiff)
 
 receivedMsg = '';
 % this while loop ensures we only get the latest update from the BCI
@@ -74,7 +78,7 @@ if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
     % constrain the velocity based on automonkey/passive assist
     centerToTargetVel = velocityFromBci' * normVecCenterToTarget;
     orthVel = velocityFromBci' * normVecOrth;
-    velocityCurr =runex('kalmanVelocityBci.xml', 20, 1) centerToTargetVel*normVecCenterToTarget + orthVel*normVecOrth;
+    velocityCurr = centerToTargetVel*normVecCenterToTarget + orthVel*normVecOrth;
     
 else
     velocityFromBci = velocityCurr;
