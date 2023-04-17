@@ -23,14 +23,14 @@ function [params] = fit_LDA(trainX, trainY)
         params.Mu(ii,:) = mean(curr_class_X,1);
         % Normalizes by N instead of N-1 (Bessel's correction not applied
         % here). 
-        params.Sigma(ii,:,:) = cov(curr_class_X,1);
+        params.Sigma(ii,:,:) = (curr_class_X-params.Mu(ii,:))'*(curr_class_X-params.Mu(ii.:));
     end
     
     % Take mean of total training set
     params.muTotal = mean(trainX,1);
     % Generate within-scatter matrix (should be the sum of product of
     % covariance matrices and their respective num_class_members)
-    params.Sw = squeeze(sum(params.Sigma,1)) .* params.nClasses;
+    params.Sw = squeeze(sum(params.Sigma,1)) ;
     params.Sb = zeros(size(params.Sw));
     % Generate between-class scatter matrix 
     for ii=1:nClasses

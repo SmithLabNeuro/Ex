@@ -79,8 +79,6 @@ fprintf("\n%d channels being used\n", length(channelsKeep));
 
 % For neural signals, look at delay period right before go cue is sent
 % during calibration trials
-% TODO: Specify what this calBinEndCode will be for our task; it's currently
-% used here to determine the end of our bins that we'll use for training
 codeForBinEnd = codes.(trainParams.calBinEndCode); 
 
 % Train only on trials that have matching trainingResultCodes
@@ -140,13 +138,13 @@ if trainParams.zScoreSpikes
     % of spikes
     binnedSpikesAllConcat = (binnedSpikesAllConcat - mean(binnedSpikesAllConcat)) * zScoreSpikesMat;
 else
-    % Do nothing
+    zScoreSpikesMat =  eye(size(binnedSpikesAllConcat, 2));
 end
 % Identify FA Space using ALL bins of delay period 
 % (num_bins_in_delay* num_trials x num_channels)
-[estParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
+[estFAParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
 % Beta is simply the projection matrix into the factor space
-[~, ~, beta] = fastfa_estep(binnedSpikesAllConcat', estParams);
+[~, ~, beta] = fastfa_estep(binnedSpikesAllConcat', estFAParams);
 %% Fit LDA to these FA Projections
 % Keep trial parameters of valid trials that will be used for training LDA
 delayValidTrialParams = trimmedDat(delayValidTrials);
@@ -156,14 +154,25 @@ for k = 1:numValidTrials
     validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
 end
 % Take Mean binned activity during delay period then project into FA space
-meanDelayValidTrialFAProjs = cellfun(@(x) beta*(mean(x)' - estParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
+meanDelayValidTrialFAProjs = cellfun(@(x) beta*(mean(x)' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
 % Concatenate across all trials to get a num_valid_trials x num_fa_latents
 ldaTrainX = cat(2, meanDelayValidTrialFAProjs{:})';
 % Fit LDA on FA projections
 ldaParams = fit_LDA(ldaTrainX, validTrialRewardLabels);
+% Reorient projection vector such that the largest reward value is the
+% largest value on this axis
+largeRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 3);
+smallRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 1);
+largeRewardMeanProj = mean(ldaParams.projData(largeRewardTrialIndices));
+smallRewardMeanProj = mean(ldaParams.projData(smallRewardTrialIndices));
+% Flip reward axis only if smallReward projection is higher than large
+% reward projection
+if smallRewardMeanProj > largeRewardMeanProj
+    ldaParams.projVec = ldaParams.projVec*-1;
+end
 %% Save model parameters 
 bciDecoderSaveName = sprintf('rewardAxisDecoder_%s.mat', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'beta','channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
