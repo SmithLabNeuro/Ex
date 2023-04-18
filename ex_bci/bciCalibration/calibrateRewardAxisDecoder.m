@@ -1,4 +1,4 @@
-function [decoderFileLocationAndName] = calibrateInternalStateAxisDecoder(socketsControlComm, nevFilebase, nevFilesForTrain, trainParams, subject)
+function [decoderFileLocationAndName] = calibrateRewardAxisDecoder(socketsControlComm, nevFilebase, nevFilesForTrain, trainParams, subject)
 
 global params codes
 
@@ -23,7 +23,7 @@ nevFilesForTrain(strcmp(nevFilesForTrain, nevFilebase)) = [];
 % determine timepoints w.r.t other Nev files)
 [nevBase,waves] = readNEV(nevFilebase);
 nev = nevBase;
-kr = [];
+kr = [];  
 
 % Needed to globally align times for multiple NEV files
 firstTimePtShift = 0;
@@ -159,20 +159,26 @@ meanDelayValidTrialFAProjs = cellfun(@(x) beta*(mean(x)' - estFAParams.d), allTr
 ldaTrainX = cat(2, meanDelayValidTrialFAProjs{:})';
 % Fit LDA on FA projections
 ldaParams = fit_LDA(ldaTrainX, validTrialRewardLabels);
+
+%% Get reward axis means and magnitude
 % Reorient projection vector such that the largest reward value is the
 % largest value on this axis
 largeRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 3);
 smallRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 1);
 largeRewardMeanProj = mean(ldaParams.projData(largeRewardTrialIndices));
 smallRewardMeanProj = mean(ldaParams.projData(smallRewardTrialIndices));
-% Flip reward axis only if smallReward projection is higher than large
-% reward projection
+% Flip reward axis only if smallReward projection is higher than large reward projection
 if smallRewardMeanProj > largeRewardMeanProj
     ldaParams.projVec = ldaParams.projVec*-1;
 end
+
+% TODO: calculate reward axis max range
+rewardAxisMagnitude = norm(ldaParams.projVec);
+scaledRewardAxisMagnitude = 1.25 * rewardAxisMagnitude;
+
 %% Save model parameters 
 bciDecoderSaveName = sprintf('rewardAxisDecoder_%s.mat', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'scaledRewardAxisMagnitude');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
