@@ -133,14 +133,20 @@ binnedSpikesAllConcat = cat(1, allTrialsDelayEpochBinnedCounts{:});
 % TODO: Figure out the number of latents necessary
 numLatents = trainParams.numberFaLatents; % this is how many latents we'll project to, no matter what...
 if trainParams.zScoreSpikes
+    % Corresponds to 1/sigma for each neurons
     zScoreSpikesMat = diag(1./std(binnedSpikesAllConcat, [], 1));
-    % Subtract the mean spike count vector and then divide by the variance
-    % of spikes
-    binnedSpikesAllConcat = (binnedSpikesAllConcat - mean(binnedSpikesAllConcat)) * zScoreSpikesMat;
+    % Corresponds to mu/sigma for each neuron
+    zScoreSpikesMuTerm =  mean(binnedSpikesAllConcat)./std(binnedSpikesAllConcat, [], 1);
 else
+    % Identity matrix if not z-scoring
     zScoreSpikesMat =  eye(size(binnedSpikesAllConcat, 2));
+    % zeros if not z-scoring
+    zScoreSpikesMuTerm = zeros(mean(binnedSpikesAllConcat)); 
 end
-% Identify FA Space using ALL bins of delay period 
+% Subtract the mean spike count vector and then divide by the variance
+% of spikes
+binnedSpikesAllConcat = zScoreSpikesMat*binnedSpikesAllConcat - zScoreSpikesMuTerm;
+% Identify FA Space using ALL bins of delay period
 % (num_bins_in_delay* num_trials x num_channels)
 [estFAParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
 % Beta is simply the projection matrix into the factor space
@@ -178,7 +184,7 @@ scaledRewardAxisMagnitude = 1.25 * rewardAxisMagnitude;
 
 %% Save model parameters 
 bciDecoderSaveName = sprintf('rewardAxisDecoder_%s.mat', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'scaledRewardAxisMagnitude');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'scaledRewardAxisMagnitude');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
