@@ -145,7 +145,7 @@ else
 end
 % Subtract the mean spike count vector and then divide by the variance
 % of spikes
-binnedSpikesAllConcat = zScoreSpikesMat*binnedSpikesAllConcat - zScoreSpikesMuTerm;
+binnedSpikesAllConcat = binnedSpikesAllConcat*zScoreSpikesMat - zScoreSpikesMuTerm;
 % Identify FA Space using ALL bins of delay period
 % (num_bins_in_delay* num_trials x num_channels)
 [estFAParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
@@ -178,13 +178,11 @@ if smallRewardMeanProj > largeRewardMeanProj
     ldaParams.projVec = ldaParams.projVec*-1;
 end
 
-% TODO: calculate reward axis max range
-rewardAxisMagnitude = norm(ldaParams.projVec);
-scaledRewardAxisMagnitude = 1.25 * rewardAxisMagnitude;
+rewardAxisRange = largeRewardMeanProj - smallRewardMeanProj;
 
 %% Save model parameters 
 bciDecoderSaveName = sprintf('rewardAxisDecoder_%s.mat', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'scaledRewardAxisMagnitude');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'rewardAxisRange');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
