@@ -40,12 +40,12 @@ if requestedRewardState == 1
     % should be negative when rewardAxisProj is below smallReward Target
     distToTarget = rewardAxisProj - smallRewardTarget;
 else
-    % should be negative when rewardAxisProjs is above smallReward Target
+    % should be negative when rewardAxisProjs is above largeReward Target
     distToTarget = largeRewardTarget - rewardAxisProj;
 end
 
 % Compute smoothed distance values
-if smoothedRewardAxisDist
+if isempty(smoothedRewardAxisDist)
     % first smoothed value
     newSmoothedDist = distToTarget;
 else
@@ -59,6 +59,7 @@ if newSmoothedDist < 0
 end
 
 % Compute distance ratio that will be used for annulus value calculation
+% (r/R) in schematic
 rewardAxisRatio = newSmoothedDist/rewardAxisRange;
 
 % Need to saturate annulus values like PFC BCi
