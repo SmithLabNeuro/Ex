@@ -68,4 +68,5 @@ end
 
 % Set smoothedRewardAxisProjValue to newly computed value
 smoothedRewardAxisDist = newSmoothedDist;
-annulusRad = rewardAxisRatio; % Assuming that an annulus size of 1 is the largest possible
+% Assuming that an annulus size of 1 is the largest possible
+annulusRad = rewardAxisRatio;
