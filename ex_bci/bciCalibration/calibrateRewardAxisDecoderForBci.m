@@ -1,4 +1,4 @@
-function [decoderFileLocationAndName] = calibrateRewardAxisDecoderForBci(socketsControlComm, nevFilebase, nevFilesForTrain, trainParams, subject)
+function [decoderFileLocationAndName] = calibrateRewardAxisDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject)
 
 % inputs:
 % trainParams - comes from bci_rewardAxisDecoder.xml
