@@ -1,8 +1,8 @@
 function [distToTarget, annulusRad] = rewardAxisDecoder(meanSpikeCount, requestedRewardState, modelParams, expParams)
 % TODO: Figure out what these mean
 % meanspikeCount (already filtered by channelKeeps it seems)
-% modelParams
-% expParams
+% modelParams - info saved by calibration function
+% expParams - from bci_rewardAxisDecoder.xml
 
 persistent smoothedRewardAxisDist
 
@@ -10,7 +10,7 @@ persistent smoothedRewardAxisDist
 ldaParams = modelParams.ldaParams;
 beta = modelParams.beta; % Will be projection matrix to project values into FA space
 estFAParams = modelParams.estFAParams;
-d = modelParams.estFAParams.d; % mean spike count vector during calibration trials (useful for z-scoring too)
+d = estFAParams.d; % mean spike count vector during calibration trials (useful for z-scoring too)
 
 %Zscoring parameters
 zScoreSpikesMat = modelParams.zScoreSpikesMat;
@@ -69,5 +69,6 @@ end
 
 % Set smoothedRewardAxisProjValue to newly computed value
 smoothedRewardAxisDist = newSmoothedDist;
-% Assuming that an annulus size of 1 is the largest possible
-annulusRad = rewardAxisRatio;
+
+% calculate radius from ratio r/R = a/A
+annulusRad = rewardAxisRatio * expParams.maxAnnulusRad;

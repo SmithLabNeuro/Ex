@@ -1,4 +1,7 @@
-function [decoderFileLocationAndName] = calibrateRewardAxisDecoder(socketsControlComm, nevFilebase, nevFilesForTrain, trainParams, subject)
+function [decoderFileLocationAndName] = calibrateRewardAxisDecoderForBci(socketsControlComm, nevFilebase, nevFilesForTrain, trainParams, subject)
+
+% inputs:
+% trainParams - comes from bci_rewardAxisDecoder.xml
 
 global params codes
 
@@ -79,6 +82,7 @@ fprintf("\n%d channels being used\n", length(channelsKeep));
 
 % For neural signals, look at delay period right before go cue is sent
 % during calibration trials
+timeFromEndOfEpoch = trainParams.timeBeforeEndCode; %in ms
 codeForBinEnd = codes.(trainParams.calBinEndCode); 
 
 % Train only on trials that have matching trainingResultCodes
@@ -96,8 +100,6 @@ trainTrials = cellfun(@(x) any(ismember(x(:, 2), resultCodesForTrialsToKeep)), {
 % the calBinEndCode that we provide
 % Identify samples that correspond to the end and beginning for epoch
 % Go back 250ms from end Sample 
-% TODO: Is this the time period we want before the epoch?
-timeFromEndOfEpoch = 250; %in ms
 samplingRate = params.neuralRecordingSamplingFrequencyHz; % samples/s
 % First element of vector in cellfun is the start sample for delay epoch
 % and second sample is the end of that epoch
