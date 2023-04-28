@@ -8,7 +8,7 @@ function sendCode(code)
 
     % some checks on codes that are sent
     assert(isnumeric(code),'sendCode: code must be numeric');
-    assert(code>=0 && code<=2^16,'sendCode: code must be zero to 2^16');
+    assert(all(code>=0 & code<=2^16),'sendCode: code must be zero to 2^16');
     
     if params.sendingCodes
         % new comedi-based Linux digital output function
@@ -17,3 +17,4 @@ function sendCode(code)
     
     thisTrialCodes(end+1:end+length(code),:) = [code(:) ones(length(code),1).*toc(trialTic)];
 end
+q
