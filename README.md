@@ -31,6 +31,7 @@ stim - Library of functions for showing stimuli, for example “stim_grating.m�
 xippmex - Code library provided by Ripple for interfacing with their hardware in Matlab<BR>
 xml - XML files that provide parameters to run experiments (these pair with the “ex_taskname.m” functions)<BR>
 
+
 NOTE: You can use the “ex” and “xml” directories to store your experimental control and configuration files, but best practice is to create an additional directory structure in a directory called “Ex_local” where you put those files. The location for that directory, and for some other key directories, is set in the “ex_control/exGlobals.m” file<P>
 
 ——<BR>
