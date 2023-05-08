@@ -3,7 +3,7 @@ function [cnds, params, randoms, globals] = readExperiment(xmlFile,subject,machi
 %
 % reads an xml file and returns the 3 sets of parameters:
 % cnds: parameters that are tied to condition number
-% params: parameters that consistant on every trial
+% params: parameters that consistent on every trial
 % randoms: parameters that vary randomly on every trial  but are not tied to condition
 % globals: parameters that suit for multi experiment
 

@@ -9,7 +9,7 @@ function trialSuccess = waitForMS(waitTime,fixX,fixY,r,varargin)
 % fixX, fixY: in pixels, the offset of the fixation from (0,0)
 % r: in pixels, the radius of the fixation window
 %
-% 2015/08/14 by Adam Snyder and Matt Smith. Now allows user to pass a
+% 2015/08/14 by Adam Snyder and Matt Smith. Now aloopTopllows user to pass a
 % 'recenterFlag' such that the fixX and fixY will be ignored and instead
 % the current eye position is used.
 %

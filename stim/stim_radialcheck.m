@@ -20,8 +20,11 @@ if strcmp(optstr,'setup')
     %            (5) alpha (0-255)
     %            (6) stimX
     %            (7) stimY
-    %            (8) color option: 0 for black and white only; 1 for random
-    %            color
+    %            (8) color option: 0 for black and white only; 4 for
+    %            purple/green, 1 for red/green, 2 for blue-yellow, 3 for
+    %            orange-blue/green
+    %            (9) rotation angle for checkerboard
+
     [xCenter, yCenter] = RectCenter(sv.screenRect);
     screenNumber = max(Screen('Screens'));
     white = WhiteIndex(screenNumber);
@@ -33,6 +36,8 @@ if strcmp(optstr,'setup')
     tcycles = a(4);
     stimX = a(6);
     stimY = a(7);
+    rotAngle = a(9);
+
     xylim = 2 * pi * rcycles;
     [x, y] = meshgrid(-xylim: 2 * xylim / (screenYpix - 1): xylim,...
         -xylim: 2 * xylim / (screenYpix - 1): xylim);
@@ -48,55 +53,46 @@ if strcmp(optstr,'setup')
     ctrans=255*ones(size(checks));
     ctrans(checks~=grey)=a(5);
     
-    %black-white
-    color_checks{1} = cat(3,checks,checks,checks);
-
-    %red-green
-    color_checks{2} = cat(3,not_checks,checks,cblank);
-    
-    %blue-yellow
-    color_checks{3} = cat(3,checks,checks,not_checks);
-    
-    %orange-bluegreen
-    ctemp1=checks;
-    ctemp1(ctemp1==0)=0.6*255;
-    ctemp1(ctemp1==255)=0.9*255;
-    color_checks{4}=cat(3,not_checks,ctemp1,checks);
-    
-    %purple-green
-    ctemp1=checks;
-    ctemp1(ctemp1==0)=0.6*255;
-    ctemp1(ctemp1==255)=0.5*255;
-    ctemp2=checks;
-    ctemp2(ctemp2==0)=0.2*255;
-    color_checks{5}=cat(3,ctemp1,ctemp2,not_checks);
-    
-    
-    for i = 1:length(color_checks)
-        for n = 1:size(checks,1)
-            for m = 1:size(checks,2)
-                if checks(n,m)==grey
-                    color_checks{i}(n,m,1:3) = sv.bgColor;
-                end
-            end
-        end
-        color_checks{i} = cat(3,color_checks{i},ctrans);
+    if a(8)==0
+        %black-white
+        color_checks{1} = cat(3,checks,checks,checks);
+    elseif a(8)==1
+        %red-green
+        color_checks{2} = cat(3,not_checks,checks,cblank);
+    elseif a(8)==2
+        %blue-yellow
+        color_checks{3} = cat(3,checks,checks,not_checks);
+    elseif a(8)==3
+        %orange-bluegreen
+        ctemp1=checks;
+        ctemp1(ctemp1==0)=0.6*255;
+        ctemp1(ctemp1==255)=0.9*255;
+        color_checks{4}=cat(3,not_checks,ctemp1,checks);
+    elseif a(8)==4
+        %purple-green
+        ctemp1=checks;
+        ctemp1(ctemp1==0)=0.6*255;
+        ctemp1(ctemp1==255)=0.5*255;
+        ctemp2=checks;
+        ctemp2(ctemp2==0)=0.2*255;
+        color_checks{5}=cat(3,ctemp1,ctemp2,not_checks);
     end
+    
     baseRect = [0 0 screenYpix screenYpix];
     dstRects(:, 1) = CenterRectOnPointd(baseRect, xCenter +stimX,yCenter+stimY);
     
-    if numel(a)<8 || a(8) == 0
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1),'checks',color_checks{1},'position',dstRects);
-    else
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1),'checks',color_checks{randi(5)},'position',dstRects);
-    end
+    objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1),'checks',color_checks{1},'position',dstRects);
+ 
+    objects{objID}.radialCheckTexture = Screen('MakeTexture',w,objects{objID}.checks);
+    objects{objID}.rotAngle = rotAngle; 
 elseif strcmp(optstr,'display')
-    Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
-    radialCheckerboardTexture  = Screen('MakeTexture', w, objects{objID}.checks);
-     Screen('DrawTexture', w, radialCheckerboardTexture,[],objects{objID}.position);
+    Screen('DrawTexture',w,objects{objID}.radialCheckTexture,[],objects{objID}.position,objects{objID}.rotAngle);
+%     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
+%     radialCheckerboardTexture  = Screen('MakeTexture', w, objects{objID}.checks);
+%      Screen('DrawTexture', w, radialCheckerboardTexture,[],objects{objID}.position);
     %Screen('Flip', w);
 elseif strcmp(optstr,'cleanup')
-    % nothing necessary for this stim class
+    Screen('Close',objects{objID}.radialCheckTexture);
 else
     error('Invalid option string passed into stim_*.m function');
 end

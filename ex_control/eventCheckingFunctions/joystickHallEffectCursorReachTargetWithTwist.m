@@ -1,14 +1,8 @@
-function [success, msgStr, fixWinOutput] = joystickHallEffectCursorReachTarget(~,~, targX,targY,targRadius, cursorObjectId, cursorR, cursorColor, targWinCursRad, pixelDistForMaxJoystickPos, notTargX, notTargY, distTol)
+function [success, msgStr, fixWinOutput, extraOutput] = joystickHallEffectCursorReachTargetWithTwist(~,~, targX,targY,targRadius, cursorObjectId, cursorR, cursorColor, targWinCursRad, pixelDistForMaxJoystickPos, notTargX, notTargY, distTol, angleZHold, angleTolerance)
 % success if the cursor reaches the target
 % failure if the cursor *doesn't* reach the target
 
 global codes
-
-if nargin < 11
-    notTargX = [];
-    notTargY = [];
-    distTol = 0.5;
-end
 
 pixBoxLimit = pixelDistForMaxJoystickPos;
 
@@ -20,7 +14,8 @@ winColors = yellow;
 % cursor color
 cursorColorDisp = [cursorColor(1) cursorColor(2) cursorColor(3)];
 
-% these are the 0 values around which we'll determine cursor position (for
+% these are the 0 values around which we'll d    [reachTarget, funcSuccesses] = waitForEvent(movementTime, {@joystickHallEffectCursorReachTarget, @joystickAtariHold, @turnOffTargetAfterMs}, {movementToTargetJoystickHEArgs, joystickAtariHoldArgs, turnOffTargetAfterMsArgs});
+etermine cursor position (for
 % saving to the NEV file and also the MAT file)
 posX0 = 10000;
 posY0 = 10000;
@@ -28,7 +23,7 @@ posShiftForCode = [posX0 posY0];
 
 % compute the new cursor position (and don't let it get out of the bounding
 % box)
-[xVal, yVal, ~, ~] = sampleHallEffectJoystick();
+[xVal, yVal, zValAng, ~] = sampleHallEffectJoystick();
 cursorPos = [xVal*pixBoxLimit, yVal*pixBoxLimit]; 
 
 % I think this posShift, a double, gets cast to an int in unixSendByte,
@@ -54,10 +49,18 @@ if ~isempty(notTargX)
     distToBadTarg = sqrt(sum(relPosFromBadTarg.^2, 2));
 end
 
+% see if joystick is still twisted:
+angLargeEnough = abs(zValAng) > (angleZHold-angleTolerance);
+extraOutput = abs(zValAng);
+
 switch size(targRadius,1)
     case 1 %circular window
         success = distToTarget < targWinCursRad;
         if ~isempty(notTargX) && ((any(projOnBadTarg>projOnGoodTarg) && (distFromCent > targetDist*distTol)) || (projOnGoodTarg<0 && distFromCent>targetDist*distTol)) %qany(distToBadTarg < targWinCursRad)
+            success = -1;
+        end
+        if ~angLargeEnough
+            % HE not twisted
             success = -1;
         end
 %         if targY==0 && targX > 0 && distToTarget < targWinCursRad

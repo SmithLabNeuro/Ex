@@ -1,20 +1,42 @@
-function [success, msgStr, fixWinOutput, extraFuncOutput] = bciCursorMovementAndNeuralEngagement(~, loopNow, bciSockets, binSizeMs, initCursorPos, initVelocity, initNeuralEngagement, pixBoxLimit, targX,targY,targRadius, cursorObjId, cursorSizeInfo, cursorColor, targWinCursRad, timestepsInTargetForCorrect)
-% success if the cursor reaches the target
+function [success, msgStr, fixWinOutput, extraFuncOutput] = bciOneDimCursorMovementAndRotation(~, loopNow, bciSockets, binSizeMs, initCursorPos, initOneDimVelocity, initRotationCurs, includeRotation, pixBoxLimit, targX,targY,targRadius, cursorObjId, cursorSizeInfo, cursorColor, targWinCursRad, timestepsInTargetForCorrect)
+% success if the cursor reaches the target and rotation matches required
+% rotation
 % failure if the cursor *doesn't* reach the target
+% Inputs: 
+%   loopNow: float
+%       Timestamp of where loop currently is in for the waitFor function
+%   bciSockets:
+%   binSizeMs: int
+%       Size of bin in ms
+%   initCursorPos: 
+%   initVelocity:
+%   initRotationCurs:
+%   pixBoxLimit:
+%   targX: 
+%   targY:
+%   targRadius:
+%   cursorObjId:
+%   cursorSizeInfo:
+%   cursorColor:
+%   targWinCursRad:
+%   timestepsInTargetForCorrect:
 
 global codes
-persistent cursorPos velocityCurr loopTimeLast neCurr timestepsCorrect 
+persistent cursorPos oneDimVelocityCurrPers loopTimeLast timestepsCorrect rotCurrPers
 
 center = [0; 0];
 vecCenterToTarget = [targX-center(1); targY - center(2)];
-normVecCenterToTarget = vecCenterToTarget/norm(vecCenterToTarget);
-normVecOrth = null(normVecCenterToTarget');
-
-% centerOutAssistVel = normVecCenterToTarget*centerToOutVelForAssist;
+normVecCenterToTarget = transpose(vecCenterToTarget/norm(vecCenterToTarget));
+normOrthVecCenterToTarget = null(normVecCenterToTarget)';
+% Check that sum of coordinates is less than zero, if so, flip the vectorrotCurrPers
+% so that opposite targets use the same orthonormal vector
+if sum(normOrthVecCenterToTarget) < 0
+    normOrthVecCenterToTarget = normOrthVecCenterToTarget*-1;
+end
 if isempty(cursorPos)
     cursorPos = initCursorPos;
-    velocityCurr = initVelocity;  
-    neCurr = initNeuralEngagement;
+    oneDimVelocityCurrPers = initOneDimVelocity;  
+    rotCurrPers = initRotationCurs;
     loopTimeLast = loopNow;
     timestepsCorrect = 0;
 end
@@ -27,7 +49,7 @@ binChange = false;
 % cursor color
 cursorColorDisp = [cursorColor(1) cursorColor(2) cursorColor(3)];
 
-% cursor size
+% cursor sizebciOneDimCursorMovementAndRotation
 cursorRectHalfWidth = cursorSizeInfo(1);
 cursorRectHalfHeight = cursorSizeInfo(2);
 
@@ -35,7 +57,7 @@ cursorRectHalfHeight = cursorSizeInfo(2);
 % saving to the NEV file and also the MAT file)
 posX0 = 10000;
 posY0 = 10000;
-posNE0 = 10000;
+posRot0 = 10000;
 
 % grab the loop time delta for the move
 msPerS = 1000;
@@ -49,7 +71,8 @@ receivedMsg = '';
 ind = 0;
 while matlabUDP2('check', bciSockets.sender)
     receivedMsg = matlabUDP2('receive', bciSockets.sender);
-    ind = ind+1;
+    ind = ind+1;        % 9/30/2022 - Emilio changed from 1000ms to 3000ms timeout
+
 end
 if ind>1
 disp(ind)
@@ -62,78 +85,66 @@ if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
     % compute the new cursor position (and don't let it get out of the bounding
     % box)
     try
-        velocityAndNeuralEngagementNew = typecast(uint8(receivedMsg), 'double')';
-        velocityFromBci = velocityAndNeuralEngagementNew(1:2);
-        neCurr = velocityAndNeuralEngagementNew(3);
+        velocityNew = typecast(uint8(receivedMsg), 'double');
+        % Find new velocity and project to normVecCenterToTarget
+        % NormVecCenterToTarget is already normalized; no need to divide by
+        % norm for vector projection
+        currProjOneDimVelocity = dot(normVecCenterToTarget, velocityNew)*normVecCenterToTarget;
+        % the below should rest at 45 degrees (when neNew=0), and one standard
+        % deviation above and below (since neNew is z-scored) will span -54 to 54
+        % degrees; basically, it can give good feedback for +/- 1 z-scored NE
+        % change--the stretchFactor will allow us to increase what z-score span
+        % moves between those angles; 
+        % as written, +/- 2 z-score to span most of 0-90 degrees (if this wasn't there, it
+        % would go between ~10-80 degrees, where 0 and 90 get reached at +/-
+        % infinity
+        magnitudeAlongOrthVec = dot(normOrthVecCenterToTarget, velocityNew);
+        stretchFactor = 200;
+%         disp('hello');
+        if includeRotation
+            % Use the horizontal axis control as a parameter for rotCurr
+            currRot = 1.2*atand(magnitudeAlongOrthVec/stretchFactor)/2;
+            % making sure the cursor angle remains between -45 and 45 degrees
+            currRot = min(currRot, 45);
+            currRot= max(currRot, -45);        
+        end
         binChange = true;
-        %             disp(neCurr)
     catch err
         b = err;
         keyboard
     end
-    % constrain the velocity based on automonkey/passive assist
-    centerToTargetVel = velocityFromBci' * normVecCenterToTarget;
-    orthVel = velocityFromBci' * normVecOrth;
-    velocityCurr =runex('kalmanVelocityBci.xml', 20, 1) centerToTargetVel*normVecCenterToTarget + orthVel*normVecOrth;
-    
-else
-    velocityFromBci = velocityCurr;
+    % set persistent variable at end of try/catch error
+    oneDimVelocityCurrPers = currProjOneDimVelocity;
+    rotCurrPers = currRot;
 end
+%         disp('hello');
 
-
-posPixelChange = velocityCurr * loopTimeDiff;
+posPixelChange = oneDimVelocityCurrPers * loopTimeDiff;
 cursorPosNew = cursorPos + posPixelChange;
 signCursor = sign(cursorPosNew);
 cursorPosLimited = signCursor.*min(pixBoxLimit, abs(cursorPosNew));
 posPixelChangeLimit = cursorPosLimited - cursorPos;
+% Update cursor such that if it lies outside the pixel bounds; keep showing
+% it at the top
 if ~all(abs(posPixelChangeLimit - posPixelChange)<1e-10)
-    velocityCurr = posPixelChangeLimit/loopTimeDiff;
+    oneDimVelocityCurrPers = posPixelChangeLimit/loopTimeDiff;
     cursorPos = cursorPosLimited;
 else
+    % Else update cursor to new position
     cursorPos = cursorPosNew;
 end
 
-% the below should rest at 45 degrees (when neNew=0), and one standard
-% deviation above and below (since neNew is z-scored) will span -54 to 54
-% degrees; basically, it can give good feedback for +/- 1 z-scored NE
-% change--the stretchFactor will allow us to increase what z-score span
-% moves between those angles; 
-% as written, +/- 2 z-score to span most of 0-90 degrees (if this wasn't there, it
-% would go between ~10-80 degrees, where 0 and 90 get reached at +/-
-% infinity
-stretchFactor = 1;
-cursorAngleDeg = 1.2*atand(neCurr/stretchFactor)/2;
-% making sure the cursor angle remains between -45 and 45 degrees
-cursorAngleDeg = min(cursorAngleDeg, 45);
-cursorAngleDeg = max(cursorAngleDeg, -45);
-            
-% send the constrained velocity back to the BCI computer; no heads up
-% messages or receive accept messages so that the loop can be tight--but
-% the BCI computer better be ready to receive what we're sending!
-if any(~ismembertol(velocityFromBci, velocityCurr))
-    try
-        uint8Msg = typecast(velocityCurr, 'uint8');
-    catch err
-        a = err;
-        keyboard
-    end
-    sendMessageWaitAck(bciSockets, uint8Msg');
-end
-
-% I think this posShift, a double, gets cast to an int in
-% unixSendByte, which sendCode calls... keep in mind in case weird
-% things appear, but it's been working until now...
-
+% send x, y, and rotation to nev.
 posShiftX = posX0 + cursorPos(1);
 posShiftY = posY0 + cursorPos(2);
-neShift = posNE0 + sign(neCurr)*min(abs(neCurr)*100, 500);
+obtainedRotCurr = posRot0 + rotCurrPers;
 sendCode(codes.BCI_CURSOR_POS);
 sendCode(posShiftX);
 sendCode(posShiftY);
-sendCode(neShift);
+sendCode(obtainedRotCurr);
 
 % compute how close the cursor is to the target
-relPos = (cursorPos-[targX; targY]);
+relPos = (cursorPos'-[targX; targY]);
 switch size(targRadius,1)
     case 1 %circular window
         distToTarget = sqrt(sum(relPos.^2));
@@ -156,10 +167,11 @@ switch size(targRadius,1)
         targUnrotAngle = -targRadius(3);
         unrotMatTarg = [cosd(targUnrotAngle), -sind(targUnrotAngle);
                   sind(targUnrotAngle), cosd(targUnrotAngle)];
-        rotMatCursor = [cosd(cursorAngleDeg), -sind(cursorAngleDeg);
-                  sind(cursorAngleDeg), cosd(cursorAngleDeg)];
+        rotMatCursor = [cosd(rotCurrPers), -sind(rotCurrPers);
+                  sind(rotCurrPers), cosd(rotCurrPers)];
                
         relCursPtsTargRef = unrotMatTarg * relPos;
+        % Rotate bounding box relative to current location and to target
         rectanglePtsRelTarg = relCursPtsTargRef + ...
             unrotMatTarg*rotMatCursor*[-cursorRectHalfWidth  cursorRectHalfHeight;
               cursorRectHalfWidth  cursorRectHalfHeight;
@@ -194,13 +206,13 @@ loopTimeLast = loopNow;
 % especially important for the fixation windows otherwise other functions
 % will erase these windows when the cursor doesn't get updated
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-cursorAngleDisp = round(cursorAngleDeg);
+cursorAngleDisp = round(rotCurrPers);
 msgStr = sprintf('set %i rotpoly 0 %i %i %i %i %i %i %i %i', [cursorObjId, cursorPosDisp(1) cursorPosDisp(2) cursorRectHalfWidth cursorRectHalfHeight cursorAngleDisp cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
 % msgStr
 fixWinOutput = {[targX cursorPosDisp(1)], [targY cursorPosDisp(2)], [targWinCursRad cursorRectHalfWidth], winColors};
 extraFuncOutput.cursorPosFinal = cursorPos;
-extraFuncOutput.velocityFinal = velocityCurr;
-extraFuncOutput.cursorAngleFinal = cursorAngleDeg;
+extraFuncOutput.velocityFinal = oneDimVelocityCurrPers;
+extraFuncOutput.cursorAngleFinal = rotCurrPers;
 
 
 

@@ -14,10 +14,10 @@ Screen(wins.info,'FillRect',gray);
 Screen('TextSize',wins.info,wins.textSize);
 for i = 1:length(trialData)
     if ~isempty(trialData{i})
-        if i==1 && ~params.writeFile
-            textColor = [150,0,0];
+        if size(wins.trialData.lineColor,1)>= i
+            textColor = wins.trialData.lineColor(i,:);
         else
-            textColor = [0,0,0];
+            textColor = [0,0,0]; % default to black for extra lines
         end
         Screen('DrawText',wins.info,trialData{i},x,y,textColor);
     end

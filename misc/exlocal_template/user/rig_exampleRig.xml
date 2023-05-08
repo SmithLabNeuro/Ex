@@ -1,0 +1,8 @@
+<rig name="exampleRig">
+  <globals>
+        <diodeLoc>[20 30 50 60]'</diodeLoc>
+        <screenDistance>59</screenDistance>
+        <pixPerCM>27.40</pixPerCM>
+        <keyboardName>'Dell Dell USB Keyboard'</keyboardName> <!--for the lab note taking; you can find the name by running 'xinput' on the command line-->
+    </globals>
+</rig>
