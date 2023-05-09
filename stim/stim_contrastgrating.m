@@ -1,5 +1,4 @@
-function stim_grating(optstr,w,objID,arg)
-%function stim_grating(optstr,w,objID,arg)
+function stim_contrastgrating(optstr,w,objID,arg)
 %
 % showex helper function for 'grating' stim class
 %
@@ -13,40 +12,34 @@ global objects;
 global sv;
 
 if strcmp(optstr,'setup')
-    a = sscanf(arg,'%i %f %f %f %f %i %i %i %f %i %f %f');
+    a = sscanf(arg,'%i %f %f %i %i %i %i %i %f %i');
     
     % arguments: (1) frameCount
     %            (2) angle
-    %            (3) initial phase
-    %            (4) frequency
-    %            (5) cycles per second
-    %            (6) x position
-    %            (7) y position
-    %            (8) aperture size
-    %            (9) contrast (0.0-1.0)
-    %            (10) num flashes before change
-    %            (11) frames per contrast cycle
-    %            (12) amplitdue of sine contrast
+    %            (3) spatial frequency
+    %            (4) x position
+    %            (5) y position
+    %            (6) aperture size
+    %            (7) num flashes before change
+    %            (8) frames per contrast cycle
+    %            (9) amplitdue of sine contrast
+    %            (10) bool, use phase swap?
     
     angle = mod(180-a(2),360);
     mult_angle = [0, angle];
-    f = a(4);
-    cps = a(5);
-    xCenter = a(6);
-    yCenter = -a(7); % flip y coordinate so '-' is down
-    rad = a(8); % Size of the grating image. Needs to be a power of two.
-    contrast = a(9);
+    f = a(3);
+    xCenter = a(4);
+    yCenter = -a(5); % flip y coordinate so '-' is down
+    rad = a(6); % Size of the grating image. Needs to be a power of two.
     
     % Calculate parameters of the grating:
     ppc=ceil(1/f);  % pixels/cycle
     fr=f*2*pi; % radians
     visibleSize=2*rad+1;
     
-    phase = a(3)/360*ppc;
-    
     % Create one single static grating image:
     x=meshgrid(-rad:rad + ppc, -rad:rad);
-    grating = sv.gray + (sv.gray*cos(fr*x)) * contrast;
+    grating = sv.gray + (sv.gray*cos(fr*x));
     
     % Store grating in texture: Set the 'enforcepot' flag to 1 to signal
     % Psychtoolbox that we want a special scrollable power-of-two texture:
@@ -62,29 +55,39 @@ if strcmp(optstr,'setup')
     maskTex=Screen('MakeTexture', w, mask);
     
     % contrast modulation sine wave parameters
-    amplitude = a(12);
-    contrastStepRad = pi / a(11);
-%     contrastFreqRad = contrastFreq * 2 * pi;
+    amplitude = a(9);
+    contrastStepRad = pi / a(8);
     startPhase = 0;
-    numFlashes = a(10);
+    numFlashes = a(7);
     
     dstRect=[0 0 visibleSize visibleSize];
     dstRect=CenterRect(dstRect, sv.screenRect) + [xCenter yCenter xCenter yCenter];
     stimname = mfilename;
     objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), ...
-        'angles',mult_angle, 'phase',phase, ...
-        'size',visibleSize, 'x',xCenter,'y',yCenter,...
-        'sineAmp', amplitude, 'sineStep', contrastStepRad, 'sinePhase', startPhase, 'numFlashes', numFlashes, 'numSteps', a(11),...
+        'angles',mult_angle,'size',visibleSize,'x',xCenter,'y',yCenter,'phaseOffset',[0, ceil(ppc/2)],'phaseIdx',1,'usePhaseSwap',logical(a(10)),...
+        'sineAmp',amplitude,'sineStep',contrastStepRad,'sinePhase',startPhase,'numFlashes',numFlashes,'numSteps',a(8),...
         'grating',gratingTex, 'mask',maskTex, ...
-        'ppc',ppc, 'dstRect',dstRect);
+        'ppc',ppc,'dstRect',dstRect);
 elseif strcmp(optstr,'display')
+    % check if contrast is 0 and phase needs to be swapped
+    if objects{objID}.usePhaseSwap
+        if mod(objects{objID}.frame, objects{objID}.numSteps) == 0
+            tmp = objects{objID}.frame / objects{objID}.numSteps;
+            if mod(tmp,2) == 1
+                objects{objID}.phaseIdx = mod(objects{objID}.phaseIdx,2) + 1;
+            end
+        end
+    end
+    % check if angle needs to be rotated
     if objects{objID}.frame >= (objects{objID}.numSteps) * (2 * objects{objID}.numFlashes - 1)
         currAngle = objects{objID}.angles(2);
     else
         currAngle = objects{objID}.angles(1);
     end
     currContrast = objects{objID}.sineAmp * cos(objects{objID}.sineStep * objects{objID}.frame + objects{objID}.sinePhase) + (1 - objects{objID}.sineAmp);
-    srcRect = [0 0 objects{objID}.size objects{objID}.size];
+
+    xOffset = objects{objID}.phaseOffset(objects{objID}.phaseIdx);
+    srcRect = [xOffset 0 xOffset + objects{objID}.size objects{objID}.size];
     
     Screen('DrawTexture',w,objects{objID}.grating,srcRect,objects{objID}.dstRect,currAngle, [], currContrast);
     Screen('DrawTexture',w,objects{objID}.mask,[0 0 objects{objID}.size objects{objID}.size],objects{objID}.dstRect,currAngle);
