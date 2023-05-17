@@ -71,4 +71,4 @@ end
 smoothedRewardAxisDist = newSmoothedDist;
 
 % calculate radius from ratio r/R = a/A
-annulusRad = rewardAxisRatio * expParams.maxAnnulusRad;
+annulusRad = round(rewardAxisRatio * expParams.maxAnnulusRad);
