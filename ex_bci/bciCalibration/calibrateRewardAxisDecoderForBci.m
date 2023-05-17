@@ -222,7 +222,7 @@ subjectCamelCase(1) = upper(subjectCamelCase(1));
 if offlineFlag
     % Use provided nev filename for date
     fileBackSlashIndex = find(nevFilebase == '\');
-    bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2),fileBackSlashIndex(1:end-4) , datestr(now, 'HH-MM-SS') );
+    bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s_offline.mat', subjectCamelCase(1:2),fileBackSlashIndex(1:end-4) , datestr(now, 'HH-MM-SS') );
 else
     % Use current date as naming convention for online
     bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));

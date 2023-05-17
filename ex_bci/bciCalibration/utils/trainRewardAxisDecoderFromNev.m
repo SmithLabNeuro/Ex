@@ -12,4 +12,4 @@ nevFilename = fullfile(dataPath, nevFilebase);
 [~, trainParams, ~, ~] = readExperiment(xmlFile,subject,machine);
 
 % In this context, nevFileBase matches nevFilesForTrain 
-decoderFileLocationAndName = calibrateRewardAxisDecoderForBci('', nevFilename, {nevFilename}, trainParams, subject, false);
+decoderFileLocationAndName = calibrateRewardAxisDecoderForBci('', nevFilename, {nevFilename}, trainParams, subject, true);
