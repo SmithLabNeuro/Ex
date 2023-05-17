@@ -129,15 +129,40 @@ binnedSpikesDelay(delayValidTrials) = cellfun(...
 binnedSpikesDelay(delayValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesDelay(delayValidTrials), 'uni', 0);
 allTrialsDelayEpochBinnedCounts = binnedSpikesDelay(delayValidTrials)';
 % TODO: Do we take the average of the bins for the actual BCI? How do we use these bins?
+
+% subsample trials to get same number of rewards
+delayValidTrialParams = trimmedDat(delayValidTrials);
+numValidTrials = length(delayValidTrialParams);
+validTrialRewardLabels = nan(numValidTrials, 1);
+for k = 1:numValidTrials
+    validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
+end
+uniqueRewardIdxs = unique(validTrialRewardLabels);
+numTrialsPerReward = histc(validTrialRewardLabels, uniqueRewardIdxs);
+minNumTrialsPerReward = min(numTrialsPerReward);
+subsampleIdx = zeros(numValidTrials,1);
+for i=1:length(uniqueRewardIdxs)
+    r = uniqueRewardIdxs(i);
+    n = numTrialsPerReward(i);
+    fullRewardIdx = validTrialRewardLabels == r;
+    if n > minNumTrialsPerReward
+        trimIdx = find(cumsum(fullRewardIdx)==minNumTrialsPerReward+1);
+        fullRewardIdx(trimIdx:end) = false;
+    end
+    subsampleIdx = subsampleIdx | fullRewardIdx;
+end
+% sub sample
+allTrialsDelayEpochBinnedCounts = allTrialsDelayEpochBinnedCounts(subsampleIdx);
+validTrialRewardLabels = validTrialRewardLabels(subsampleIdx);
 %% Fit FA to binned counts to help denoise 
 % Concatenate all trials binned spikes
 binnedSpikesAllConcat = cat(1, allTrialsDelayEpochBinnedCounts{:});
-% TODO: Figure out the number of latents necessary
 numLatents = trainParams.numberFaLatents; % this is how many latents we'll project to, no matter what...
 if trainParams.zScoreSpikes
     % Corresponds to 1/sigma for each neurons
     zScoreSpikesMat = diag(1./std(binnedSpikesAllConcat, [], 1));
-    % Corresponds to mu/sigma for each neuron
+    % Corresponds to mu/sigma for each neuron (should be a 1 x
+    % num_channels)
     zScoreSpikesMuTerm =  mean(binnedSpikesAllConcat)./std(binnedSpikesAllConcat, [], 1);
 else
     % Identity matrix if not z-scoring
@@ -148,26 +173,29 @@ end
 % Subtract the mean spike count vector and then divide by the variance
 % of spikes
 binnedSpikesAllConcat = binnedSpikesAllConcat*zScoreSpikesMat - zScoreSpikesMuTerm;
+zScoreSpikesMuTerm = zScoreSpikesMuTerm'; % transpose for decoder
 % Identify FA Space using ALL bins of delay period
 % (num_bins_in_delay* num_trials x num_channels)
 [estFAParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
 % Beta is simply the projection matrix into the factor space
 [~, ~, beta] = fastfa_estep(binnedSpikesAllConcat', estFAParams);
-%% Fit LDA to these FA Projections
-% Keep trial parameters of valid trials that will be used for training LDA
-delayValidTrialParams = trimmedDat(delayValidTrials);
-numValidTrials = length(delayValidTrialParams);
-validTrialRewardLabels = nan(numValidTrials, 1);
-for k = 1:numValidTrials
-    validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
-end
-% Take Mean binned activity during delay period then project into FA space
-meanDelayValidTrialFAProjs = cellfun(@(x) beta*(mean(x)' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
+%% Temporally Smooth Fa Projections
+alpha = trainParams.alpha;
+numBinsForLDA = trainParams.numCalBins; % Specify number of calibration bins that will be used for training LDA
+% Find FA projections for all trials
+faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
+% Exponentially smooth each trial's bins, include previous bins' effects 
+smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha), faProjsByTrial, 'UniformOutput', false);
+% Select the last numBinsForLDA for each calibration trial
+smoothedFaProjsByTrial = cellfun(@(x) x(:, end-(numBinsForLDA-1):end), smoothedFaProjsByTrial, 'UniformOutput', false);
+% Repeat reward labels so that each bin in a trial has a label for LDA
+% Repmat replicates by column and reshape reorders row-wise
+binRewardLabelsByTrial = reshape(repmat(validTrialRewardLabels,numBinsForLDA,1),length(validTrialRewardLabels)*numBinsForLDA ,1);
+%% Fit LDA to smoothed FA Projections
 % Concatenate across all trials to get a num_valid_trials x num_fa_latents
-ldaTrainX = cat(2, meanDelayValidTrialFAProjs{:})';
+ldaTrainX = cat(2, smoothedFaProjsByTrial{:})';
 % Fit LDA on FA projections
-ldaParams = fit_LDA(ldaTrainX, validTrialRewardLabels);
-
+ldaParams = fit_LDA(ldaTrainX, binRewardLabelsByTrial);
 %% Get reward axis means and magnitude
 % Reorient projection vector such that the largest reward value is the
 % largest value on this axis
@@ -178,6 +206,9 @@ smallRewardMeanProj = mean(ldaParams.projData(smallRewardTrialIndices));
 % Flip reward axis only if smallReward projection is higher than large reward projection
 if smallRewardMeanProj > largeRewardMeanProj
     ldaParams.projVec = ldaParams.projVec*-1;
+    ldaParams.projData = ldaParams.projData*-1;
+    largeRewardMeanProj = -largeRewardMeanProj;
+    smallRewardMeanProj = -smallRewardMeanProj;
 end
 
 rewardAxisRange = largeRewardMeanProj - smallRewardMeanProj; % used to calculate current neural distance
@@ -191,4 +222,16 @@ bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), 
 save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'rewardAxisRange');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
+end
+function smoothedBins = exponentialSmoother(currTrialBins, alpha)
+% Assumes currTrialBins is of num_dims x num_time_bins
+    smoothedBins = nan(size(currTrialBins));
+    for i =1:size(smoothedBins,2)
+        % Set first value to currTrialBins first value
+        if i == 1
+            smoothedBins(:,i) = currTrialBins(:,i);
+        else
+            smoothedBins(:,i) = (1-alpha)*smoothedBins(:,i-1) + alpha*currTrialBins(:,i);
+        end
+    end
 end

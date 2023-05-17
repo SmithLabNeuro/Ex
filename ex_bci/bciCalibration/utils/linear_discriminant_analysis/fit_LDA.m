@@ -39,10 +39,12 @@ function [params] = fit_LDA(trainX, trainY)
         params.Sb = params.Sb + params.nClass(ii)*(diffMu'*diffMu);
     end
     %% find projection vector and project X 
-    % identify solution to A*V = B*V*D where V is our LDA axes and D are
-    % the eigenvalues.
-    [V,D] =  eig(params.Sb, params.Sw);
-    params.projMat = V;
-    params.projVec = V(:,1);
+    % This backslash is used in place of inv to account for singular Sw
+    % matrices. If singular, will use the least squares estimate intead of
+    % throwing an error which inv() will do.
+    invSwSb = params.Sw \ params.Sb;
+    [U,~, ~] = svd(invSwSb);
+    params.projMat = U;
+    params.projVec = U(:,1);
     params.projData = trainX*params.projVec;
 end
