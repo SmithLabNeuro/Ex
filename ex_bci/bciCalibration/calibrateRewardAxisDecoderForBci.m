@@ -1,10 +1,9 @@
-function [decoderFileLocationAndName] = calibrateRewardAxisDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject)
+function [decoderFileLocationAndName] = calibrateRewardAxisDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject, offlineFlag)
 
 % inputs:
 % trainParams - comes from bci_rewardAxisDecoder.xml
 
 global params codes
-
 % NASNet variables
 gamma = trainParams.gamma;
 nasNetName = trainParams.nasNetwork;
@@ -19,6 +18,10 @@ else
     includeBaseForTrain = false;
 end
 nevFilesForTrain(strcmp(nevFilesForTrain, nevFilebase)) = [];
+
+if nargin < 6
+    offlineFlag = false;
+end
 
 %% Read in NEV files that will be used for training our decoder
 % Base usually set to the first file of training Nevs
@@ -212,12 +215,18 @@ if smallRewardMeanProj > largeRewardMeanProj
 end
 
 rewardAxisRange = largeRewardMeanProj - smallRewardMeanProj; % used to calculate current neural distance
-
 %% Save model parameters 
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
 % bciDecoderSaveName = sprintf('rewardAxisDecoder_%s.mat', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
-bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
+if offlineFlag
+    % Use provided nev filename for date
+    fileBackSlashIndex = find(nevFilebase == '\');
+    bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2),fileBackSlashIndex(1:end-4) , datestr(now, 'HH-MM-SS') );
+else
+    % Use current date as naming convention for online
+    bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
+end
 
 save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'rewardAxisRange');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
