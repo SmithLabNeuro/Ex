@@ -71,4 +71,3 @@ end
 % Set newSmoothedDist for return
 newAnnulusRad = round(rewardAxisRatio * expParams.maxAnnulusRad);
 newReturn = [newSmoothFaProj; newDistToTarget; newAnnulusRad; currRewardState];
-disp(newAnnulusRad)

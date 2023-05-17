@@ -1,6 +1,15 @@
-function [decoderFileLocationAndName] = calibrateRewardAxisDecoder(socketsControlComm, nevFilebase, nevFilesForTrain, trainParams, subject)
+function [outputStruct] = trainRewardAxisDecoderFromNev(nevFilebase, subject)
+% function [M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoderFromNev(nev, trainParams, params, codes, datBase, nevBase,...
+%         netLabels, gamma, channelNumbersUse, Qvalue, numLatents, velocityToCalibrateWith, includeBaseForTrain)
 
-global params codes
+exGlobals;
+dataPath = 'E:\';
+xmlFile = 'bci_rewardAxisDecoder.xml';
+[~,machineInit] = system('hostname');
+machine = lower(deblank(cell2mat(regexp(machineInit, '^[^\.]+', 'match'))));
+
+nevFilename = fullfile(dataPath, nevFilebase);
+[~, trainParams, ~, ~] = readExperiment(xmlFile,subject,machine);
 
 % NASNet variables
 gamma = trainParams.gamma;
@@ -9,53 +18,14 @@ netFolder = params.nasNetFolderDataComputer;
 % Specify channels that will be used for BCI
 channelNumbersUse = trainParams.rippleChannelNumbersInBci;
 
-% don't double read the base if it's also a train file
-if any(strcmp(nevFilesForTrain, nevFilebase))
-    includeBaseForTrain = true;
-else
-    includeBaseForTrain = false;
-end
-nevFilesForTrain(strcmp(nevFilesForTrain, nevFilebase)) = [];
-
 %% Read in NEV files that will be used for training our decoder
-% Base usually set to the first file of training Nevs
-% TODO: Figure out what this nevFileBase actually does ( Maybe used to
-% determine timepoints w.r.t other Nev files)
-[nevBase,waves] = readNEV(nevFilebase);
-nev = nevBase;
-kr = [];  
+[nev,waves] = readNEV(nevFilename);
 
-% Needed to globally align times for multiple NEV files
-firstTimePtShift = 0;
-fnStartTimes = firstTimePtShift;
-% Read in Nev Files and NS5 files that will be used for training decoder
-for nevFlInd = 1:length(nevFilesForTrain)
-    currNevFileName = nevFilesForTrain{nevFlInd};
-    [nevNx, wavesNx] = readNEV(currNevFileName);
-    kr = [kr (nev(end, 3) + 1)*30000];
-    % Update first Time point based on what nevNx last timestamp is; set to
-    % set to 1 second after current nev file's final time stamp
-    firstTimePtShift = firstTimePtShift + nevNx(end, 3) + 1;
-    fnStartTimes(end+1 ) = firstTimePtShift;
-    nevNx(:, 3) = nevNx(:, 3) + nev(end, 3) + 1;
-    nev = [nev; nevNx];
-    waves = [waves, wavesNx];
-end
 % Run NASNET on NEVs
-[~,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName, 'labelSpikesAsWithWrite', true);
+[~,nevLabelledData] = runNASNet({nev, waves}, gamma, 'netFolder', netFolder, 'netname', nasNetName, 'labelSpikesAsWithWrite', true);
 % Convert Nevs to dat so that its easier to work with in Matlab
 datStruct = nev2dat(nevLabelledData, 'nevreadflag', true);
 %% Initialize BCI-specific parameters
-% Setup filepaths to where BCI decoder will be saved.
-bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;
-bciDecoderRelativeSaveFolder = fullfile(subject);
-bciDecoderSaveFolder = fullfile(bciDecoderSaveDrive, bciDecoderRelativeSaveFolder);
-success = mkdir(bciDecoderSaveFolder);
-if ~success
-    fprintf('\nError creating new directory for BCI parameters\n')
-    fprintf('\nkeyboard here...\n')
-    keyboard
-end
 samplingRate = params.neuralRecordingSamplingFrequencyHz; % samples/s
 binSizeMs = trainParams.binSizeMs; % ms
 % TODO: Figure these out
@@ -79,6 +49,7 @@ fprintf("\n%d channels being used\n", length(channelsKeep));
 
 % For neural signals, look at delay period right before go cue is sent
 % during calibration trials
+timeFromEndOfEpoch = trainParams.timeBeforeEndCode; %in ms
 codeForBinEnd = codes.(trainParams.calBinEndCode); 
 
 % Train only on trials that have matching trainingResultCodes
@@ -96,8 +67,6 @@ trainTrials = cellfun(@(x) any(ismember(x(:, 2), resultCodesForTrialsToKeep)), {
 % the calBinEndCode that we provide
 % Identify samples that correspond to the end and beginning for epoch
 % Go back 250ms from end Sample 
-% TODO: Is this the time period we want before the epoch?
-timeFromEndOfEpoch = 250; %in ms
 samplingRate = params.neuralRecordingSamplingFrequencyHz; % samples/s
 % First element of vector in cellfun is the start sample for delay epoch
 % and second sample is the end of that epoch
@@ -178,11 +147,18 @@ if smallRewardMeanProj > largeRewardMeanProj
     ldaParams.projVec = ldaParams.projVec*-1;
 end
 
-rewardAxisRange = largeRewardMeanProj - smallRewardMeanProj;
+rewardAxisRange = largeRewardMeanProj - smallRewardMeanProj; % used to calculate current neural distance
 
 %% Save model parameters 
-bciDecoderSaveName = sprintf('rewardAxisDecoder_%s.mat', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'rewardAxisRange');
-decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
-fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
+outputStruct = struct();
+outputStruct.ldaParams = ldaParams;
+outputStruct.estFAParams = estFAParams;
+outputStruct.beta = beta;
+outputStruct.zScoreSpikesMat = zScoreSpikesMat;
+outputStruct.zScoreSpikesMuTerm = zScoreSpikesMuTerm;
+outputStruct.channelsKeep = channelsKeep;
+outputStruct.largeRewardMeanProj = largeRewardMeanProj;
+outputStruct.smallRewardMeanProj = smallRewardMeanProj;
+outputStruct.rewardAxisRange = rewardAxisRange;
+
 end

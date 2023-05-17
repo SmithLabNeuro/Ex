@@ -23,7 +23,7 @@ function [params] = fit_LDA(trainX, trainY)
         params.Mu(ii,:) = mean(curr_class_X,1);
         % Normalizes by N instead of N-1 (Bessel's correction not applied
         % here). 
-        params.Sigma(ii,:,:) = (curr_class_X-params.Mu(ii,:))'*(curr_class_X-params.Mu(ii.:));
+        params.Sigma(ii,:,:) = (curr_class_X-params.Mu(ii,:))'*(curr_class_X-params.Mu(ii,:));
     end
     
     % Take mean of total training set
