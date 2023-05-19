@@ -204,43 +204,43 @@ ldaParams = fit_LDA(ldaTrainX, binRewardLabelsByTrial);
 % largest value on this axis
 largeRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 3);
 smallRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 1);
-largeRewardMeanProj = mean(ldaParams.projData(largeRewardTrialIndices));
-smallRewardMeanProj = mean(ldaParams.projData(smallRewardTrialIndices));
+% Keep track of Small/large 
+smallRewardProjs = ldaParams.projData(smallRewardTrialIndices);
+largeRewardProjs = ldaParams.projData(largeRewardTrialIndices);
+largeRewardMeanProj = mean(largeRewardProjs);
+smallRewardMeanProj = mean(smallRewardProjs);
 % Flip reward axis only if smallReward projection is higher than large reward projection
 if smallRewardMeanProj > largeRewardMeanProj
     ldaParams.projVec = ldaParams.projVec*-1;
     ldaParams.projData = ldaParams.projData*-1;
+    smallRewardProjs = -smallRewardProjs;
+    largeRewardProjs = -largeRewardProjs;
     largeRewardMeanProj = -largeRewardMeanProj;
     smallRewardMeanProj = -smallRewardMeanProj;
 end
 
-rewardAxisRange = largeRewardMeanProj - smallRewardMeanProj; % used to calculate current neural distance
+% Set different R values for the two conditions 
+largeRewardRange = largeRewardMeanProj - prctile(smallRewardProjs, 10);
+smallRewardRange = prctile(largeRewardProjs, 90) - smallRewardMeanProj;
 %% Save model parameters 
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
 % bciDecoderSaveName = sprintf('rewardAxisDecoder_%s.mat', datestr(now, 'yyyy-mm-dd_HH-MM-SS'));
 if offlineFlag
     % Use provided nev filename for date
-    fileBackSlashIndex = find(nevFilebase == '\');
-    bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s_offline.mat', subjectCamelCase(1:2),fileBackSlashIndex(1:end-4) , datestr(now, 'HH-MM-SS') );
+    fileBackSlashIndices = find(nevFilebase == '\');
+    if length(fileBackSlashIndices) > 1
+        fileBackSlashIndex = fileBackSlashIndices(end);
+    else
+        fileBackSlashIndex = fileBackSlashIndices;
+    end
+    bciDecoderSaveName = sprintf('%sRewardAxisBci_%s_offline.mat',nevFilebase(fileBackSlashIndex+1:end-4) , datestr(now, 'HH-MM-SS') );
 else
     % Use current date as naming convention for online
     bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 end
 
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'rewardAxisRange');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'largeRewardRange', 'smallRewardRange');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
-end
-function smoothedBins = exponentialSmoother(currTrialBins, alpha)
-% Assumes currTrialBins is of num_dims x num_time_bins
-    smoothedBins = nan(size(currTrialBins));
-    for i =1:size(smoothedBins,2)
-        % Set first value to currTrialBins first value
-        if i == 1
-            smoothedBins(:,i) = currTrialBins(:,i);
-        else
-            smoothedBins(:,i) = (1-alpha)*smoothedBins(:,i-1) + alpha*currTrialBins(:,i);
-        end
-    end
 end
