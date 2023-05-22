@@ -234,13 +234,13 @@ if offlineFlag
     else
         fileBackSlashIndex = fileBackSlashIndices;
     end
-    bciDecoderSaveName = sprintf('%sRewardAxisBci_%s_offline.mat',nevFilebase(fileBackSlashIndex+1:end-4) , datestr(now, 'HH-MM-SS') );
+    bciDecoderSaveName = sprintf('%sRewardAxisBci_%s_offline.mat',nevFilebase(fileBackSlashIndex+1:end-4) , datestr(now, 'dd-mmm-yyyy_HH-MM-SS') );
 else
     % Use current date as naming convention for online
     bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 end
 
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'largeRewardRange', 'smallRewardRange');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'largeRewardRange', 'smallRewardRange', 'trainParams');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
