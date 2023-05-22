@@ -27,7 +27,9 @@ alpha = expParams.alpha;
 % Distance Parameters
 largeRewardTarget = modelParams.largeRewardMeanProj;
 smallRewardTarget = modelParams.smallRewardMeanProj;
-rewardAxisRange = modelParams.rewardAxisRange;
+
+smallRewardRange = modelParams.smallRewardRange;
+largeRewardRange = modelParams.largeRewardRange
 
 % Z-score spikes; zscoreSpikesMat will be identity and zScoreSpikesMuTerm
 % will be zero if zscoreSpikes is set to false in trainParams
@@ -48,9 +50,11 @@ rewardAxisProj = ldaParams.projVec' * newSmoothFaProj; % 1 x 1?
 if currRewardState == 1
     % should be negative when rewardAxisProj is below smallReward Target
     newDistToTarget = rewardAxisProj - smallRewardTarget;
+    rewardAxisRange = smallRewardRange;
 else
     % should be negative when rewardAxisProjs is above largeReward Target
     newDistToTarget = largeRewardTarget - rewardAxisProj;
+    rewardAxisRange = largeRewardRange;
 end
 
 % If overshoots requested internal state in right direction,
