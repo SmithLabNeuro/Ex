@@ -161,6 +161,7 @@ validTrialRewardLabels = validTrialRewardLabels(subsampleIdx);
 % Concatenate all trials binned spikes
 binnedSpikesAllConcat = cat(1, allTrialsDelayEpochBinnedCounts{:});
 numLatents = trainParams.numberFaLatents; % this is how many latents we'll project to, no matter what...
+% For this task, we should NOT use Z-scoring
 if trainParams.zScoreSpikes
     % Corresponds to 1/sigma for each neurons
     zScoreSpikesMat = diag(1./std(binnedSpikesAllConcat, [], 1));
@@ -218,7 +219,6 @@ if smallRewardMeanProj > largeRewardMeanProj
     largeRewardMeanProj = -largeRewardMeanProj;
     smallRewardMeanProj = -smallRewardMeanProj;
 end
-
 % Set different R values for the two conditions 
 largeRewardRange = largeRewardMeanProj - prctile(smallRewardProjs, 10);
 smallRewardRange = prctile(largeRewardProjs, 90) - smallRewardMeanProj;
