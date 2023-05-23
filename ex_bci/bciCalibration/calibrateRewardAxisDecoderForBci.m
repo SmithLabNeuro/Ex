@@ -131,7 +131,6 @@ binnedSpikesDelay(delayValidTrials) = cellfun(...
 % Only keep binned counts of channels that are kept
 binnedSpikesDelay(delayValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesDelay(delayValidTrials), 'uni', 0);
 allTrialsDelayEpochBinnedCounts = binnedSpikesDelay(delayValidTrials)';
-% TODO: Do we take the average of the bins for the actual BCI? How do we use these bins?
 
 % subsample trials to get same number of rewards
 delayValidTrialParams = trimmedDat(delayValidTrials);
@@ -172,7 +171,7 @@ else
     % Identity matrix if not z-scoring
     zScoreSpikesMat =  eye(size(binnedSpikesAllConcat, 2));
     % zeros if not z-scoring
-    zScoreSpikesMuTerm = zeros(mean(binnedSpikesAllConcat)); 
+    zScoreSpikesMuTerm = zeros(size(mean(binnedSpikesAllConcat))); 
 end
 % Subtract the mean spike count vector and then divide by the variance
 % of spikes
@@ -189,7 +188,8 @@ numBinsForLDA = trainParams.numCalBins; % Specify number of calibration bins tha
 % Find FA projections for all trials
 faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
 % Exponentially smooth each trial's bins, include previous bins' effects 
-smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha), faProjsByTrial, 'UniformOutput', false);
+d initialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
+smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, initialSeedValue), faProjsByTrial, 'UniformOutput', false);
 % Select the last numBinsForLDA for each calibration trial
 smoothedFaProjsByTrial = cellfun(@(x) x(:, end-(numBinsForLDA-1):end), smoothedFaProjsByTrial, 'UniformOutput', false);
 % Repeat reward labels so that each bin in a trial has a label for LDA
@@ -240,7 +240,7 @@ else
     bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 end
 
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'largeRewardRange', 'smallRewardRange', 'trainParams');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'largeRewardRange', 'smallRewardRange', 'trainParams', 'initialSeedValue');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
