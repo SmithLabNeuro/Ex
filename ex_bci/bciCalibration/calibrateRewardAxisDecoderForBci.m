@@ -85,7 +85,7 @@ fprintf("\n%d channels being used\n", length(channelsKeep));
 
 % For neural signals, look at delay period right before go cue is sent
 % during calibration trials
-timeFromEndOfEpoch = trainParams.timeBeforeEndCode; %in ms
+codeForBinStart = codes.(trainParams.calBinStartCode);
 codeForBinEnd = codes.(trainParams.calBinEndCode); 
 
 % Train only on trials that have matching trainingResultCodes
@@ -106,7 +106,7 @@ trainTrials = cellfun(@(x) any(ismember(x(:, 2), resultCodesForTrialsToKeep)), {
 samplingRate = params.neuralRecordingSamplingFrequencyHz; % samples/s
 % First element of vector in cellfun is the start sample for delay epoch
 % and second sample is the end of that epoch
-[epochStartEndSampleIndices] = cellfun(@(x) [x(x(:, 2)==codeForBinEnd, 3) - samplingRate*timeFromEndOfEpoch/1000, x(x(:, 2)==codeForBinEnd, 3)] , {trimmedDat.event}, 'uni', 0);
+[epochStartEndSampleIndices] = cellfun(@(x) [x(x(:, 2)==codeForBinStart, 3), x(x(:, 2)==codeForBinEnd, 3)] , {trimmedDat.event}, 'uni', 0);
 % Get all spike times and spike channels from dat
 spikeTimes = cellfun(@(firstSpike, spikeTimeDiffs) [firstSpike; firstSpike+cumsum(uint64(spikeTimeDiffs))], {trimmedDat.firstspike}, {trimmedDat.spiketimesdiff}, 'uni', 0);
 spikeChannels = cellfun(@(spikeInfo) spikeInfo(:, 1), {trimmedDat.spikeinfo}, 'uni', 0);
@@ -188,7 +188,7 @@ numBinsForLDA = trainParams.numCalBins; % Specify number of calibration bins tha
 % Find FA projections for all trials
 faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
 % Exponentially smooth each trial's bins, include previous bins' effects 
-d initialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
+initialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
 smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, initialSeedValue), faProjsByTrial, 'UniformOutput', false);
 % Select the last numBinsForLDA for each calibration trial
 smoothedFaProjsByTrial = cellfun(@(x) x(:, end-(numBinsForLDA-1):end), smoothedFaProjsByTrial, 'UniformOutput', false);
