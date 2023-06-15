@@ -25,8 +25,6 @@ end
 
 %% Read in NEV files that will be used for training our decoder
 % Base usually set to the first file of training Nevs
-% TODO: Figure out what this nevFileBase actually does ( Maybe used to
-% determine timepoints w.r.t other Nev files)
 [nevBase,waves] = readNEV(nevFilebase);
 nev = nevBase;
 kr = [];  
@@ -64,7 +62,6 @@ if ~success
 end
 samplingRate = params.neuralRecordingSamplingFrequencyHz; % samples/s
 binSizeMs = trainParams.binSizeMs; % ms
-% TODO: Figure these out
 % Parameters used to identify valid channels that will be used for BCI.
 frThresh = trainParams.firingRateThreshold;
 ffThresh = trainParams.fanoFactorThreshold;
@@ -86,10 +83,11 @@ fprintf("\n%d channels being used\n", length(channelsKeep));
 % For neural signals, look at delay period right before go cue is sent
 % during calibration trials
 codeForBinStart = codes.(trainParams.calBinStartCode);
+% Keep track of how many bins after start of epoch we want to actually use
+timeFromStartOfEpoch = trainParams.timeFromStartOfEpoch;
 codeForBinEnd = codes.(trainParams.calBinEndCode); 
 
 % Train only on trials that have matching trainingResultCodes
-% TODO: Specify what trainingResultCodes we will use in our task
 if iscell(trainParams.trainingResultCodes)
     resultCodesForTrialsToKeep = cellfun(@(resCode) codes.(resCode),  trainParams.trainingResultCodes);
 elseif ischar(trainParams.trainingResultCodes)
@@ -99,14 +97,11 @@ end
 % Identify calibration trial indices that have matching result codes
 trainTrials = cellfun(@(x) any(ismember(x(:, 2), resultCodesForTrialsToKeep)), {trimmedDat.event});
 
-% Only look at the delay periods of trainTrials; this will be timeBeforeEndCode ms before
-% the calBinEndCode that we provide
 % Identify samples that correspond to the end and beginning for epoch
-% Go back 250ms from end Sample 
 samplingRate = params.neuralRecordingSamplingFrequencyHz; % samples/s
 % First element of vector in cellfun is the start sample for delay epoch
 % and second sample is the end of that epoch
-[epochStartEndSampleIndices] = cellfun(@(x) [x(x(:, 2)==codeForBinStart, 3), x(x(:, 2)==codeForBinEnd, 3)] , {trimmedDat.event}, 'uni', 0);
+[epochStartEndSampleIndices] = cellfun(@(x) [x(x(:, 2)==codeForBinStart, 3) + samplingRate*timeFromStartOfEpoch/1000, x(x(:, 2)==codeForBinEnd, 3)] , {trimmedDat.event}, 'uni', 0);
 % Get all spike times and spike channels from dat
 spikeTimes = cellfun(@(firstSpike, spikeTimeDiffs) [firstSpike; firstSpike+cumsum(uint64(spikeTimeDiffs))], {trimmedDat.firstspike}, {trimmedDat.spiketimesdiff}, 'uni', 0);
 spikeChannels = cellfun(@(spikeInfo) spikeInfo(:, 1), {trimmedDat.spikeinfo}, 'uni', 0);
@@ -143,6 +138,7 @@ uniqueRewardIdxs = unique(validTrialRewardLabels);
 numTrialsPerReward = histc(validTrialRewardLabels, uniqueRewardIdxs);
 minNumTrialsPerReward = min(numTrialsPerReward);
 subsampleIdx = zeros(numValidTrials,1);
+% Subsample to make sure both conditions has the same number of trials
 for i=1:length(uniqueRewardIdxs)
     r = uniqueRewardIdxs(i);
     n = numTrialsPerReward(i);
@@ -184,44 +180,53 @@ zScoreSpikesMuTerm = zScoreSpikesMuTerm'; % transpose for decoder
 [~, ~, beta] = fastfa_estep(binnedSpikesAllConcat', estFAParams);
 %% Temporally Smooth Fa Projections
 alpha = trainParams.alpha;
-numBinsForLDA = trainParams.numCalBins; % Specify number of calibration bins that will be used for training LDA
 % Find FA projections for all trials
 faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
-% Exponentially smooth each trial's bins, include previous bins' effects 
-initialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
+% Exponentially smooth each trial's bins, include previous bins' effectsinitialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
+initialSeedValue = mean(horzcat(faProjsByTrial{:}), 2); % Should be the zero vector by definition of FA
 smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, initialSeedValue), faProjsByTrial, 'UniformOutput', false);
-% Select the last numBinsForLDA for each calibration trial
-smoothedFaProjsByTrial = cellfun(@(x) x(:, end-(numBinsForLDA-1):end), smoothedFaProjsByTrial, 'UniformOutput', false);
-% Repeat reward labels so that each bin in a trial has a label for LDA
-% Repmat replicates by column and reshape reorders row-wise
-binRewardLabelsByTrial = reshape(repmat(validTrialRewardLabels,numBinsForLDA,1),length(validTrialRewardLabels)*numBinsForLDA ,1);
+validTrialRewardRepeatedLabels = [];
+for k = 1:length(smoothedFaProjsByTrial)
+    numBinsInTrial = size(smoothedFaProjsByTrial{k},2);
+    validTrialRewardRepeatedLabels = [validTrialRewardRepeatedLabels,  repmat(validTrialRewardLabels(k), 1,numBinsInTrial)];
+end
 %% Fit LDA to smoothed FA Projections
 % Concatenate across all trials to get a num_valid_trials x num_fa_latents
 ldaTrainX = cat(2, smoothedFaProjsByTrial{:})';
 % Fit LDA on FA projections
-ldaParams = fit_LDA(ldaTrainX, binRewardLabelsByTrial);
+ldaParams = fit_LDA(ldaTrainX, validTrialRewardRepeatedLabels);
 %% Get reward axis means and magnitude
 % Reorient projection vector such that the largest reward value is the
 % largest value on this axis
-largeRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 3);
-smallRewardTrialIndices = validTrialRewardLabels(validTrialRewardLabels == 1);
 % Keep track of Small/large 
-smallRewardProjs = ldaParams.projData(smallRewardTrialIndices);
-largeRewardProjs = ldaParams.projData(largeRewardTrialIndices);
-largeRewardMeanProj = mean(largeRewardProjs);
-smallRewardMeanProj = mean(smallRewardProjs);
+smallRewardProjs = ldaParams.projData(find(validTrialRewardRepeatedLabels == 1));
+largeRewardProjs = ldaParams.projData(find(validTrialRewardRepeatedLabels == 3));
+largeRewardTarget = mean(largeRewardProjs);
+smallRewardTarget= mean(smallRewardProjs);
 % Flip reward axis only if smallReward projection is higher than large reward projection
-if smallRewardMeanProj > largeRewardMeanProj
+if smallRewardTarget > largeRewardTarget
     ldaParams.projVec = ldaParams.projVec*-1;
     ldaParams.projData = ldaParams.projData*-1;
     smallRewardProjs = -smallRewardProjs;
     largeRewardProjs = -largeRewardProjs;
-    largeRewardMeanProj = -largeRewardMeanProj;
-    smallRewardMeanProj = -smallRewardMeanProj;
+    largeRewardTarget = -largeRewardTarget;
+    smallRewardTarget = -smallRewardTarget;
 end
 % Set different R values for the two conditions 
-largeRewardRange = largeRewardMeanProj - prctile(smallRewardProjs, 10);
-smallRewardRange = prctile(largeRewardProjs, 90) - smallRewardMeanProj;
+largeRewardRange = largeRewardTarget - prctile(smallRewardProjs, 10);
+smallRewardRange = prctile(largeRewardProjs, 90) - smallRewardTarget;
+%% Generate Projections along reward Axis
+figure;
+hold on
+scatter(smallRewardProjs, zeros(size(smallRewardProjs)),'r', 'DisplayName', 'Small')
+scatter(largeRewardProjs, zeros(size(largeRewardProjs)),'b', 'DisplayName', 'Large')
+scatter(mean(largeRewardProjs), 0, 200, '+', 'r', 'DisplayName', 'Large Mean')
+scatter(mean(smallRewardProjs), 0, 200, '+', 'b', 'DisplayName', 'Small Mean')
+hold off
+title('Projections of calibration bins along 1D reward Axis')
+legend()
+%% Generate Simulated Annulus Trajectories
+
 %% Save model parameters 
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
@@ -240,7 +245,7 @@ else
     bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 end
 
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardMeanProj', 'smallRewardMeanProj', 'largeRewardRange', 'smallRewardRange', 'trainParams', 'initialSeedValue');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardTarget', 'smallRewardTarget', 'largeRewardRange', 'smallRewardRange', 'trainParams', 'initialSeedValue');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
