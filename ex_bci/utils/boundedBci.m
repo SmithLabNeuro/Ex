@@ -25,7 +25,7 @@ timePtBciEnd = [];
 samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;%30000;
 binSizeMs = expParams.binSizeMs;%50;
 nasNetwork = expParams.nasNetwork;
-currReturn = expParams.initReturn'; % i.e. [0,0] if velocity
+currReturn = expParams.initReturn'; % i.e. [0,0] if velocity, 1 if reward axis dist
 [nasNetParams.w1, nasNetParams.b1, nasNetParams.w2, nasNetParams.b2] = loadNasNet(nasNetwork);
 gamma = expParams.gamma;
 
@@ -112,7 +112,7 @@ while true
         if ~isempty(updatedReturn)
             currReturn = updatedReturn;
         end
-        
+%         disp(currReturn)
         % buffering issues cause weird timing--specifically, some channels
         % will have smaller timestamps then the previous call of other
         % channels; I think the smaller the buffer the less this is a
@@ -214,7 +214,7 @@ while true
                     
                     % run the BCI decoder
                     currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams);
-                    
+%                     disp(currReturn)
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
                     if size(uint8Msg, 1) ~= 1
