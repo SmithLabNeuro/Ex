@@ -10,7 +10,6 @@ currFaProjs = currReturn(1:numFaLatents); % 10x1
 % currDistToTarget = currReturn(numFaLatents+1);
 % currAnnulusRad = currReturn(numFaLatents+2);
 currRewardState = currReturn(numFaLatents+3);
-
 % Grab decoder parameters 
 ldaParams = modelParams.ldaParams;
 beta = modelParams.beta; % Will be projection matrix to project values into FA space, 10 x neurons
@@ -23,17 +22,15 @@ zScoreSpikesMuTerm = modelParams.zScoreSpikesMuTerm;
 
 % Exponential Smoothing parameters
 alpha = expParams.alpha;
-
 % Distance Parameters
-largeRewardTarget = modelParams.largeRewardMeanProj;
-smallRewardTarget = modelParams.smallRewardMeanProj;
-
+largeRewardTarget = modelParams.largeRewardTarget;
+smallRewardTarget = modelParams.smallRewardTarget;
+largeRewardRange = modelParams.largeRewardRange;
 smallRewardRange = modelParams.smallRewardRange;
-largeRewardRange = modelParams.largeRewardRange
 
 % Z-score spikes; zscoreSpikesMat will be identity and zScoreSpikesMuTerm
 % will be zero if zscoreSpikes is set to false in trainParams
-zScoredSpikes = (zScoreSpikesMat * meanSpikeCount) - zScoreSpikesMuTerm';
+zScoredSpikes = (zScoreSpikesMat * meanSpikeCount) - zScoreSpikesMuTerm;
 % If FA is fitted on zScoredSpikes, d will be zero. Else, make sure to
 % subtract mean.
 newFaProjs = beta * (zScoredSpikes - d);
@@ -57,12 +54,6 @@ else
     rewardAxisRange = largeRewardRange;
 end
 
-% If overshoots requested internal state in right direction,
-% distanceToTarget will be negative
-if newDistToTarget < 0
-    newDistToTarget = 0;
-end
-
 % Compute distance ratio that will be used for annulus value calculation
 % (r/R) in schematic
 rewardAxisRatio = newDistToTarget/rewardAxisRange;
@@ -71,6 +62,12 @@ rewardAxisRatio = newDistToTarget/rewardAxisRange;
 if rewardAxisRatio > 1
     rewardAxisRatio = 1;
 end
+% If overshoots requested internal state in right direction,
+% distanceToTarget will be negative
+if rewardAxisRatio < 0
+    rewardAxisRatio = 0;
+end
+
 
 % Set newSmoothedDist for return
 newAnnulusRad = round(rewardAxisRatio * expParams.maxAnnulusRad);
