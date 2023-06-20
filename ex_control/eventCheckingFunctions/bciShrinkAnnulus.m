@@ -2,7 +2,7 @@ function [success, msgStr, fixWinOutput] = bciShrinkAnnulus(loopStart, loopNow, 
 % success if the annulus size reduces to 0
 
 global codes
-persistent distToTargetState annulusRad holdAnnulusStart
+persistent distToTargetState annulusRad holdAnnulusStart currBinStart
 
 if isempty(annulusRad)
     % At start of trial, no time bins are considered correct
@@ -11,7 +11,12 @@ if isempty(annulusRad)
 end
 
 if isempty(holdAnnulusStart)
-    holdAnnulusStart = loopNow; % Set it to current time if empty
+    % Set both to current time if empty
+    holdAnnulusStart = loopNow; 
+    currBinStart = loopNow;
+    % Send code at start to mark first annulus value  (should always be max value at start of trial)
+    sendCode(codes.BCI_CURSOR_POS);
+    sendCode(annulusRad+5000);
 end
 
 % for the control computer to track where target is
@@ -29,40 +34,45 @@ receivedMsg = '';
 while matlabUDP2('check', bciSockets.sender)
     receivedMsg = matlabUDP2('receive', bciSockets.sender);
 end
-% Check if received annulus size from BCI computer 
-if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
-    try
-        receivedMsgFromBci = typecast(uint8(receivedMsg), 'double')';
-    catch err
-        b = err;
-        keyboard
-    end
-    % BCI computer sends us neural distance and annulus
-    distToTargetState = receivedMsgFromBci(1);
-    % Set annulusRad to received annulus radius
-    annulusRad = receivedMsgFromBci(2);
-end
-
-% Need to send the BCI annulus radius at each time point
-sendCode(codes.BCI_CURSOR_POS);
-disp(annulusRad)
-sendCode(annulusRad+5000); % ranges from 5000-6000
-%sendCode(round(distToTargetState*1000));
 
 success = 0;
-% Check timing difference between holdAnnulusStart and loopNow
-loopDiffMs = 1000*(loopNow - holdAnnulusStart); % Check that the annulus is maintained for given period of time
-% Compare current annulus radius to a threshold to decide if success or fail: 
-if (annulusRad < e.tolerance) && (loopDiffMs > e.msToMaintain)
-    % Trial is only successful if past the threshold for a certain period
-    % of time
-    success = 1;
-else
-    % Reset timer if annulus is not smaller than tolerance
-    if ~(annulusRad < e.tolerance)
-        holdAnnulusStart =  loopNow;
-    end
+% Check if 50ms has elapsed since currBinStart
+timeElapsedSinceBinstart = 1000*(loopNow - currBinStart);
+if timeElapsedSinceBinStart >= 50
+
+	% Check if received annulus size from BCI computer 
+	if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
+	    try
+		receivedMsgFromBci = typecast(uint8(receivedMsg), 'double')';
+	    catch err
+		b = err;
+		keyboard
+	    end
+	    % BCI computer sends us neural distance and annulus
+	    distToTargetState = receivedMsgFromBci(1);
+	    % Set annulusRad to received annulus radius
+	    annulusRad = receivedMsgFromBci(2);
+	end
+	% Send the BCI Cursor position
+	sendCode(codes.BCI_CURSOR_POS);
+	disp(annulusRad)
+	sendCode(annulusRad+5000); % ranges from 5000-6000
+	% Check timing difference between holdAnnulusStart and loopNow
+	loopDiffMs = 1000*(loopNow - holdAnnulusStart); % Check that the annulus is maintained for given period of time
+	% Make these checks at Every 50ms bin
+	% Compare current annulus radius to a threshold to decide if success or fail: 
+	if (annulusRad < e.tolerance) && (loopDiffMs > e.msToMaintain)
+	    % Trial is only successful if past the threshold for a certain period
+	    % of time
+	    success = 1;
+	else
+	    % Reset timer if annulus is not smaller than tolerance
+	    if ~(annulusRad < e.tolerance)
+		holdAnnulusStart =  loopNow;
+	    end
+	end
 end
+
 
 % send out the draw annulus commands whenever this function is called--is
 % especially important for the fixation windows otherwise other functions
