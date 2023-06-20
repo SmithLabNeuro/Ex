@@ -38,9 +38,9 @@ if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
         keyboard
     end
     % BCI computer sends us neural distance and annulus
-    distToTargetState = receivedMsgFromBci(11);
+    distToTargetState = receivedMsgFromBci(1);
     % Set annulusRad to received annulus radius
-    annulusRad = receivedMsgFromBci(12);
+    annulusRad = receivedMsgFromBci(2);
 end
 
 % Need to send the BCI annulus radius at each time point
