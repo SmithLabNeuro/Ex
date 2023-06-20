@@ -39,7 +39,7 @@ success = 0;
 % Check if 50ms has elapsed since currBinStart
 timeElapsedSinceBinstart = 1000*(loopNow - currBinStart);
 if timeElapsedSinceBinStart >= 50
-
+	
 	% Check if received annulus size from BCI computer 
 	if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
 	    try
@@ -57,6 +57,8 @@ if timeElapsedSinceBinStart >= 50
 	sendCode(codes.BCI_CURSOR_POS);
 	disp(annulusRad)
 	sendCode(annulusRad+5000); % ranges from 5000-6000
+	% Reset the bin start 
+	currBinStart = loopNow; 
 	% Check timing difference between holdAnnulusStart and loopNow
 	loopDiffMs = 1000*(loopNow - holdAnnulusStart); % Check that the annulus is maintained for given period of time
 	% Make these checks at Every 50ms bin
