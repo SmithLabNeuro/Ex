@@ -35,24 +35,25 @@ while matlabUDP2('check', bciSockets.sender)
     receivedMsg = matlabUDP2('receive', bciSockets.sender);
 end
 
+% Check if received annulus size from BCI computer (always make sure
+% to get updated annulus value whenever it is sent from BCI computer)
+if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
+    try
+    receivedMsgFromBci = typecast(uint8(receivedMsg), 'double')';
+    catch err
+    b = err;
+    keyboard
+    end
+    % BCI computer sends us neural distance and annulus
+    distToTargetState = receivedMsgFromBci(1);
+    % Set annulusRad to received annulus radius
+    annulusRad = receivedMsgFromBci(2);
+end
+
 success = 0;
 % Check if 50ms has elapsed since currBinStart
-timeElapsedSinceBinstart = 1000*(loopNow - currBinStart);
+timeElapsedSinceBinStart = 1000*(loopNow - currBinStart);
 if timeElapsedSinceBinStart >= 50
-	
-	% Check if received annulus size from BCI computer 
-	if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
-	    try
-		receivedMsgFromBci = typecast(uint8(receivedMsg), 'double')';
-	    catch err
-		b = err;
-		keyboard
-	    end
-	    % BCI computer sends us neural distance and annulus
-	    distToTargetState = receivedMsgFromBci(1);
-	    % Set annulusRad to received annulus radius
-	    annulusRad = receivedMsgFromBci(2);
-	end
 	% Send the BCI Cursor position
 	sendCode(codes.BCI_CURSOR_POS);
 	disp(annulusRad)
