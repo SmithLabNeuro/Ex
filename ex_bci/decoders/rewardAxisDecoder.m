@@ -4,12 +4,16 @@ function newReturn = rewardAxisDecoder(meanSpikeCount, currReturn, modelParams, 
 % modelParams - info saved by calibration function
 % expParams - from bci_rewardAxisDecoder.xml
 
-% get passed in params
 numFaLatents = expParams.numberFaLatents;
-currFaProjs = currReturn(1:numFaLatents); % 10x1
-% currDistToTarget = currReturn(numFaLatents+1);
-% currAnnulusRad = currReturn(numFaLatents+2);
-currRewardState = currReturn(numFaLatents+3);
+persistent currSmoothedFAProjs
+
+if isempty(currSmoothedFAProjs)
+    currSmoothedFAProjs = zeros(numFaLatents,1);
+end
+
+currDistToTarget = currReturn(1);
+currAnnulusRad = currReturn(2);
+currRewardState = currReturn(3);
 % Grab decoder parameters 
 ldaParams = modelParams.ldaParams;
 beta = modelParams.beta; % Will be projection matrix to project values into FA space, 10 x neurons
@@ -36,7 +40,7 @@ zScoredSpikes = (zScoreSpikesMat * meanSpikeCount) - zScoreSpikesMuTerm;
 newFaProjs = beta * (zScoredSpikes - d);
 
 % apply exponential smoother to FA projections
-newSmoothFaProj = (1-alpha) .* currFaProjs + alpha .* newFaProjs;
+newSmoothFaProj = (1-alpha) .* currSmoothedFAProjs + alpha .* newFaProjs;
 
 % Compute LDA Projection of smoothed FA Projs
 rewardAxisProj = ldaParams.projVec' * newSmoothFaProj; % 1 x 1?
@@ -68,6 +72,8 @@ if rewardAxisRatio < 0
     rewardAxisRatio = 0;
 end
 
+% Set new smoothed fa projs as curr fa Projs
+currSmoothedFAProjs = newSmoothFaProj;
 
 % Set newSmoothedDist for return
 newAnnulusRad = round(rewardAxisRatio * expParams.maxAnnulusRad);
