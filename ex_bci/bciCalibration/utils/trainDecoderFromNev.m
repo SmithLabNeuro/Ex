@@ -1,4 +1,4 @@
-function [decoderFileLocationAndName] = trainRewardAxisDecoderFromNev(nevFilebase, subject)
+function [decoderFileLocationAndName] = trainDecoderFromNev(nevFilebase, subject)
 % function [M0, M1, M2, channelsKeep, A, Q, C, R, beta, K] = trainKalmanDecoderFromNev(nev, trainParams, params, codes, datBase, nevBase,...
 %         netLabels, gamma, channelNumbersUse, Qvalue, numLatents, velocityToCalibrateWith, includeBaseForTrain)
 
