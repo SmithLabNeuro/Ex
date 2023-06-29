@@ -170,11 +170,9 @@ faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinn
 initialSeedValue = mean(horzcat(faProjsByTrial{:}), 2); % Should be the zero vector by definition of FA
 smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, initialSeedValue), faProjsByTrial, 'UniformOutput', false);
 validTrialRewardRepeatedLabels = [];
-validTrialTargetRepeatedLabels = [];
 for k = 1:length(smoothedFaProjsByTrial)
     numBinsInTrial = size(smoothedFaProjsByTrial{k},2);
     validTrialRewardRepeatedLabels = [validTrialRewardRepeatedLabels,  repmat(validTrialRewardLabels(k), 1,numBinsInTrial)];
-    validTrialTargetRepeatedLabels = [validTrialTargetRepeatedLabels, repmat(validTrialTargetLabels(k), 1,numBinsInTrial)];
 end
 %% Fit LDA to smoothed FA Projections
 % Concatenate across all trials to get a num_valid_trials x num_fa_latents
@@ -187,34 +185,48 @@ rewardLdaParams = fit_LDA(ldaTrainX, validTrialRewardRepeatedLabels);
 % Keep track of Small/large 
 smallRewardProjs = rewardLdaParams.projData(find(validTrialRewardRepeatedLabels == 1));
 largeRewardProjs = rewardLdaParams.projData(find(validTrialRewardRepeatedLabels == 3));
-% SDs will be used to find new target
-largeRewardSD = std(largeRewardProjs);
-smallRewardSD = std(smallRewardProjs);
-% Have targets be pushed up/down by SDs
-largeRewardTarget = mean(largeRewardProjs) + trainParams.targChangeByStd*largeRewardSD;
-smallRewardTarget= mean(smallRewardProjs) - trainParams.targChangeByStd*smallRewardSD;
-% Flip reward axis only if smallReward projection is higher than large reward projection
-if smallRewardTarget > largeRewardTarget
-    rewardLdaParams.projVec = rewardLdaParams.projVec*-1;
-    rewardLdaParams.projData = rewardLdaParams.projData*-1;
-    smallRewardProjs = -smallRewardProjs;
-    largeRewardProjs = -largeRewardProjs;
-    largeRewardTarget = -largeRewardTarget;
-    smallRewardTarget = -smallRewardTarget;
-end
-% Set different R values for the two conditions 
-largeRewardRange = largeRewardTarget - prctile(smallRewardProjs, 10);
-smallRewardRange = prctile(largeRewardProjs, 90) - smallRewardTarget;
+[smallRewardProjs, largeRewardProjs, smallRewardTarget, largeRewardTarget, smallRewardRange,largeRewardRange, rewardLdaParams] = flipAxesBasedOnCondition(smallRewardProjs, largeRewardProjs, rewardLdaParams, trainParams.targChangeByStd);
 %% Fit LDA to find axes based on smoothed FA Projections
 % target axis
 % 1) subsample trials to get only up and down targets
-targetsToSeparate = [90, 270; 0, 180]; % num_axes x num_states_along axes
-multipleAxes = [];
+targetsToSeparate = [90, 270; 0, 180]; % num_axes x num_targets
+multipleAxesLDAParams = [];
+% Keep track of low and high target states each of the axes 
+lowHighTargetStates = nan(size(targetsToSeparate)); %num_axes, x num_targets
+lowHighTargetRanges = nan(size(targetsToSeparate));
 for k = 1:size(targetsToSeparate,1)
-    trialsWithFirstTarg = find(validTrialTargetLabels == targetsToSeparate(k,1));
-    trialsWithSecondTarg = find(validTrialTargetLabels == targetsToSeparate(k,2));
-    1;
+    trialsWithFirstTargIdx = find(validTrialTargetLabels == targetsToSeparate(k,1));
+    trialsWithSecondTargIdx = find(validTrialTargetLabels == targetsToSeparate(k,2));
+    faProjsWithFirstTarg = cell2mat({smoothedFaProjsByTrial{trialsWithFirstTargIdx}});
+    faProjsWithSecondTarg = cell2mat({smoothedFaProjsByTrial{trialsWithSecondTargIdx}});
+    % Setting label for first target angle to be 1 and second to 2
+    firstAngleLabels = repmat(1, 1,size(faProjsWithFirstTarg,2));
+    secondAngleLabels = repmat(2, 1,size(faProjsWithSecondTarg,2));
+    % Stack our training samples
+    trainX = [faProjsWithFirstTarg, faProjsWithSecondTarg]';
+    trainY = [firstAngleLabels, secondAngleLabels];
+    % Keep track of LDA params
+    axisLdaParams = fit_LDA(trainX, trainY);
+    % Keep track of target projections and the SD
+    firstTargProjs = axisLdaParams.projData(find(trainY == 1));
+    secondTargProjs = axisLdaParams.projData(find(trainY == 2));
+    [firstTargProjs, secondTargProjs, firstTargState, secondTargState, firstTargRange,secondTargRange, axisLdaParams] = flipAxesBasedOnCondition(firstTargProjs, secondTargProjs, axisLdaParams, trainParams.targChangeByStd);
+    lowHighTargetStates(k, :) = [firstTargState, secondTargState];
+    lowHighTargetRanges(k, :) = [firstTargRange, secondTargRange];
+    % Plot projections along this 1D intuitive axis
+    figure;
+    hold on
+    scatter(firstTargProjs, zeros(size(firstTargProjs)),'r', 'DisplayName', 'Targ 1')
+    scatter(secondTargProjs, zeros(size(secondTargProjs)),'b', 'DisplayName', 'Targ2')
+    scatter(firstTargState, 0, 200, '+', 'r', 'DisplayName', 'Targ1')
+    scatter(secondTargState, 0, 200, '+', 'b', 'DisplayName', 'Targ2')
+    hold off
+    title(sprintf('Projections of calibration bins along 1D intuitive where Targ1: %i Targ2: %i', targetsToSeparate(k,1), targetsToSeparate(k,2)))
+    legend()
+    % Identify ranges that will be used for each state 
+    multipleAxesLDAParams = [multipleAxesLDAParams, axisLdaParams];
 end
+% Decoder should track: targetStates, multipleAxesLDAParams, and the ranges
 %% Save model parameters 
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
@@ -234,7 +246,7 @@ else
 end
 % Keep track of reward Axes activity just to see how neural activity acts
 % offline
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardTarget', 'smallRewardTarget', 'largeRewardRange', 'smallRewardRange', 'largeRewardSD', 'smallRewardSD', 'trainParams', 'initialSeedValue');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'rewardLdaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardTarget', 'smallRewardTarget', 'largeRewardRange', 'smallRewardRange', 'multipleAxesLDAParams', 'lowHighTargetStates', 'lowHighTargetRanges', 'trainParams', 'initialSeedValue');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
