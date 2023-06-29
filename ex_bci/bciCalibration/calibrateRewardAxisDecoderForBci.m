@@ -127,31 +127,32 @@ binnedSpikesDelay(delayValidTrials) = cellfun(...
 binnedSpikesDelay(delayValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesDelay(delayValidTrials), 'uni', 0);
 allTrialsDelayEpochBinnedCounts = binnedSpikesDelay(delayValidTrials)';
 
-% subsample trials to get same number of rewards
-delayValidTrialParams = trimmedDat(delayValidTrials);
-numValidTrials = length(delayValidTrialParams);
-validTrialRewardLabels = nan(numValidTrials, 1);
-for k = 1:numValidTrials
-    validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
-end
-uniqueRewardIdxs = unique(validTrialRewardLabels);
-numTrialsPerReward = histc(validTrialRewardLabels, uniqueRewardIdxs);
-minNumTrialsPerReward = min(numTrialsPerReward);
-subsampleIdx = zeros(numValidTrials,1);
-% Subsample to make sure both conditions has the same number of trials
-for i=1:length(uniqueRewardIdxs)
-    r = uniqueRewardIdxs(i);
-    n = numTrialsPerReward(i);
-    fullRewardIdx = validTrialRewardLabels == r;
-    if n > minNumTrialsPerReward
-        trimIdx = find(cumsum(fullRewardIdx)==minNumTrialsPerReward+1);
-        fullRewardIdx(trimIdx:end) = false;
-    end
-    subsampleIdx = subsampleIdx | fullRewardIdx;
-end
-% sub sample
-allTrialsDelayEpochBinnedCounts = allTrialsDelayEpochBinnedCounts(subsampleIdx);
-validTrialRewardLabels = validTrialRewardLabels(subsampleIdx);
+% Subsampling portions to ensure class balance for LDA
+% % subsample trials to get same number of rewards
+% delayValidTrialParams = trimmedDat(delayValidTrials);
+% numValidTrials = length(delayValidTrialParams);
+% validTrialRewardLabels = nan(numValidTrials, 1);
+% for k = 1:numValidTrials
+%     validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
+% end
+% uniqueRewardIdxs = unique(validTrialRewardLabels);
+% numTrialsPerReward = histc(validTrialRewardLabels, uniqueRewardIdxs);
+% minNumTrialsPerReward = min(numTrialsPerReward);
+% subsampleIdx = zeros(numValidTrials,1);
+% % Subsample to make sure both conditions has the same number of trials
+% for i=1:length(uniqueRewardIdxs)
+%     r = uniqueRewardIdxs(i);
+%     n = numTrialsPerReward(i);
+%     fullRewardIdx = validTrialRewardLabels == r;
+%     if n > minNumTrialsPerReward
+%         trimIdx = find(cumsum(fullRewardIdx)==minNumTrialsPerReward+1);
+%         fullRewardIdx(trimIdx:end) = false;
+%     end
+%     subsampleIdx = subsampleIdx | fullRewardIdx;
+% end
+% % sub sample
+% allTrialsDelayEpochBinnedCounts = allTrialsDelayEpochBinnedCounts(subsampleIdx);
+% validTrialRewardLabels = validTrialRewardLabels(subsampleIdx);
 %% Fit FA to binned counts to help denoise 
 % Concatenate all trials binned spikes
 binnedSpikesAllConcat = cat(1, allTrialsDelayEpochBinnedCounts{:});

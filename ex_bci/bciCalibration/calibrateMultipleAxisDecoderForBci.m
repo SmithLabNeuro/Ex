@@ -127,34 +127,6 @@ binnedSpikesDelay(delayValidTrials) = cellfun(...
 % Only keep binned counts of channels that are kept
 binnedSpikesDelay(delayValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesDelay(delayValidTrials), 'uni', 0);
 allTrialsDelayEpochBinnedCounts = binnedSpikesDelay(delayValidTrials)';
-
-% subsample trials to get same number of rewards
-delayValidTrialParams = trimmedDat(delayValidTrials);
-numValidTrials = length(delayValidTrialParams);
-validTrialRewardLabels = nan(numValidTrials, 1);
-validTrialTargetLabels = nan(numValidTrials, 1);
-for k = 1:numValidTrials
-    validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
-    validTrialTargetLabels(k) = delayValidTrialParams(k).params.trial.targetAngle;
-end
-uniqueRewardIdxs = unique(validTrialRewardLabels);
-numTrialsPerReward = histc(validTrialRewardLabels, uniqueRewardIdxs);
-minNumTrialsPerReward = min(numTrialsPerReward);
-subsampleIdx = zeros(numValidTrials,1);
-% Subsample to make sure both conditions has the same number of trials
-for i=1:length(uniqueRewardIdxs)
-    r = uniqueRewardIdxs(i);
-    n = numTrialsPerReward(i);
-    fullRewardIdx = validTrialRewardLabels == r;
-    if n > minNumTrialsPerReward
-        trimIdx = find(cumsum(fullRewardIdx)==minNumTrialsPerReward+1);
-        fullRewardIdx(trimIdx:end) = false;
-    end
-    subsampleIdx = subsampleIdx | fullRewardIdx;
-end
-% sub sample
-allTrialsDelayEpochBinnedCounts = allTrialsDelayEpochBinnedCounts(subsampleIdx);
-validTrialRewardLabels = validTrialRewardLabels(subsampleIdx);
 %% Fit FA to binned counts to help denoise 
 % Concatenate all trials binned spikes
 binnedSpikesAllConcat = cat(1, allTrialsDelayEpochBinnedCounts{:});
@@ -189,9 +161,11 @@ faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinn
 initialSeedValue = mean(horzcat(faProjsByTrial{:}), 2); % Should be the zero vector by definition of FA
 smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, initialSeedValue), faProjsByTrial, 'UniformOutput', false);
 validTrialRewardRepeatedLabels = [];
+validTrialTargetRepeatedLabels = [];
 for k = 1:length(smoothedFaProjsByTrial)
     numBinsInTrial = size(smoothedFaProjsByTrial{k},2);
     validTrialRewardRepeatedLabels = [validTrialRewardRepeatedLabels,  repmat(validTrialRewardLabels(k), 1,numBinsInTrial)];
+    validTrialTargetRepeatedLabels = [validTrialTargetRepeatedLabels, repmat(validTrialTargetLabels(k), 1,numBinsInTrial)];
 end
 %% Fit LDA to smoothed FA Projections
 % Concatenate across all trials to get a num_valid_trials x num_fa_latents
@@ -222,12 +196,16 @@ end
 % Set different R values for the two conditions 
 largeRewardRange = largeRewardTarget - prctile(smallRewardProjs, 10);
 smallRewardRange = prctile(largeRewardProjs, 90) - smallRewardTarget;
-%% Fit LDA to find other axis
+%% Fit LDA to find axes based on smoothed FA Projections
 % target axis
 % 1) subsample trials to get only up and down targets
-targetsToSeparate = [90;270]; % up and down
-validTrialTargetLabels;
-
+targetsToSeparate = [90, 270; 0, 180]; % num_axes x num_states_along axes
+multipleAxes = [];
+for k = 1:size(targetsToSeparate,1)
+    trialsWithFirstTarg = find(validTrialTargetLabels == targetsToSeparate(k,1));
+    trialsWithSecondTarg = find(validTrialTargetLabels == targetsToSeparate(k,2));
+    1;
+end
 %% Save model parameters 
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
@@ -240,12 +218,13 @@ if offlineFlag
     else
         fileBackSlashIndex = fileBackSlashIndices;
     end
-    bciDecoderSaveName = sprintf('%sRewardAxisBci_%s_offline.mat',nevFilebase(fileBackSlashIndex+1:end-4) , datestr(now, 'dd-mmm-yyyy_HH-MM-SS') );
+    bciDecoderSaveName = sprintf('%sIntuitiveAxesDecoderBci_%s_offline.mat',nevFilebase(fileBackSlashIndex+1:end-4) , datestr(now, 'dd-mmm-yyyy_HH-MM-SS') );
 else
     % Use current date as naming convention for online
-    bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
+    bciDecoderSaveName = sprintf('%s%sIntuitiveAxesDecoderBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 end
-
+% Keep track of reward Axes activity just to see how neural activity acts
+% offline
 save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardTarget', 'smallRewardTarget', 'largeRewardRange', 'smallRewardRange', 'largeRewardSD', 'smallRewardSD', 'trainParams', 'initialSeedValue');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
