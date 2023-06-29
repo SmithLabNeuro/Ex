@@ -127,14 +127,14 @@ binnedSpikesDelay(delayValidTrials) = cellfun(...
 binnedSpikesDelay(delayValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesDelay(delayValidTrials), 'uni', 0);
 allTrialsDelayEpochBinnedCounts = binnedSpikesDelay(delayValidTrials)';
 
+% subsample trials to get same number of rewards
+delayValidTrialParams = trimmedDat(delayValidTrials);
+numValidTrials = length(delayValidTrialParams);
+validTrialRewardLabels = nan(numValidTrials, 1);
+for k = 1:numValidTrials
+    validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
+end
 % Subsampling portions to ensure class balance for LDA
-% % subsample trials to get same number of rewards
-% delayValidTrialParams = trimmedDat(delayValidTrials);
-% numValidTrials = length(delayValidTrialParams);
-% validTrialRewardLabels = nan(numValidTrials, 1);
-% for k = 1:numValidTrials
-%     validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
-% end
 % uniqueRewardIdxs = unique(validTrialRewardLabels);
 % numTrialsPerReward = histc(validTrialRewardLabels, uniqueRewardIdxs);
 % minNumTrialsPerReward = min(numTrialsPerReward);
@@ -197,17 +197,15 @@ ldaTrainX = cat(2, smoothedFaProjsByTrial{:})';
 % Fit LDA on FA projections
 ldaParams = fit_LDA(ldaTrainX, validTrialRewardRepeatedLabels);
 %% Get reward axis means and magnitude
-% Reorient projection vector such that the largest reward value is the
-% largest value on this axis
 % Keep track of Small/large 
 smallRewardProjs = ldaParams.projData(find(validTrialRewardRepeatedLabels == 1));
 largeRewardProjs = ldaParams.projData(find(validTrialRewardRepeatedLabels == 3));
 % SDs will be used to find new target
 largeRewardSD = std(largeRewardProjs);
 smallRewardSD = std(smallRewardProjs);
-% Have targets be pushed up/down by SDs
-largeRewardTarget = mean(largeRewardProjs) + trainParams.targChangeByStd*largeRewardSD;
-smallRewardTarget= mean(smallRewardProjs) - trainParams.targChangeByStd*smallRewardSD;
+% Have targets be defined
+largeRewardTarget = mean(largeRewardProjs);
+smallRewardTarget= mean(smallRewardProjs);
 % Flip reward axis only if smallReward projection is higher than large reward projection
 if smallRewardTarget > largeRewardTarget
     ldaParams.projVec = ldaParams.projVec*-1;
@@ -217,6 +215,10 @@ if smallRewardTarget > largeRewardTarget
     largeRewardTarget = -largeRewardTarget;
     smallRewardTarget = -smallRewardTarget;
 end
+
+% Have targets be pushed up/down by SDs
+largeRewardTarget = mean(largeRewardProjs) + trainParams.targChangeByStd*largeRewardSD;
+smallRewardTarget= mean(smallRewardProjs) - trainParams.targChangeByStd*smallRewardSD;
 % Set different R values for the two conditions 
 largeRewardRange = largeRewardTarget - prctile(smallRewardProjs, 10);
 smallRewardRange = prctile(largeRewardProjs, 90) - smallRewardTarget;

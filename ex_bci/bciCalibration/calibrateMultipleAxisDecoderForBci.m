@@ -127,6 +127,15 @@ binnedSpikesDelay(delayValidTrials) = cellfun(...
 % Only keep binned counts of channels that are kept
 binnedSpikesDelay(delayValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesDelay(delayValidTrials), 'uni', 0);
 allTrialsDelayEpochBinnedCounts = binnedSpikesDelay(delayValidTrials)';
+
+delayValidTrialParams = trimmedDat(delayValidTrials);
+numValidTrials = length(delayValidTrialParams);
+validTrialRewardLabels = nan(numValidTrials, 1);
+validTrialTargetLabels = nan(numValidTrials, 1);
+for k = 1:numValidTrials
+    validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
+    validTrialTargetLabels(k) = delayValidTrialParams(k).params.trial.targetAngle;
+end
 %% Fit FA to binned counts to help denoise 
 % Concatenate all trials binned spikes
 binnedSpikesAllConcat = cat(1, allTrialsDelayEpochBinnedCounts{:});
