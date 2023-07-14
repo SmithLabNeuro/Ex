@@ -3,16 +3,19 @@ function newReturn = multipleIntuitiveAxesDecoder(meanSpikeCount, currReturn, mo
 % vector
 % modelParams - info saved by calibration function
 % expParams - from bci_rewardAxisDecoder.xml
-persistent currSmoothedLDAProjs
 
-currTargetState = currReturn(3);
-currAxisToUse = currReturn(4);
+numFaLatents = expParams.numberFaLatents;
+persistent currSmoothedFAProjs
 
-% Start of trial, use the initial seeded values here
-if isempty(currSmoothedLDAProjs)
-    currSmoothedLDAProjs = modelParams.initialSeedValues(currAxisToUse,currTargetState);
+% Start of trial set FA projection to start from origin
+if isempty(currSmoothedFAProjs)
+    currSmoothedFAProjs = zeros(numFaLatents,1);
 end
 
+currDistToTarget = currReturn(1);
+currAnnulusRad = currReturn(2);
+currTargetState = currReturn(3);
+currAxisToUse = currReturn(4);
 % Grab decoder parameters 
 multipleAxesLDAParams = modelParams.multipleAxesLDAParams; % num_axes x 1 struct array that contains LDA params for each axis trained in calibration
 beta = modelParams.beta; % Will be projection matrix to project values into FA space, 10 x neurons
@@ -38,11 +41,11 @@ zScoredSpikes = (zScoreSpikesMat * meanSpikeCount) - zScoreSpikesMuTerm;
 % subtract mean.
 newFaProjs = beta * (zScoredSpikes - d);
 
-% Compute LDA Projection of FA Projs 
-currLDAProjection = currLDAParams.projVec' * newFaProjs;
+% apply exponential smoother to FA projections
+newSmoothFaProj = (1-alpha) .* currSmoothedFAProjs + alpha .* newFaProjs;
 
-% Smooth LDA projection 
-currSmoothedLDAProjs = (1-alpha) .* currSmoothedLDAProjs + alpha*(currLDAProjection); % 1 x 1?
+% Compute LDA Projection of smoothed FA Projs
+oneDimAxisProj = currLDAParams.projVec' * newSmoothFaProj; % 1 x 1?
 
 % Determine the range to use based on the current target state
 oneDimAxisRange = modelParams.lowHighTargetRanges(currAxisToUse,currTargetState);
@@ -53,11 +56,11 @@ oneDimAxisRange = modelParams.lowHighTargetRanges(currAxisToUse,currTargetState)
 if currTargetState == 1
     % low
     % should be negative when rewardAxisProj is below smallReward Target
-    newDistToTarget = currSmoothedLDAProjs - condOneTarget;
+    newDistToTarget = oneDimAxisProj - condOneTarget;
 else
     % high
     % should be negative when rewardAxisProjs is above largeReward Target
-    newDistToTarget = condTwoTarget - currSmoothedLDAProjs;
+    newDistToTarget = condTwoTarget - oneDimAxisProj;
 end
 
 % Compute distance ratio that will be used for annulus value calculation
@@ -73,6 +76,9 @@ end
 if oneDimAxisRatio < 0
     oneDimAxisRatio = 0;
 end
+
+% Set new smoothed fa projs as curr fa Projs
+currSmoothedFAProjs = newSmoothFaProj;
 
 % Set newSmoothedDist for return
 newAnnulusRad = round(oneDimAxisRatio * expParams.maxAnnulusRad);
