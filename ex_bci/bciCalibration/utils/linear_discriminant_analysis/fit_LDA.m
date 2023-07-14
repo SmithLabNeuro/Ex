@@ -47,4 +47,5 @@ function [params] = fit_LDA(trainX, trainY)
     params.projMat = U;
     params.projVec = U(:,1);
     params.projData = trainX*params.projVec;
+    params.classLabels = classLabels;
 end

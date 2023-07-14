@@ -15,7 +15,11 @@ function [condOneProjs, condTwoProjs, condOneTarget, condTwoTarget, condOneRange
     % Have targets be pushed up/down by SDs
     condTwoTarget = mean(condTwoProjs) + targChangeByStd*condTwoProjsSD;
     condOneTarget= mean(condOneProjs) - targChangeByStd*condOneProjsSD;
+    fprintf('Target One is %d\n', condOneTarget)
+    fprintf('Target Two is %d\n', condTwoTarget)
     % Set different R values for the two conditions 
     condTwoRange = condTwoTarget - prctile(condOneProjs, 10);
     condOneRange = prctile(condTwoProjs, 90) - condOneTarget;
+    fprintf('Range for cond One is %d\n', condOneRange)
+    fprintf('Range for cond Two is %d\n', condTwoRange)
 end
