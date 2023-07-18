@@ -18,8 +18,8 @@ function [condOneProjs, condTwoProjs, condOneTarget, condTwoTarget, condOneRange
     fprintf('Target One is %d\n', condOneTarget)
     fprintf('Target Two is %d\n', condTwoTarget)
     % Set different R values for the two conditions 
-    condTwoRange = condTwoTarget - prctile(condOneProjs, 10);
-    condOneRange = prctile(condTwoProjs, 90) - condOneTarget;
+    condTwoRange = condTwoTarget - prctile(condOneProjs, 1);
+    condOneRange = prctile(condTwoProjs, 99) - condOneTarget;
     fprintf('Range for cond One is %d\n', condOneRange)
     fprintf('Range for cond Two is %d\n', condTwoRange)
 end
