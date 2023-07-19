@@ -31,7 +31,7 @@ gamma = expParams.gamma;
 
 bciDecoderFunctionName = expParams.name;
 bciDecoderFunction = str2func(bciDecoderFunctionName);
-clear(bciDecoderFunctionName); % make sure it's fresh
+% clear(bciDecoderFunctionName); % make sure it's fresh
 
 msPerS = 1000;
 samplesPerBin = binSizeMs/msPerS*samplesPerSecond;
@@ -104,7 +104,7 @@ while true
         boundStarted = false;
         bciStart = false;
         currReturn = expParams.initReturn';
-        clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
+        % clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
     end
   
     if boundStarted
@@ -213,7 +213,7 @@ while true
                     % END DEBUGGING
                     
                     % run the BCI decoder
-                    currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams);
+                    currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams, binNum);
                     
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
@@ -247,7 +247,7 @@ while true
                 end
                 bciStart = false;
                 currReturn = expParams.initReturn';
-                clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
+                % clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
             end
         end
     end
