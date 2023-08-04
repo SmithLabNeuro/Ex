@@ -9,7 +9,6 @@ gamma = trainParams.gamma;
 nasNetName = trainParams.nasNetwork;
 % If you ever see an empty params, make sure to run recordEX first
 netFolder = params.nasNetFolderDataComputer;
-%netFolder = 'C:\Users\rigmdata\Documents\spikesort\nasnet\networks';
 % Specify channels that will be used for BCI
 channelNumbersUse = trainParams.rippleChannelNumbersInBci;
 
@@ -170,7 +169,7 @@ faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinn
 % Exponentially smooth each trial's bins, include previous bins' effects.
 % Seed this way for smoothing the FA latents
 initialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
-smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, initialSeedValue), faProjsByTrial, 'UniformOutput', false);
+smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, nan), faProjsByTrial, 'UniformOutput', false);
 validTrialRewardRepeatedLabels = [];
 validTrialTargRepeatedLabels = [];
 for k = 1:length(smoothedFaProjsByTrial)
@@ -195,8 +194,8 @@ disp ('Checking Reward axis for flip')
 %% Fit LDA to find axes based on smoothed FA Projections
 % target axis
 % 1) subsample trials to get only up and down targets
-%targetsToSeparate = [90, 270; 0, 180]; % num_axes x num_targets
-targetsToSeparate = [90,270];
+targetsToSeparate = [90, 270; 0, 180]; % num_axes x num_targets
+%targetsToSeparate = [90,270];
 multipleAxesLDAParams = [];
 mappingTargetParams = {};
 % Store target specific parameters that will be used in the decoder
