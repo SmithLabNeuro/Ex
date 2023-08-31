@@ -327,18 +327,26 @@ for angInd = 1:length(unAngs)
     end
 end
 %% Identify internal state Axis Decoder
-binnedSpikesBciConcat = cat(1, binnedSpikesBci{:});
+% Only take valid BCI trials
+validBCITrialParams = trimmedDat(bciValidTrials);
+numValidTrials = sum(bciValidTrials);
+validTrialTargetLabels = nan(numValidTrials, 1);
+for k = 1:numValidTrials
+    validTrialTargetLabels(k) = validBCITrialParams(k).params.trial.targetAngle;
+end
+validBinnedSpikesBci = binnedSpikesBci(bciValidTrials);
+binnedValidSpikesBciConcat = cat(1, validBinnedSpikesBci{:});
 % Do not z-score counts when defining FA on BCI trial spikes
-[estFAIAParams, ~] = fastfa(binnedSpikesBciConcat', numLatents);
+[estFAIAParams, ~] = fastfa(binnedValidSpikesBciConcat', numLatents);
 % Beta is simply the projection matrix into the factor space
-[~, ~, betaForIA] = fastfa_estep(binnedSpikesBciConcat', estFAIAParams);
+[~, ~, betaForIA] = fastfa_estep(binnedValidSpikesBciConcat', estFAIAParams);
 % Orthonormalize your FA loadings matrix, using the economy version of SVD
 [~,D,V] = svd(estFAIAParams.L, 0);
 orthBetaForIA = D*V'*betaForIA;
 %% Temporally Smooth Fa Projections before using LDA/PCA
 alpha = trainParams.alpha;
 % Find FA projections for all trials
-faProjsByTrial = cellfun(@(x) orthBetaForIA*(x' - estFAIAParams.d), binnedSpikesBciConcat, 'UniformOutput', false);
+faProjsByTrial = cellfun(@(x) orthBetaForIA*(x' - estFAIAParams.d), validBinnedSpikesBci, 'UniformOutput', false);
 % Exponentially smooth each trial's bins, include previous bins' effects.
 % Seed this way for smoothing the FA latents
 initialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
@@ -434,7 +442,7 @@ save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), ...
     'M0', 'M1', 'M2', 'channelsKeep', 'A', 'Q', 'C', 'R', 'beta', 'K', 'zScoreSpikesMat', ...
     'zScoreLatentMat', 'estParams', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName',...
     'estFAIAParams', 'orthBetaForIA', 'mappingTargetParams', 'multipleAxesParams' , 'trainParams', ...
-    'binnedSpikesBciConcat');
+    'binnedValidSpikesBciConcat');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 
