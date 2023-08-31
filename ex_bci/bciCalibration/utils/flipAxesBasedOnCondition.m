@@ -1,10 +1,10 @@
-function [condOneProjs, condTwoProjs, condOneMean, condTwoMean, condOneProjsSD,condTwoProjsSD, ldaParams] = flipAxesBasedOnCondition(condOneProjIndices, condTwoProjIndices, ldaParams)
+function [condOneProjs, condTwoProjs, condOneMean, condTwoMean, condOneProjsSD,condTwoProjsSD, axisParams] = flipAxesBasedOnCondition(condOneProjIndices, condTwoProjIndices, axisParams)
     % Flip axis only if condTwo projection is higher than condTwo projection
-    condOneProjs = ldaParams.projData(condOneProjIndices);
-    condTwoProjs = ldaParams.projData(condTwoProjIndices);
+    condOneProjs = axisParams.projData(condOneProjIndices);
+    condTwoProjs = axisParams.projData(condTwoProjIndices);
     if mean(condOneProjs) > mean(condTwoProjs)
-        ldaParams.projVec = ldaParams.projVec*-1;
-        ldaParams.projData = ldaParams.projData*-1;
+        axisParams.projVec = axisParams.projVec*-1;
+        axisParams.projData = axisParams.projData*-1;
         condOneProjs = -condOneProjs;
         condTwoProjs = -condTwoProjs;
     end
