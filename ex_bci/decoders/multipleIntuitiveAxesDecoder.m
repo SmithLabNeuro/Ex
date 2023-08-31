@@ -18,7 +18,7 @@ if currTargetState == 2
     oppositePercentileForRange= 100 - oppositePercentileForRange;
 end
 oppositeTargState = mod(currTargetState,2) + 1;
-oppositeTargExtremePerc = prctile(modelParams.mappingTargetParams{currAxisToUse}(oppositeTargState).LDAProjs, oppositePercentileForRange);
+oppositeTargExtremePerc = prctile(modelParams.mappingTargetParams{currAxisToUse}(oppositeTargState).axisProjs, oppositePercentileForRange);
 
 % Start of trial set initial seed value for LDA projection
 if isempty(currSmoothedLDAProjs)
@@ -38,8 +38,8 @@ else
 end
 
 % Grab decoder parameters 
-multipleAxesLDAParams = modelParams.multipleAxesLDAParams; % num_axes x 1 struct array that contains LDA params for each axis trained in calibration
-beta = modelParams.beta; % Will be projection matrix to project values into FA space, 10 x neurons
+multipleAxesParams = modelParams.multipleAxesParams; % num_axes x 1 struct array that contains LDA params for each axis trained in calibration
+beta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
 estFAParams = modelParams.estFAParams;
 d = estFAParams.d; % mean spike count vector during calibration trials (useful for z-scoring too)
 
@@ -50,7 +50,7 @@ zScoreSpikesMuTerm = modelParams.zScoreSpikesMuTerm;
 % Exponential Smoothing parameters
 alpha = expParams.alpha;
 
-currLDAParams = multipleAxesLDAParams(currAxisToUse);
+currAxisParams = multipleAxesParams(currAxisToUse);
 
 % Z-score spikes; zscoreSpikesMat will be identity and zScoreSpikesMuTerm
 % will be zero if zscoreSpikes is set to false in trainParams
@@ -58,7 +58,7 @@ zScoredSpikes = (zScoreSpikesMat * meanSpikeCount) - zScoreSpikesMuTerm;
 % If FA is fitted on zScoredSpikes, d will be zero. Else, make sure to
 % subtract mean.
 newFaProjs = beta * (zScoredSpikes - d);
-currLDAProjs = currLDAParams.projVec'*newFaProjs;
+currLDAProjs = currAxisParams.projVec'*newFaProjs;
 
 % apply exponential smoother to LDA projections
 currSmoothedLDAProjs = (1-alpha)*currSmoothedLDAProjs + alpha*currLDAProjs;
