@@ -27,28 +27,24 @@ end
 %% Read in NEV files that will be used for training our decoder
 [nevBase,waves] = readNEV(nevFilebase);
 nev = nevBase;
-kr = [];  
-
-% Needed to globally align times for multiple NEV files
-firstTimePtShift = 0;
-fnStartTimes = firstTimePtShift;
-% Read in Nev Files and NS5 files that will be used for training decoder
 for nevFlInd = 1:length(nevFilesForTrain)
-    currNevFileName = nevFilesForTrain{nevFlInd};
-    [nevNx, wavesNx] = readNEV(currNevFileName);
-    kr = [kr (nev(end, 3) + 1)*30000];
-    % Update first Time point based on what nevNx last timestamp is; set to
-    % set to 1 second after current nev file's final time stamp
-    firstTimePtShift = firstTimePtShift + nevNx(end, 3) + 1;
-    fnStartTimes(end+1 ) = firstTimePtShift;
+    [nevNx, wavesNx] = readNEV(nevFilesForTrain{nevFlInd});
     nevNx(:, 3) = nevNx(:, 3) + nev(end, 3) + 1;
     nev = [nev; nevNx];
     waves = [waves, wavesNx];
 end
-% Run NASNET on NEVs
-[~,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName, 'labelSpikesAsWithWrite', true);
-% Convert Nevs to dat so that its easier to work with in Matlab
+datBase = nev2dat(nevBase, 'nevreadflag', true);
+
+[slabel,nevLabelledData] = runNASNet({nev, waves},gamma, 'netFolder', netFolder, 'netname', nasNetName, 'labelSpikesAsWithWrite', true);
+
+
 datStruct = nev2dat(nevLabelledData, 'nevreadflag', true);
+if ~includeBaseForTrain
+    nevLabelledData = nevLabelledData(size(nevBase, 1)+1:end, :);
+    % adding + 2 skips the background process trial which happens on the
+    % overlap
+    datStruct = datStruct(length(datBase)+2:end);%nev2dat(nevLabelledData, 'nevreadflag', true);
+end
 %% Initialize BCI-specific parameters
 bciDecoderSaveDrive = params.bciDecoderBasePathDataComputer;
 bciDecoderRelativeSaveFolder = fullfile(subject);
