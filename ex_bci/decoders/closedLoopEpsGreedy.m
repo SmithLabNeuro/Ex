@@ -21,13 +21,17 @@ if ~isempty(ctlMsgChar) && ~strcmp(ctlMsgChar, 'ack') && (binNum==0)
 % if ~(isempty(ctlMsgChar)) && ~(strcmp(ctlMsgChar, 'ack')) && (binNum==0)
     ctlMsgDouble = typecast(ctlMsg, 'double');
     
-    if isempty(ctlMsgDouble) % add this section to aviod an error ctlMsgDouble(1) exceeds the number of array elements
-        updatedStimChan = 1;
-        algoType = 1;
-    else
-        updatedStimChan = ctlMsgDouble(1) ;
-        algoType = ctlMsgDouble(2); % 1=nostim, 2=random, 3=online only, 4=off+online
-    end
+    updatedStimChan = ctlMsgDouble(1) ;
+    algoType = ctlMsgDouble(2); % 1=nostim, 2=random, 3=online only, 4=off+online
+        
+%     if isempty(ctlMsgDouble) % add this section to aviod an error ctlMsgDouble(1) exceeds the number of array elements
+%         updatedStimChan = 1;
+%         algoType = 1;
+%     else
+%         updatedStimChan = ctlMsgDouble(1) ;
+%         algoType = ctlMsgDouble(2); % 1=nostim, 2=random, 3=online only, 4=off+online
+%     end
+
     targetLatentDim = expParams.targetLatentDim;
     targetLatentVal = expParams.targetLatentVal;
     % targetLatentVal = mean(modelParams.posts) + 2*(std(modelParams.posts));
