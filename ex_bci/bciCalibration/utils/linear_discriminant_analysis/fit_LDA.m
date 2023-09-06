@@ -5,7 +5,7 @@ function [params] = fit_LDA(trainX, trainY)
     % useful variables
     classLabels = unique(trainY);
     nClasses = length(classLabels);
-    params.classLabels = classLabels;
+    params.classLabels = trainY;
     params.nClasses = nClasses;
     params.nTotal = length(trainY);
     

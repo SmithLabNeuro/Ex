@@ -1,4 +1,4 @@
-function [decoderFileLocationAndName] = calibrateRewardAxisDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject, offlineFlag)
+function [decoderFileLocationAndName] = calibrateMultipleAxisDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject, offlineFlag)
 
 % inputs:
 % trainParams - comes from bci_rewardAxisDecoder.xml
@@ -7,6 +7,7 @@ global params codes
 % NASNet variables
 gamma = trainParams.gamma;
 nasNetName = trainParams.nasNetwork;
+% If you ever see an empty params, make sure to run recordEX first
 netFolder = params.nasNetFolderDataComputer;
 % Specify channels that will be used for BCI
 channelNumbersUse = trainParams.rippleChannelNumbersInBci;
@@ -127,32 +128,14 @@ binnedSpikesDelay(delayValidTrials) = cellfun(...
 binnedSpikesDelay(delayValidTrials) = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesDelay(delayValidTrials), 'uni', 0);
 allTrialsDelayEpochBinnedCounts = binnedSpikesDelay(delayValidTrials)';
 
-% subsample trials to get same number of rewards
 delayValidTrialParams = trimmedDat(delayValidTrials);
 numValidTrials = length(delayValidTrialParams);
 validTrialRewardLabels = nan(numValidTrials, 1);
+validTrialTargetLabels = nan(numValidTrials, 1);
 for k = 1:numValidTrials
     validTrialRewardLabels(k) = delayValidTrialParams(k).params.trial.variableRewardIdx;
+    validTrialTargetLabels(k) = delayValidTrialParams(k).params.trial.targetAngle;
 end
-% Subsampling portions to ensure class balance for LDA
-% uniqueRewardIdxs = unique(validTrialRewardLabels);
-% numTrialsPerReward = histc(validTrialRewardLabels, uniqueRewardIdxs);
-% minNumTrialsPerReward = min(numTrialsPerReward);
-% subsampleIdx = zeros(numValidTrials,1);
-% % Subsample to make sure both conditions has the same number of trials
-% for i=1:length(uniqueRewardIdxs)
-%     r = uniqueRewardIdxs(i);
-%     n = numTrialsPerReward(i);
-%     fullRewardIdx = validTrialRewardLabels == r;
-%     if n > minNumTrialsPerReward
-%         trimIdx = find(cumsum(fullRewardIdx)==minNumTrialsPerReward+1);
-%         fullRewardIdx(trimIdx:end) = false;
-%     end
-%     subsampleIdx = subsampleIdx | fullRewardIdx;
-% end
-% % sub sample
-% allTrialsDelayEpochBinnedCounts = allTrialsDelayEpochBinnedCounts(subsampleIdx);
-% validTrialRewardLabels = validTrialRewardLabels(subsampleIdx);
 %% Fit FA to binned counts to help denoise 
 % Concatenate all trials binned spikes
 binnedSpikesAllConcat = cat(1, allTrialsDelayEpochBinnedCounts{:});
@@ -179,13 +162,17 @@ zScoreSpikesMuTerm = zScoreSpikesMuTerm'; % transpose for decoder
 [estFAParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
 % Beta is simply the projection matrix into the factor space
 [~, ~, beta] = fastfa_estep(binnedSpikesAllConcat', estFAParams);
+% Orthonormalize your FA loadings matrix, using the economy version of SVD
+[~,D,V] = svd(estFAParams.L, 0);
+orthBeta = D*V'*beta;
 %% Temporally Smooth Fa Projections
 alpha = trainParams.alpha;
 % Find FA projections for all trials
-faProjsByTrial = cellfun(@(x) beta*(x' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
-% Exponentially smooth each trial's bins, include previous bins' effectsinitialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
-initialSeedValue = mean(horzcat(faProjsByTrial{:}), 2); % Should be the zero vector by definition of FA
-smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, initialSeedValue), faProjsByTrial, 'UniformOutput', false);
+faProjsByTrial = cellfun(@(x) orthBeta*(x' - estFAParams.d), allTrialsDelayEpochBinnedCounts, 'UniformOutput', false);
+% Exponentially smooth each trial's bins, include previous bins' effects.
+% Seed this way for smoothing the FA latents
+initialSeedValue = mean(horzcat(faProjsByTrial{:}),2); % Should be zero vector
+smoothedFaProjsByTrial = cellfun(@(x) exponentialSmoother(x, alpha, nan), faProjsByTrial, 'UniformOutput', false);
 validTrialRewardRepeatedLabels = [];
 for k = 1:length(smoothedFaProjsByTrial)
     numBinsInTrial = size(smoothedFaProjsByTrial{k},2);
@@ -194,24 +181,84 @@ end
 %% Fit LDA to smoothed FA Projections
 % Concatenate across all trials to get a num_valid_trials x num_fa_latents
 ldaTrainX = cat(2, smoothedFaProjsByTrial{:})';
-% Fit LDA on FA projections
-ldaParams = fit_LDA(ldaTrainX, validTrialRewardRepeatedLabels);
+% Fit LDA on FA projections to find reward axis
+rewardLdaParams = fit_LDA(ldaTrainX, validTrialRewardRepeatedLabels);
 %% Get reward axis means and magnitude
+% Reorient projection vector such that the largest reward value is the
+% largest value on this axis
 % Keep track of Small/large 
-smallRewardProjs = ldaParams.projData(find(validTrialRewardRepeatedLabels == 1));
-largeRewardProjs = ldaParams.projData(find(validTrialRewardRepeatedLabels == 3));
-[smallRewardProjs, largeRewardProjs, smallRewardTarget, largeRewardTarget, smallRewardRange,largeRewardRange, ldaParams] = flipAxesBasedOnCondition(smallRewardProjs, largeRewardProjs, ldaParams, trainParams.targChangeByStd);
-%% Generate Projections along reward Axis
-figure;
-hold on
-scatter(smallRewardProjs, zeros(size(smallRewardProjs)),'r', 'DisplayName', 'Small')
-scatter(largeRewardProjs, zeros(size(largeRewardProjs)),'b', 'DisplayName', 'Large')
-scatter(largeRewardTarget, 0, 200, '+', 'b', 'DisplayName', 'Large target')
-scatter(smallRewardTarget, 0, 200, '+', 'r', 'DisplayName', 'Small Target')
-hold off
-title('Projections of calibration bins along 1D reward Axis')
-legend()
+smallRewardIndices = find(validTrialRewardRepeatedLabels == 1);
+largeRewardIndices = find(validTrialRewardRepeatedLabels == 3);
+disp ('Checking Reward axis for flip')
 
+[~, ~, ~, ~, ~,~, rewardLDAParams] = flipAxesBasedOnCondition(smallRewardIndices, largeRewardIndices, rewardLdaParams);
+%% Find axes based on smoothed FA Projections
+axisSelectionMethod = trainParams.axisSelectionMethod;
+% target axis
+% 1) subsample trials to get only up and down targets
+targetsToSeparate = [90, 270; 0, 180]; % num_axes x num_targets
+%targetsToSeparate = [90,270];
+multipleAxesParams = [];
+mappingTargetParams = {};
+targChangeBySD = trainParams.targChangeByStd;
+% Store target specific parameters that will be used in the decoder
+for k = 1:size(targetsToSeparate,1)
+    trialsWithFirstTargIdx = find(validTrialTargetLabels == targetsToSeparate(k,1));
+    trialsWithSecondTargIdx = find(validTrialTargetLabels == targetsToSeparate(k,2));
+    faProjsWithFirstTarg = cell2mat({smoothedFaProjsByTrial{trialsWithFirstTargIdx}});
+    faProjsWithSecondTarg = cell2mat({smoothedFaProjsByTrial{trialsWithSecondTargIdx}});
+    % Setting label for first target angle to be 1 and second to 2
+    firstAngleLabels = repmat(targetsToSeparate(k,1), 1,size(faProjsWithFirstTarg,2));
+    secondAngleLabels = repmat(targetsToSeparate(k,2), 1,size(faProjsWithSecondTarg,2));
+    % Stack our training samples
+    trainX = [faProjsWithFirstTarg, faProjsWithSecondTarg]';
+    trainY = [firstAngleLabels, secondAngleLabels];
+    if strcmpi(axisSelectionMethod, 'lda') 
+        axisParams = fit_LDA(trainX, trainY);
+    elseif strcmpi(axisSelectionMethod, 'pca')
+        % needs to have projVec
+        axisParams = struct(); % 
+        % Compute target PSTHs
+        uniqueLabels = unique(trainY);
+        targPSTHs = zeros(length(uniqueLabels), size(trainX,2));
+        for i=1:length(uniqueLabels)
+            % Identify Latents for Trials that have given label
+            currLabel = uniqueLabels(i);
+            targPSTHs(i,:) = mean(trainX(trainY == currLabel, :));
+        end
+        % Compute PCA on PSTHs
+        axisParams.projVec = pca(targPSTHs); % returns the first component (num_latents x 1) after computing covariance matrix and then doing svd
+        axisParams.mu = mean(targPSTHs); % 1 x num_latents
+        axisParams.projData = (trainX - axisParams.mu)*axisParams.projVec;
+    end
+    firstTargIndices = find(trainY == targetsToSeparate(k,1));
+    secondTargIndices = find(trainY == targetsToSeparate(k,2));
+    fprintf('Current axis for separating %i and %i\n', targetsToSeparate(k,1), targetsToSeparate(k,2))
+    % Flip if necessary, firstTargProjs and secondTargProjs should have
+    % same order as order in projVec
+    [firstTargProjs, secondTargProjs, firstTargMean, secondTargMean, firstTargProjsSD,secondTargProjsSD, axisParams] = flipAxesBasedOnCondition(firstTargIndices, secondTargIndices, axisParams);
+    targetSpecificParams = struct('angle', {}, 'mean', {}, 'std', {}, 'axisProjs', {});
+    % Add struct array for first target
+    targetSpecificParams(end + 1) = struct('angle', targetsToSeparate(k,1), 'mean', firstTargMean, 'std',firstTargProjsSD, 'axisProjs',  firstTargProjs);
+    % Add struct array for second target
+    targetSpecificParams(end + 1) = struct('angle', targetsToSeparate(k,2), 'mean', secondTargMean, 'std',secondTargProjsSD, 'axisProjs',  secondTargProjs);
+    % Plot projections along this 1D intuitive axis
+    figure;
+    hold on
+    histogram(firstTargProjs, 'binWidth', 0.25, 'FaceColor', 'b' ,'DisplayName', 'Targ1')
+    histogram(secondTargProjs, 'binWidth', 0.25, 'FaceColor', 'r' ,'DisplayName', 'Targ2')
+    xline(firstTargMean, '--b', 'LineWidth', 2, 'DisplayName', 'Mean of Targ 1 Projs')
+    xline(secondTargMean, '--r', 'LineWidth', 2, 'DisplayName', 'Mean of Targ 2 Projs')
+    xline(firstTargMean - firstTargProjsSD*targChangeBySD, '--b', 'LineWidth', 3, 'DisplayName', 'Target state for 1')
+    xline(secondTargMean + secondTargProjsSD*targChangeBySD, '--r', 'LineWidth', 3, 'DisplayName', 'Target state for 2')
+    hold off
+    title(sprintf('Projections of calibration bins along 1D intuitive where Targ1: %i Targ2: %i', targetsToSeparate(k,1), targetsToSeparate(k,2)))
+    legend()
+    % Identify ranges that will be used for each state 
+    multipleAxesParams = [multipleAxesParams, axisParams];
+    mappingTargetParams{end+1} = targetSpecificParams;
+end
+% Decoder should track: targetStates, multipleAxesLDAParams, and the ranges
 %% Save model parameters 
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
@@ -224,13 +271,18 @@ if offlineFlag
     else
         fileBackSlashIndex = fileBackSlashIndices;
     end
-    bciDecoderSaveName = sprintf('%sRewardAxisBci_%s_offline.mat',nevFilebase(fileBackSlashIndex+1:end-4) , datestr(now, 'dd-mmm-yyyy_HH-MM-SS') );
+    bciDecoderSaveName = sprintf('%sIntuitiveAxesDecoderBci_%s_offline.mat',nevFilebase(fileBackSlashIndex+1:end-4) , datestr(now, 'dd-mmm-yyyy_HH-MM-SS') );
 else
     % Use current date as naming convention for online
-    bciDecoderSaveName = sprintf('%s%sRewardAxisBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
+    bciDecoderSaveName = sprintf('%s%sIntuitiveAxesDecoderBci_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 end
+% Keep track of reward Axes activity just to see how neural activity acts
+% offline
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), ...
+'estFAParams', 'orthBeta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', ...
+'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'rewardLDAParams', ...
+'mappingTargetParams', 'multipleAxesParams' , 'trainParams', 'delayValidTrials', 'binnedSpikesDelay');
 
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'ldaParams', 'estFAParams', 'beta', 'zScoreSpikesMat', 'zScoreSpikesMuTerm', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName', 'largeRewardTarget', 'smallRewardTarget', 'largeRewardRange', 'smallRewardRange', 'trainParams', 'initialSeedValue');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 fprintf('decoder file saved at : %s\n', decoderFileLocationAndName)
 end
