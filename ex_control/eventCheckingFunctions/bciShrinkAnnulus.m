@@ -2,8 +2,7 @@ function [success, msgStr, fixWinOutput] = bciShrinkAnnulus(loopStart, loopNow, 
 % success if the annulus size reduces to 0
 
 global codes
-persistent distToTargetState annulusRad holdAnnulusStart currBinStart
-
+persistent distToTargetState annulusRad holdAnnulusStart 
 if isempty(annulusRad)
     % At start of trial, no time bins are considered correct
     annulusRad = e.maxAnnulusRad;
@@ -12,11 +11,7 @@ end
 
 if isempty(holdAnnulusStart)
     % Set both to current time if empty
-    holdAnnulusStart = loopNow; 
-    currBinStart = loopNow;
-    % Send code at start to mark first annulus value  (should always be max value at start of trial)
-    sendCode(codes.BCI_CURSOR_POS);
-    sendCode(annulusRad+5000);
+    holdAnnulusStart = loopStart; 
 end
 
 % for the control computer to track where target is
@@ -51,37 +46,30 @@ if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
 end
 
 success = 0;
-% Check if 50ms has elapsed since currBinStart
-timeElapsedSinceBinStart = 1000*(loopNow - currBinStart);
-if timeElapsedSinceBinStart >= 50
-	% Send the BCI Cursor position
-	sendCode(codes.BCI_CURSOR_POS);
-	disp(annulusRad)
-	sendCode(annulusRad+5000); % ranges from 5000-6000
-	% Reset the bin start 
-	currBinStart = loopNow; 
-	% Check timing difference between holdAnnulusStart and loopNow
-	loopDiffMs = 1000*(loopNow - holdAnnulusStart); % Check that the annulus is maintained for given period of time
-	% Make these checks at Every 50ms bin
-	% Compare current annulus radius to a threshold to decide if success or fail: 
-	if (annulusRad < e.tolerance) && (loopDiffMs > e.msToMaintain)
-	    % Trial is only successful if past the threshold for a certain period
-	    % of time
-	    success = 1;
-	else
-	    % Reset timer if annulus is not smaller than tolerance
-	    if ~(annulusRad < e.tolerance)
-		holdAnnulusStart =  loopNow;
-	    end
-	end
+% Send the BCI Cursor position
+sendCode(codes.BCI_CURSOR_POS);
+sendCode(annulusRad+5000); % ranges from 5000-5100
+% Check timing difference between holdAnnulusStart and loopNow
+loopDiffMs = 1000*(loopNow - holdAnnulusStart); % Check that the annulus is maintained for given period of time
+% Make these checks at Every 50ms bin
+% Compare current annulus radius to a threshold to decide if success or fail:
+if (annulusRad < e.tolerance) && (loopDiffMs > e.msToMaintain)
+    % Trial is only successful if past the threshold for a certain period
+    % of time
+    disp(loopDiffMs)
+    success = 1;
+else
+    % Reset timer if annulus is not smaller than tolerance
+    if ~(annulusRad < e.tolerance)
+        holdAnnulusStart =  loopNow;
+    end
 end
 
-
+annulusRadSend=annulusRad;
 % send out the draw annulus commands whenever this function is called--is
 % especially important for the fixation windows otherwise other functions
 % will erase these windows when the cursor doesn't get updated
 annX = e.centerX;
 annY = e.centerY;
-msgStr = sprintf('set %d annulus 0 %i %i %i %i %i %i %i',[e.objID, annX annY annulusRad e.thickness annulusColorDisp(1) annulusColorDisp(2) annulusColorDisp(3)]);
-
+msgStr = sprintf('set %d annulus 0 %i %i %i %i %i %i %i',[e.objID, annX annY annulusRadSend e.thickness annulusColorDisp(1) annulusColorDisp(2) annulusColorDisp(3)]);
 fixWinOutput = {[annX annX], [annY annY], [e.tolerance annulusRad], winColors};
