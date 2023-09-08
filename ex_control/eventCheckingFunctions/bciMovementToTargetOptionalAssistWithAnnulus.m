@@ -7,7 +7,7 @@ persistent cursorPos velocityCurr loopTimeLast numBin
 
 maxAnnulusSize = e.maxAnnulusRad;
 annulusColorDisp = e.annulusColor;
-
+cursorOpacity=e.cursorOpacity;
 if nargin < 10
     centerToTargetBciScale = 1;
     orthogonalBciScale = 1;
@@ -72,11 +72,6 @@ while matlabUDP2('check', bciSockets.sender)
     ind2 = ind2+1;
 end
 if ind2>1
-ind2
-ind2
-ind2
-ind2
-ind2
 end
 if ~isempty(receivedMsg) && ~strcmp(receivedMsg, 'ack')
     % compute the new cursor position (and don't let it get out of the bounding
@@ -105,7 +100,6 @@ cursorPosLimited = signCursor.*min(pixBoxLimit, abs(cursorPosNew));
 posPixelChangeLimit = cursorPosLimited - cursorPos;
 if ~all(abs(posPixelChangeLimit - posPixelChange)<1e-10)
     velocityCurr = posPixelChangeLimit/loopTimeDiff;
-
     cursorPos = cursorPosLimited;
 else
     cursorPos = cursorPosNew;
@@ -139,6 +133,7 @@ sendCode(posShiftY);
 
  % compute how close the cursor is to the target
  relPos = ([targX; targY] - cursorPos);
+ 
  maxTargDistance = sqrt(sum([targX; targY].^2));
  switch size(targRadius,1)
      case 1 %circular window
@@ -146,7 +141,8 @@ sendCode(posShiftY);
          success = distToTarget < targWinCursRad;
      case 2 %rectangular window
          success = all(abs(relPos)<abs(targRadius),1);
-     case 3 % rotated rectangle
+     case 3 % rotatedcursorOpacity=100;
+ rectangle
          success = all(abs(relPos)<abs(targRadius),1);
      otherwise
          error('EX:waitForFixation:badRadius','Radius must have exactly 1 or 2 rows');
@@ -159,20 +155,28 @@ loopTimeLast = loopNow;
 % especially important for the fixation windows otherwise other functions
 % will erase these windows when the cursor doesn't get updated
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
-msgStrOne = sprintf('mset %i oval 0 %i %i %i %i %i %i', [cursorObjId, cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
+
+
+msgStrOne = sprintf('set %i oval 0 %i %i %i %i %i %i %i', [cursorObjId, cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3) cursorOpacity]);
 
 fixWinOutput = {[targX cursorPosDisp(1)], [targY cursorPosDisp(2)], [targWinCursRad cursorR], winColors};
 
 extraFuncOutput.cursorPosFinal = cursorPos;
 extraFuncOutput.velocityFinal = velocityCurr;
 
-if (distToTarget - targWinCursRad) <= 0 
+% Annulus size should be the same as the cursor distance
+
+disp([distToTarget, maxTargDistance, maxAnnulusSize])
+distRatio = (distToTarget - targWinCursRad)/(maxAnnulusSize - e.minAnnulusRad);
+if distRatio <= 0 
     annulusRad = e.minAnnulusRad;
-elseif distToTarget >= maxTargDistance
+elseif distRatio >= 1
     annulusRad = maxAnnulusSize;
 else
-    annulusRad = (distToTarget - e.minAnnulusRad)/(maxAnnulusSize - e.minAnnulusRad);    
+    % Annulus needs to be an integer value or else showex will error
+    annulusRad = round(distRatio*maxAnnulusSize);    
 end
+
 % send out the draw annulus commands whenever this function is called--is
 % especially important for the fixation windows otherwise other functions
 % will erase these windows when the cursor doesn't get updated
@@ -180,3 +184,4 @@ annX = e.centerX;
 annY = e.centerY;
 msgStrTwo = sprintf('set %d annulus 0 %i %i %i %i %i %i %i',[e.objID, annX annY annulusRad e.thickness annulusColorDisp(1) annulusColorDisp(2) annulusColorDisp(3)]);
 msgStr = [msgStrOne, ' ', msgStrTwo];
+%disp(msgStr)
