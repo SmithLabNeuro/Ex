@@ -8,11 +8,16 @@ persistent cursorPos velocityCurr loopTimeLast numBin
 maxAnnulusSize = e.maxAnnulusRad;
 annulusColorDisp = e.annulusColor;
 cursorOpacity=e.cursorOpacity;
+
 if nargin < 10
     centerToTargetBciScale = 1;
     orthogonalBciScale = 1;
     centerToOutVelForAssist = 0; % this is only used if the two scales are 0
 end
+
+% Added by Chris 09-08-2023 
+% Force the orthogonal vector to CenterToTarget to be ignored. 
+orthogonalBciScale = 0;
 
 center = [0; 0];
 vecCenterToTarget = [targX-center(1); targY - center(2)];
@@ -166,8 +171,8 @@ extraFuncOutput.velocityFinal = velocityCurr;
 
 % Annulus size should be the same as the cursor distance
 
-disp([distToTarget, maxTargDistance, maxAnnulusSize])
-distRatio = (distToTarget - targWinCursRad)/(maxAnnulusSize - e.minAnnulusRad);
+% Determine how much of maxTargDistance you've made it to
+distRatio = distToTarget/(maxTargDistance - targWinCursRad);
 if distRatio <= 0 
     annulusRad = e.minAnnulusRad;
 elseif distRatio >= 1
