@@ -71,5 +71,5 @@ annulusRadSend=annulusRad;
 % will erase these windows when the cursor doesn't get updated
 annX = e.centerX;
 annY = e.centerY;
-msgStr = sprintf('set %d annulus 0 %i %i %i %i %i %i %i',[e.objID, annX annY annulusRadSend e.thickness annulusColorDisp(1) annulusColorDisp(2) annulusColorDisp(3)]);
+msgStr = sprintf('set %d annulus 0 %i %i %i %i %i %i %i %i',[e.objID, annX annY annulusRadSend e.thickness annulusColorDisp(1) annulusColorDisp(2) annulusColorDisp(3) e.opacity]);
 fixWinOutput = {[annX annX], [annY annY], [e.tolerance annulusRad], winColors};

@@ -11,7 +11,6 @@ cursorOpacity=e.cursorOpacity;
 
 if nargin < 10
     centerToTargetBciScale = 1;
-    orthogonalBciScale = 1;
     centerToOutVelForAssist = 0; % this is only used if the two scales are 0
 end
 
@@ -138,8 +137,7 @@ sendCode(posShiftY);
 
  % compute how close the cursor is to the target
  relPos = ([targX; targY] - cursorPos);
- 
- maxTargDistance = sqrt(sum([targX; targY].^2));
+ maxTargDistance = sqrt(sum([targX - e.oppTargetX; targY - e.oppTargetY].^2));
  switch size(targRadius,1)
      case 1 %circular window
          distToTarget = sqrt(sum(relPos.^2));
@@ -181,12 +179,12 @@ else
     % Annulus needs to be an integer value or else showex will error
     annulusRad = round(distRatio*maxAnnulusSize);    
 end
-
+%disp(distRatio)
 % send out the draw annulus commands whenever this function is called--is
 % especially important for the fixation windows otherwise other functions
 % will erase these windows when the cursor doesn't get updated
 annX = e.centerX;
 annY = e.centerY;
-msgStrTwo = sprintf('set %d annulus 0 %i %i %i %i %i %i %i',[e.objID, annX annY annulusRad e.thickness annulusColorDisp(1) annulusColorDisp(2) annulusColorDisp(3)]);
+msgStrTwo = sprintf('set %d annulus 0 %i %i %i %i %i %i %i %i',[e.objID, annX annY annulusRad e.thickness annulusColorDisp(1) annulusColorDisp(2) annulusColorDisp(3) e.opacity]);
 msgStr = [msgStrOne, ' ', msgStrTwo];
 %disp(msgStr)
