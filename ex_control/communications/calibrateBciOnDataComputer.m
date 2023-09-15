@@ -21,7 +21,6 @@ if e(1).trialCounter == 1 && thisBlock == 1
 end
 if strcmp(e(1).bciCalibration_bciDecoderFile, 'trainNew')
 
-
     % checks if training should happen after last block (assuming we're at a
     % block change)
     segmentParamTraining = blockLast == e(1).bciCalibration_trainAfterBlock;
@@ -194,7 +193,7 @@ elseif strcmp(e(1).bciCalibration_bciDecoderFile, 'trainNewOnPreviousNevFiles')
         bciParamStructAsEvalChar = [];
         paramStructChars = receiveMessageSendAck(socketsDatComp);
         while ~strcmp(paramStructChars, 'endSendingAsciiParameters')
-            bciParamStructAsEvalChar = [bciParamStructAsEvalChar, paramStructChars];
+            bciParamStructAsEvalChar = [bciParamStructAsEvalChartrainNewOnPreviousNevFiles, paramStructChars];
             paramStructChars = receiveMessageSendAck(socketsDatComp);
         end
         
