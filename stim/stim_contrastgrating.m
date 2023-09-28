@@ -26,7 +26,7 @@ if strcmp(optstr,'setup')
     %            (10) bool, use phase swap?
     
     angle = mod(180-a(2),360);
-    mult_angle = [0, angle];
+    mult_angle = [angle, angle];
     f = a(3);
     xCenter = a(4);
     yCenter = -a(5); % flip y coordinate so '-' is down
