@@ -193,7 +193,7 @@ elseif strcmp(e(1).bciCalibration_bciDecoderFile, 'trainNewOnPreviousNevFiles')
         bciParamStructAsEvalChar = [];
         paramStructChars = receiveMessageSendAck(socketsDatComp);
         while ~strcmp(paramStructChars, 'endSendingAsciiParameters')
-            bciParamStructAsEvalChar = [bciParamStructAsEvalChartrainNewOnPreviousNevFiles, paramStructChars];
+            bciParamStructAsEvalChar = [bciParamStructAsEvalChar, paramStructChars];
             paramStructChars = receiveMessageSendAck(socketsDatComp);
         end
         
