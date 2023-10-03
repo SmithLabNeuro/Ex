@@ -45,17 +45,17 @@ if strcmp(optstr,'setup')
     checks = ((1 + sign(sin(at * tcycles) + eps)...
         .* sign(sin(sqrt(x.^2 + y.^2)))) / 2) * (white - black) + black;
     circle = x.^2 + y.^2 <= xylim^2;
-    checks = circle .* checks + grey * ~circle;
+    checks = uint8(circle .* checks + grey * ~circle);
     
     not_checks=255-checks;
-    cblank=zeros(size(checks));
+    cblank=zeros(size(checks),'uint8');
     cblank(checks==grey)=grey;
-    ctrans=255*ones(size(checks));
+    ctrans=255*ones(size(checks),'uint8');
     ctrans(checks~=grey)=a(5);
     
     if a(8)==0
         %black-white
-        color_checks{1} = cat(3,checks,checks,checks);
+        color_checks{1} = cat(3,checks,checks,checks,ctrans);
     elseif a(8)==1
         %red-green
         color_checks{2} = cat(3,not_checks,checks,cblank);
@@ -87,6 +87,7 @@ if strcmp(optstr,'setup')
     objects{objID}.rotAngle = rotAngle; 
 elseif strcmp(optstr,'display')
     Screen('DrawTexture',w,objects{objID}.radialCheckTexture,[],objects{objID}.position,objects{objID}.rotAngle);
+%    Screen('DrawTexture',w,objects{objID}.radialCheckTexture,[],objects{objID}.position,randi(360,1));
 %     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 %     radialCheckerboardTexture  = Screen('MakeTexture', w, objects{objID}.checks);
 %      Screen('DrawTexture', w, radialCheckerboardTexture,[],objects{objID}.position);
