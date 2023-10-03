@@ -4,44 +4,23 @@ function newReturn = targetPrepAxisDecoder(meanSpikeCount, currReturn, modelPara
 % modelParams - info saved by calibration function
 % expParams - from bci_rewardAxisDecoder.xml
 
-persistent currSmoothedLDAProjs
+persistent currSmoothedOneDimAxisProjs
 
 
-currTargetState = currReturn(3);
-currAxisToUse = currReturn(4);
-
-currMappingTargetParams = modelParams.mappingTargetParams{currAxisToUse}(currTargetState);
-
-% Determine percentile that will be used for range based on target state
-oppositePercentileForRange = expParams.oppositePercToUseForCondOne;
-if currTargetState == 2
-    oppositePercentileForRange= 100 - oppositePercentileForRange;
-end
-oppositeTargState = mod(currTargetState,2) + 1;
-oppositeTargExtremePerc = prctile(modelParams.mappingTargetParams{currAxisToUse}(oppositeTargState).axisProjs, oppositePercentileForRange);
-
-% Start of trial set initial seed value for LDA projection
-if isempty(currSmoothedLDAProjs)
-    % Seed initial value using percentile from opposite mapping
-    currSmoothedLDAProjs = oppositeTargExtremePerc;
-end
-targsChangeBySD = expParams.targChangeByStd;
-
-
-% initialize the range and target
-if currTargetState == 1
-    currTargRange = oppositeTargExtremePerc - currMappingTargetParams.mean;
-    currTargReqState = currMappingTargetParams.mean - currMappingTargetParams.std*targsChangeBySD;
-else
-    currTargRange = currMappingTargetParams.mean - oppositeTargExtremePerc;
-    currTargReqState = currMappingTargetParams.mean + currMappingTargetParams.std*targsChangeBySD;
-end
-
+currTargetState = currReturn(3); % should be a target angle in degrees (e.g, 0, 45, 180, etc.)
 % Grab decoder parameters 
-multipleAxesParams = modelParams.multipleAxesParams; % num_axes x 1 struct array that contains LDA params for each axis trained in calibration
-beta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
+orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
 estFAParams = modelParams.estFAParams;
 d = estFAParams.d; % mean spike count vector during calibration trials (useful for z-scoring too)
+currTargAngleMap = modelParams.targAngleMap; % key should be target angle in degrees and value should be struct 
+
+requestedStateChangeBySD = expParams.targChangeByStd;
+
+% Start of trial set initial seed value for 1D Axis projection
+if isempty(currSmoothedOneDimAxisProjs)
+    % Seed initial value as 0
+    currSmoothedOneDimAxisProjs = 0;
+end
 
 % Zscoring parametersmodelParams.initialSeedValues(currAxisToUse, currTargetState);
 zScoreSpikesMat = modelParams.zScoreSpikesMat;
@@ -49,32 +28,39 @@ zScoreSpikesMuTerm = modelParams.zScoreSpikesMuTerm;
 
 % Exponential Smoothing parameters
 alpha = expParams.alpha;
-
-currAxisParams = multipleAxesParams(currAxisToUse);
+currTargAngParams = currTargAngleMap(currTargetState);
+currTargPCParams = modelParams.axisParams;
 
 % Z-score spikes; zscoreSpikesMat will be identity and zScoreSpikesMuTerm
 % will be zero if zscoreSpikes is set to false in trainParams
 zScoredSpikes = (zScoreSpikesMat * meanSpikeCount) - zScoreSpikesMuTerm;
 % If FA is fitted on zScoredSpikes, d will be zero. Else, make sure to
-% subtract mean.
-newFaProjs = beta * (zScoredSpikes - d);
-currLDAProjs = currAxisParams.projVec'*newFaProjs;
+% subtract mean. Project onto orthonormalized factors
+newFaProjs = orthBeta * (zScoredSpikes - d);
+% Project onto Target PCs after subtracting the mean
+currTargPCProjs = currTargPCParams.projVec'*(newFaProjs - currTargPCParams.mu'); % 2 x 1 projection
 
-% apply exponential smoother to LDA projections
-currSmoothedLDAProjs = (1-alpha)*currSmoothedLDAProjs + alpha*currLDAProjs;
+% Project Targ PC projection onto the target Prep axis
+currTargPrepAxis = currTargAngParams.normVec;
+% Requested State should include SD change
+currTargPrepReqState = dot(currTargAngParams.meanTargAngProj, currTargPrepAxis) + requestedStateChangeBySD*currTargAngParams.targPrepAxisProjSD;
+
+% Range is determined as the distance from 0 to this value;
+currTargRange = currTargPrepReqState;
+
+% Norm is just to be safe
+currTargPrepAxisProj = dot(currTargAngParams.meanTargAngProj, currTargPCProjs)*currTargPrepAxis/norm(currTargPrepAxis);
+currTargPrepAxisDist = sqrt(sum(currTargPrepAxisProj.^2)); % should be identical to the dot product
+%currTargPrepAxisDist, dot(currTargAngParams.meanTargAngProj, currTargPCProjs)
+
+
+% apply exponential smoother to 1D Axis projections (dot product onto unit
+% vector which Also happens to be the distance)
+currSmoothedOneDimAxisProjs = (1-alpha)*currSmoothedOneDimAxisProjs + alpha*currTargPrepAxisDist;
 
 % Compute how far projection is from requested internal state
-% Setting small to 1 and Large to anything else
-% Check if requested reward state is small else assume it is large
-if currTargetState == 1
-    % low
-    % should be negative rewardAxisProjwhen rewardAxisProj is below smallReward Target
-    newDistToTarget = currSmoothedLDAProjs - currTargReqState;
-else
-    % high
-    % should be negative when rewardAxisProjs is above largeReward Target
-    newDistToTarget = currTargReqState - currSmoothedLDAProjs;
-end
+newDistToTarget = currTargPrepReqState - currSmoothedOneDimAxisProjs;
+
 
 % Compute distance ratio that will be used for annulus value calculation
 % (r/R) in schematic
@@ -92,4 +78,4 @@ end
 
 % Set newSmoothedDist for return
 newAnnulusRad = round(oneDimAxisRatio * expParams.maxAnnulusRad);
-newReturn = [newDistToTarget; newAnnulusRad; currTargetState; currAxisToUse];
+newReturn = [newDistToTarget; newAnnulusRad; currTargetState];
