@@ -42,9 +42,9 @@ function [params] = fit_LDA(trainX, trainY)
     % This backslash is used in place of inv to account for singular Sw
     % matrices. If singular, will use the least squares estimate intead of
     % throwing an error which inv() will do.
-    invSwSb = params.Sw \ params.Sb;
-    [U,~, ~] = svd(invSwSb);
-    params.projMat = U;
-    params.projVec = U(:,1);
+    [V,D] = eig(inv(params.Sw)*params.Sb);
+    V = real(V); % Only take real components of V
+    params.projMat = V;
+    params.projVec = V(:,1);
     params.projData = trainX*params.projVec;
 end
