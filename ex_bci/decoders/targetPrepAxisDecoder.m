@@ -16,12 +16,6 @@ currTargAngleMap = modelParams.targAngleMap; % key should be target angle in deg
 
 requestedStateChangeBySD = expParams.targChangeByStd;
 
-% Start of trial set initial seed value for 1D Axis projection
-if isempty(currSmoothedOneDimAxisProjs)
-    % Seed initial value as 0
-    currSmoothedOneDimAxisProjs = 0;
-end
-
 % Zscoring parametersmodelParams.initialSeedValues(currAxisToUse, currTargetState);
 zScoreSpikesMat = modelParams.zScoreSpikesMat;
 zScoreSpikesMuTerm = modelParams.zScoreSpikesMuTerm;
@@ -45,14 +39,18 @@ currTargPrepAxis = currTargAngParams.normVec;
 % Requested State should include SD change
 currTargPrepReqState = dot(currTargAngParams.meanTargAngProj, currTargPrepAxis) + requestedStateChangeBySD*currTargAngParams.targPrepAxisProjSD;
 
+% Start of trial set initial seed value for 1D Axis projection
+if isempty(currSmoothedOneDimAxisProjs)
+    % Seed initial value as 0
+    currSmoothedOneDimAxisProjs = -1*currTargPrepReqState; % seed the initial value to be on the other side
+end
+
 % Range is determined as the distance from 0 to this value;
-currTargRange = currTargPrepReqState;
+currTargRange = 2*currTargPrepReqState;
 
 % Norm is just to be safe
 currTargPrepAxisProj = dot(currTargAngParams.meanTargAngProj, currTargPCProjs)*currTargPrepAxis/norm(currTargPrepAxis);
 currTargPrepAxisDist = sqrt(sum(currTargPrepAxisProj.^2)); % should be identical to the dot product
-%currTargPrepAxisDist, dot(currTargAngParams.meanTargAngProj, currTargPCProjs)
-
 
 % apply exponential smoother to 1D Axis projections (dot product onto unit
 % vector which Also happens to be the distance)
