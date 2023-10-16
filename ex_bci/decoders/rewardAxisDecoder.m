@@ -6,7 +6,7 @@ function newReturn = rewardAxisDecoder(meanSpikeCount, currReturn, modelParams, 
 
 persistent currSmoothedOneDimAxisProjs
 
-currRewardIdx = currReturn(3); % should be a target angle in degrees (e.g, 0, 45, 180, etc.)
+currRewardIdx = currReturn(3); % should be a reward state (ie, 1 or 3)
 % Grab decoder parameters 
 orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
 estFAParams = modelParams.estFAParams;
@@ -37,6 +37,7 @@ currRewardAxisProjs = currRewardAxisParams.projVec'*newFaProjs; % scalar project
 if currRewardIdx == 1
     currRequestedRewardState = currRewardStats.mean - currRewardStats.sd*requestedStateChangeBySD;
 else
+    % If large, get it to go above the mean
     currRequestedRewardState =  currRewardStats.mean + requestedStateChangeBySD*currRewardStats.sd;
 end
 % Set the currTargRange to be 2 times the absolute value of the requested
@@ -46,7 +47,6 @@ initialSeedValue = -1*currRequestedRewardState;
 
 % Start of trial set initial seed value for 1D Axis projection
 if isempty(currSmoothedOneDimAxisProjs)
-    % Seed initial value as 0
     currSmoothedOneDimAxisProjs = initialSeedValue; % seed the initial value to be on the other side
 end
 
