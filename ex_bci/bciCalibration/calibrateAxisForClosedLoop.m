@@ -172,23 +172,35 @@ LOrthOffline = L;
 
 % flip the signs
 % for i=1:length(trainParams.targetLatentDim)
-for i=1:trainParams.numberFaLatents
-    % compute the correlation of loading using the common electrodes
-    % axisCorrCoef = corrcoef(latents(channelsKeepIndOn,i), loadingOffline(channelsKeepIndOff,i));
-    % if axisCorrCoef(1,2) < 0
-    %     doAxisFlip(i,1) = true;
-    %     estParams.L(:,i) = -estParams.L(:,i);
-    %     orthLatents(:,i) = -orthLatents(:,i);
-    % end
-    
-    % compute the dot product of loading using the common electrodes
-    % axisCorrCoef = dot(latents(channelsKeepIndOn,i), loadingOffline(channelsKeepIndOff,i));
-    axisCorrCoef = dot(LOrthForAlignment(channelsKeepIndOn,i), LOrthOffline(channelsKeepIndOff,i));
-    if axisCorrCoef < 0
-        doAxisFlip(i,1) = true;
-        estParams.L(:,i) = -estParams.L(:,i);
-        LOrthForAlignment(:,i) = -LOrthForAlignment(:,i);
+if trainParams.axisSignFlip
+    for i=1:trainParams.numberFaLatents
+        % compute the correlation of loading using the common electrodes
+        % axisCorrCoef = corrcoef(latents(channelsKeepIndOn,i), loadingOffline(channelsKeepIndOff,i));
+        % if axisCorrCoef(1,2) < 0
+        %     doAxisFlip(i,1) = true;
+        %     estParams.L(:,i) = -estParams.L(:,i);
+        %     orthLatents(:,i) = -orthLatents(:,i);
+        % end
+
+        % compute the dot product of loading using the common electrodes
+        % axisCorrCoef = dot(latents(channelsKeepIndOn,i), loadingOffline(channelsKeepIndOff,i));
+        axisCorrCoef = dot(LOrthForAlignment(channelsKeepIndOn,i), LOrthOffline(channelsKeepIndOff,i));
+        if axisCorrCoef < 0
+            doAxisFlip(i,1) = true;
+            estParams.L(:,i) = -estParams.L(:,i);
+            LOrthForAlignment(:,i) = -LOrthForAlignment(:,i);
+        end
     end
+end
+
+if trainParams.alignAxis
+    onlineLOrth = LOrthForAlignment(channelsKeepIndOn,:);
+    offlineLOrth = LOrthOffline(channelsKeepIndOff,:);
+    onoffLOrth = offlineLOrth' * onlineLOrth;
+    [UU, DD, VV] = svd(onoffLOrth);
+    O = UU * VV';
+    onlineLOrthAligned = LOrthForAlignment * O';
+    estParams.L = onlineLOrthAligned;
 end
 
 %% Compute the posterior mean
@@ -211,18 +223,26 @@ binnedSpikesPost = cellfun(...
 binnedSpikesPost = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesPost, 'uni', 0);
 binnedSpikesPostConcat = cat(1, binnedSpikesPost{:});
 
-% Compute posterior: 
-[ZPre, ~, beta] = fastfa_estep(binnedSpikesPreConcat', estParams);
-[zPreOrth, LOrth, TT] = orthogonalize(ZPre.mean, estParams.L);
-posteriorPre = zPreOrth; % Zdim x N trial
-%posteriorPre = ZPre.mean; % Zdim x N trial
-%zildePre = silde(1:numLatents, 1:numLatents) * vilde' * posteriorPre; % numLatents x N, notation from Byron Yu
+if trainParams.alignAxis
+    [zPreOrth, ~, ~] = fastfa_estep(binnedSpikesPreConcat', estParams);
+    [zPostOrth, ~, ~] = fastfa_estep(binnedSpikesPostConcat(1:5:end,:)', estParams);
+    posteriorPre = zPreOrth.mean();
+    posteriorPost = zPostOrth.mean();
+    LOrth = estParams.L;
+else
+    % Compute posterior: 
+    [ZPre, ~, beta] = fastfa_estep(binnedSpikesPreConcat', estParams);
+    [zPreOrth, LOrth, TT] = orthogonalize(ZPre.mean, estParams.L);
+    posteriorPre = zPreOrth; % Zdim x N trial
+    %posteriorPre = ZPre.mean; % Zdim x N trial
+    %zildePre = silde(1:numLatents, 1:numLatents) * vilde' * posteriorPre; % numLatents x N, notation from Byron Yu
 
-[ZPost, ~, beta] = fastfa_estep(binnedSpikesPostConcat(1:5:end,:)', estParams);
-[zPostOrth, LOrth, TT] = orthogonalize(ZPost.mean, estParams.L);
-posteriorPost = zPostOrth; % Zdim x N trial
-%posteriorPost = ZPost.mean; % Zdim x N trial
-%zildePost = silde(1:numLatents, 1:numLatents) * vilde' * posteriorPost; % numLatents x N, notation from Byron Yu
+    [ZPost, ~, beta] = fastfa_estep(binnedSpikesPostConcat(1:5:end,:)', estParams);
+    [zPostOrth, LOrth, TT] = orthogonalize(ZPost.mean, estParams.L);
+    posteriorPost = zPostOrth; % Zdim x N trial
+    %posteriorPost = ZPost.mean; % Zdim x N trial
+    %zildePost = silde(1:numLatents, 1:numLatents) * vilde' * posteriorPost; % numLatents x N, notation from Byron Yu
+end
 
 % find zilde for each uStim pattern:
 stimChanCellPerTrial = cellfun(@(dS) regexp(dS, 'xippmexStimChanUpdated*=(\d*\s*\d*);*', 'tokens'), {trimmedDat.text});
@@ -330,6 +350,6 @@ subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
 bciDecoderSaveName = sprintf('%s%sFAaxisForClosedLoopStim_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 %save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'M0', 'M1', 'M2', 'intuitiveAxisPreferredAngle', 'rotMat', 'neuralEngagementAxisInNeuralSpace', 'axisOrthToNeuralEngagementInNeuralSpace', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName');
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'LOrthForAlignment', 'channelsKeep', 'pres', 'posts', 'postsWithOff', 'pushes', 'exploredCntInCalib', 'exploredCntInCalibOff', 'estParams', 'binnedSpikesValidAllConcat', 'binnedSpikesPreConcat', 'binnedSpikesPostConcat', 'subject', 'LOrth', 'TT', 'doAxisFlip');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'LOrthForAlignment', 'channelsKeep', 'pres', 'posts', 'postsWithOff', 'pushes', 'exploredCntInCalib', 'exploredCntInCalibOff', 'estParams', 'binnedSpikesValidAllConcat', 'binnedSpikesPreConcat', 'binnedSpikesPostConcat', 'subject', 'LOrth', 'doAxisFlip', 'O');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 
