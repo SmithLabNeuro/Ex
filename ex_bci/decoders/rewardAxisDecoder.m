@@ -7,6 +7,7 @@ function newReturn = rewardAxisDecoder(meanSpikeCount, currReturn, modelParams, 
 persistent currSmoothedOneDimAxisProjs
 
 currRewardIdx = currReturn(3); % should be a reward state (ie, 1 or 3)
+
 % Grab decoder parameters 
 orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
 estFAParams = modelParams.estFAParams;
@@ -21,7 +22,15 @@ zScoreSpikesMuTerm = modelParams.zScoreSpikesMuTerm;
 
 % Exponential Smoothing parameters
 alpha = expParams.alpha;
-currRewardStats = currRewardAxisParams.meanSDMap(currRewardIdx);
+currRewardStructIdx = currRewardIdx;
+% set it to the right index if reward idx is 3
+
+if currRewardIdx == 3
+%     currRewardIdx
+    currRewardStructIdx = 2;
+end
+% meanSDStruct is a 1 x 2 struct array
+currRewardStats = currRewardAxisParams.meanSDStruct(currRewardStructIdx);
 
 % Z-score spikes; zscoreSpikesMat will be identity and zScoreSpikesMuTerm
 % will be zero if zscoreSpikes is set to false in trainParams
@@ -40,11 +49,11 @@ else
     % If large, get it to go above the mean
     currRequestedRewardState =  currRewardStats.mean + requestedStateChangeBySD*currRewardStats.sd;
 end
-% Set the currTargRange to be 2 times the absolute value of the requested
-% state. Have initial state start from opposite end
-currRewardRange = 2*abs(currRequestedRewardState);
-initialSeedValue = -1*currRequestedRewardState;
-
+% Set the currTargRange to be 1 times the absolute value of the requested
+% state. Have initial state start from opposite end for given distribution
+initialSeedValue = currRewardStats.oppExtreme;
+% Difference from requested reward state to the opposite Extreme
+currRewardRange = abs(currRequestedRewardState - currRewardStats.oppExtreme);
 % Start of trial set initial seed value for 1D Axis projection
 if isempty(currSmoothedOneDimAxisProjs)
     currSmoothedOneDimAxisProjs = initialSeedValue; % seed the initial value to be on the other side
@@ -61,7 +70,6 @@ else
 end
 
 oneDimAxisRatio = newDispToRequestedState/currRewardRange;
-
 % If overshoots requested state, saturate the feedback
 if oneDimAxisRatio > 1
     oneDimAxisRatio = 1;
@@ -69,7 +77,5 @@ end
 if oneDimAxisRatio < 0
     oneDimAxisRatio = 0;
 end
+newReturn = [newDispToRequestedState; oneDimAxisRatio; currRewardIdx];
 
-% Set newSmoothedDist for return
-newAnnulusRad = round(oneDimAxisRatio * expParams.maxAnnulusRad);
-newReturn = [newDistToTarget; newAnnulusRad; currTargetState];
