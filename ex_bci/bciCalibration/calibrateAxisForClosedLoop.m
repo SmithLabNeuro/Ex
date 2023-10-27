@@ -330,12 +330,16 @@ for i=1:length(uniqueStimChanByTrial)
     exploredCntInCalib(update_idx,1) = sum(curr_idx);
     
     if trainParams.updateOffPred
-        postsWithOff(update_idx,1:length(targetDim)) = mean(curr_trials_post, 2);
-        exploredCntInCalibOff(update_idx,1) = sum(curr_idx);
+        lr = 0.2;
+        currPredError = mean(curr_trials_post, 2) - postsWithOff(update_idx,1:length(targetDim));
+        postsWithOff(update_idx,1:length(targetDim)) = postsWithOff(update_idx,1:length(targetDim)) + lr*currPredError;
+        
+        % postsWithOff(update_idx,1:length(targetDim)) = mean(curr_trials_post, 2);
+        % exploredCntInCalibOff(update_idx,1) = sum(curr_idx);
     end
 end
 
-% Initialize the prediction table for un-tested uStim patterns
+% Initialize the ONLINE prediction table for un-tested uStim patterns
 % Substitite the mean latent values for un-tested uStim patterns
 % for i=targetDim
 for i=1:length(targetDim)
