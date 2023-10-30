@@ -112,7 +112,6 @@ while true
         if ~isempty(updatedReturn)
             currReturn = updatedReturn;
         end
-%         disp(currReturn)
         % buffering issues cause weird timing--specifically, some channels
         % will have smaller timestamps then the previous call of other
         % channels; I think the smaller the buffer the less this is a
@@ -123,9 +122,13 @@ while true
         [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
 
         if ~isempty(modelParams)
-            % in case we have two starts/ends, we only want the start related to the current trial
-                        
+            % in case we have two starts/ends, we only want the start related to the current trial                 
             if ~isempty(tstpBciStart)
+                [modelParams, updatedReturn] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
+                % Set new value to received value IF received
+                if ~isempty(updatedReturn)
+                    currReturn = updatedReturn;
+                end
                 disp('bci start')
                 timePtBciStarted = tmstpPrlEvt(tstpBciStart);
                 timePtBciStarted = timePtBciStarted(timePtBciStarted>=timePtBoundStarted);
@@ -211,7 +214,6 @@ while true
                     % DEBUGGING
 %                     binSpkCntTrial = [binSpkCntTrial meanSpikeCount];
                     % END DEBUGGING
-                    
                     % run the BCI decoder
                     currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams);
 %                     disp(currReturn)
@@ -246,7 +248,6 @@ while true
                     binNum = -1;
                 end
                 bciStart = false;
-                currReturn = expParams.initReturn';
                 clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
             end
         end
