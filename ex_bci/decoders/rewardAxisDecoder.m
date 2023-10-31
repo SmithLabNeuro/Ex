@@ -82,4 +82,5 @@ if oneDimAxisRatio < 0
     oneDimAxisRatio = 0;
 end
 newReturn = [newDispToRequestedState; oneDimAxisRatio; currTrialRewardState];
+newReturn'
 
