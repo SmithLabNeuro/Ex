@@ -4,9 +4,14 @@ function newReturn = rewardAxisDecoder(meanSpikeCount, currReturn, modelParams, 
 % modelParams - info saved by calibration function
 % expParams - from bci_rewardAxisDecoder.xml
 
-persistent currSmoothedOneDimAxisProjs
+persistent currSmoothedOneDimAxisProjs currTrialRewardState
 
 currRewardIdx = currReturn(3); % should be a reward state (ie, 1 or 3)
+% Set the reward state if it has not been set for the trial
+if isempty(currTrialRewardState)
+    currTrialRewardState = currRewardIdx;
+end
+
 
 % Grab decoder parameters 
 orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
@@ -22,11 +27,10 @@ zScoreSpikesMuTerm = modelParams.zScoreSpikesMuTerm;
 
 % Exponential Smoothing parameters
 alpha = expParams.alpha;
-currRewardStructIdx = currRewardIdx;
+currRewardStructIdx = currTrialRewardState;
 % set it to the right index if reward idx is 3
 
-if currRewardIdx == 3
-%     currRewardIdx
+if currTrialRewardState == 3
     currRewardStructIdx = 2;
 end
 % meanSDStruct is a 1 x 2 struct array
@@ -43,7 +47,7 @@ currRewardAxisProjs = currRewardAxisParams.projVec'*newFaProjs; % scalar project
 
 % Determine the requested state and the appropriate initial seed value
 % If small, get it to go below the mean
-if currRewardIdx == 1
+if currTrialRewardState == 1
     currRequestedRewardState = currRewardStats.mean - currRewardStats.sd*requestedStateChangeBySD;
 else
     % If large, get it to go above the mean
@@ -63,7 +67,7 @@ end
 currSmoothedOneDimAxisProjs = (1-alpha)*currSmoothedOneDimAxisProjs + alpha*currRewardAxisProjs;
 
 % Determine the displacement of the current smoothed state from the requested state
-if currRewardIdx == 1
+if currTrialRewardState == 1
     newDispToRequestedState = currSmoothedOneDimAxisProjs - currRequestedRewardState;
 else
     newDispToRequestedState =  currRequestedRewardState - currSmoothedOneDimAxisProjs;
@@ -77,5 +81,5 @@ end
 if oneDimAxisRatio < 0
     oneDimAxisRatio = 0;
 end
-newReturn = [newDispToRequestedState; oneDimAxisRatio; currRewardIdx];
+newReturn = [newDispToRequestedState; oneDimAxisRatio; currTrialRewardState];
 
