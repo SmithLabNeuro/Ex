@@ -72,7 +72,7 @@ params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds
 
 %% BCI params
 params.neuralRecordingSamplingFrequencyHz = 30000; % Ripple records at 30kHz
-params.nasNetFolderDataComputer = 'C:\Users\rigmdata\Documents\spikesort\nasnet\networks';
+params.nasNetFolderDataComputer = 'C:\Users\rigmdata\spikesort\nasnet\networks';
 params.bciDecoderBasePathDataComputer = 'X:\';
 params.nasNetFolderBciComputer = '/home/smithlab/spikesort/nasnet/networks';
 params.bciDecoderBasePathBciComputer = '/home/smithlab/bciParameters';
@@ -218,7 +218,6 @@ codes.BCI_CORRECT = 161 ; % BCI task (vs. non-BCI behavior) performed correct
 codes.BCI_MISSED = 162 ; % BCI task (vs. non-BCI behavior) performed incorrectly 
 codes.CORRECT_REJECT = 163 ;
 codes.LATE_CHOICE = 164 ;
-codes.BROKE_TASK = 165;
 
 %%
 % retry.CORRECT = 0 ;	% Independent of whether reward is given
