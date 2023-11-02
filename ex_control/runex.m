@@ -889,8 +889,7 @@ end
 %% Clean up on exit:
 
 % clear persistent variables
-fn_to_clear = str2func(xmlParams.exFileName);
-clear fn_to_clear
+clear( xmlParams.exFileName )
 
 % Reset Priority and Verbosity, close sound
 cleanUp();
