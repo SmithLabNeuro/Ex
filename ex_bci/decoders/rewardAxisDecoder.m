@@ -4,14 +4,9 @@ function newReturn = rewardAxisDecoder(meanSpikeCount, currReturn, modelParams, 
 % modelParams - info saved by calibration function
 % expParams - from bci_rewardAxisDecoder.xml
 
-persistent currSmoothedOneDimAxisProjs currTrialRewardState
+persistent currSmoothedOneDimAxisProjs 
 
-currRewardIdx = currReturn(3); % should be a reward state (ie, 1 or 3)
-% Set the reward state if it has not been set for the trial
-if isempty(currTrialRewardState)
-    currTrialRewardState = currRewardIdx;
-end
-
+currTrialRewardState = currReturn(3); % should be a reward state (ie, 1 or 3)
 
 % Grab decoder parameters 
 orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
@@ -81,6 +76,8 @@ end
 if oneDimAxisRatio < 0
     oneDimAxisRatio = 0;
 end
-newReturn = [newDispToRequestedState; oneDimAxisRatio; currTrialRewardState];
-newReturn'
+newReturn = [newDispToRequestedState; oneDimAxisRatio];
+% newReturn'
+% currTrialRewardState
+
 
