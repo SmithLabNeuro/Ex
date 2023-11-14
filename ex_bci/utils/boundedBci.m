@@ -19,8 +19,12 @@ digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 % Determine whether online mat containing received spikes should be saved
 % or not.
 saveOnlineMatOrNot = expParams.saveOnlineMatFile;
+taskName = expParams.exFileName;
 onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {});
 trialIdx = 0;
+onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
+fullFileName = fullfile('bciOnlineMats', onlineMatFileName);
+fprintf('Online File saved at : %s \n', fullFileName)
 
 boundStarted = false;
 customBciCodeAfterTrlStart = [];
@@ -59,7 +63,6 @@ binNum = -1;
 % prlEvents = [events.parallel];
 modelParams = [];
 loopTmTotalSec = 0;
-disp('woop')
 while true
     loopTmStart = tic;
     % check for messages or BCI end between trials...
@@ -78,16 +81,6 @@ while true
     % Only keep custom BCI Codes that occur after current trial's start
     % timestamp
     customBciCode = prlEvents(((prlEvents>20000) & (prlEvents<20010)));
-    
-    % If control computer says to end session, save the onlineMat for today
-    if strcmp(ctrlMsg, 'sessionEnd')
-        if saveOnlineMatOrNot
-            onlineMatFileName= sprintf('%s%sonlineDat.mat', datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
-            fullFileName = onlineMatFileName;
-            save(fullFileName, 'onlineBCIMatStruct')
-        end
-    end
-    
     if length(tstpTrlStart)>1
         disp('missed a trial')
         tstpTrlStart = tstpTrlStart(end);
@@ -98,6 +91,9 @@ while true
         disp('trial start')
         timePtBoundStarted = tmstpPrlEvt(tstpTrlStart);
         boundStarted = true;
+         % Initialize arrays that we'll  track during trials
+        currTrialSpikesArray = [];
+        currTrialReturnVals = [];
     end
     
     if(~isempty(tstpCustomBciCode))
@@ -105,14 +101,10 @@ while true
         timePtCustomBciCode = tmstpPrlEvt(tstpCustomBciCode);
         % Only pick up custom indices After the bound has started
         indicesForCustomCodesSentAfterBound = timePtCustomBciCode>timePtBoundStarted;
-        % Address indexing errors that may happen between prlEvents and
-        % tmstpPrlEvt
-        if length(tstpCustomBciCode) <= length(indicesForCustomCodesSentAfterBound)
-            tstpCustomBciCodeAfterBoundStart = tstpCustomBciCode(end); % Just take the last one
-        else
-            tstpCustomBciCodeAfterBoundStart = tstpCustomBciCode(indicesForCustomCodesSentAfterBound);
+        tstpCustomBciCodeAfterBoundStart = tstpCustomBciCode(indicesForCustomCodesSentAfterBound);
+        if ~isempty(customBciCode)
+            customBciCodeAfterTrlStart = customBciCode(tstpCustomBciCodeAfterBoundStart)-20000;
         end
-        customBciCodeAfterTrlStart = customBciCode(tstpCustomBciCodeAfterBoundStart)-20000;
     end
     
     if length(tstpTrlEnd)>1
@@ -127,6 +119,13 @@ while true
     if timePtBoundEnded > timePtBoundStarted
         if boundStarted
             disp('trial end')
+            % Append to online BCI struct array the current trial's
+            % information
+            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals);
+            % Save copy of online mat at end of every trial
+            if saveOnlineMatOrNot
+                save(fullFileName, 'onlineBCIMatStruct', '-v6');
+            end
             % Increment trial counter at end
             trialIdx = trialIdx + 1; 
         end
@@ -175,7 +174,7 @@ while true
                 binSpikeCountNextOverall = zeros(length(goodChannelNums), 1);
                 bciStart = true;
                 bciJustStarted = true; % important for grabbing any early spikes
-                % Initialize arrays that we'll  track during bci trial
+                % Initialize arrays that we'll  track during BCI trials
                 currTrialSpikesArray = zeros(length(goodChannelNums), 0);
                 currTrialReturnVals = zeros(length(currReturn), 0);
             end
@@ -223,7 +222,7 @@ while true
                 % bin, we confirm that we've completed the current bin and
                 % can send off info
                 if any(allTmstps>(timePtBinStart+samplesPerBin))
-                    if ~any(allTmstps<currTrialSpikesArray=(timePtBinStart+samplesPerBin))
+                    if ~any(allTmstps<=(timePtBinStart+samplesPerBin))
                         fprintf('max (samples, time) past bin #%d end: (%d, %0.2f ms)\n', binNum, max(allTmstps-(timePtBinStart+samplesPerBin)), max(allTmstps-(timePtBinStart+samplesPerBin))/samplesPerSecond*msPerS);
                     end
                     
@@ -281,18 +280,11 @@ while true
             % after a full bin happened
             if timePtBciEnd > timePtBciStarted
                 if bciStart
-                    % DEBUGGING
-%                     binCntNasTrial = [binCntNasTrial binSpkCntTrial];
-%                     allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
-                    % END DEBUGGING
                     fprintf('bci end in trial after %d bins\n', binNum)
                     binNum = -1;
                 end
                 bciStart = false;
                 currReturn = expParams.initReturn';
-                % Append to online BCI struct array the current trial's
-                % information
-                onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals);
                 clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
             end
         end
@@ -305,7 +297,4 @@ while true
         end
     end
 end
-
-% DEBUGGING
-% save('/home/smithlab/tempChecker.mat', 'binCntNasTrial', 'allTmstmpAll');
-% END DEBUGGING
+end
