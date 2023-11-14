@@ -14,7 +14,8 @@ estFAParams = modelParams.estFAParams;
 d = estFAParams.d; % mean spike count vector during calibration trials (useful for z-scoring too)
 currRewardAxisParams = modelParams.rewardAxisParams; % key should be reward idx and value should be struct containing SD and means
 
-requestedStateChangeBySD = expParams.targChangeByStd;
+smallStateChangeBySD = expParams.smallTargChangeByStd;
+largeStateChangeBySD = expParams.largeTargChangeByStd;
 
 % Zscoring parameters
 zScoreSpikesMat = modelParams.zScoreSpikesMat;
@@ -43,10 +44,10 @@ currRewardAxisProjs = currRewardAxisParams.projVec'*newFaProjs; % scalar project
 % Determine the requested state and the appropriate initial seed value
 % If small, get it to go below the mean
 if currTrialRewardState == 1
-    currRequestedRewardState = currRewardStats.mean - currRewardStats.sd*requestedStateChangeBySD;
+    currRequestedRewardState = currRewardStats.mean - currRewardStats.sd*smallStateChangeBySD;
 else
     % If large, get it to go above the mean
-    currRequestedRewardState =  currRewardStats.mean + requestedStateChangeBySD*currRewardStats.sd;
+    currRequestedRewardState =  currRewardStats.mean + largeStateChangeBySD*currRewardStats.sd;
 end
 % Set the currTargRange to be 1 times the absolute value of the requested
 % state. Have initial state start from opposite end for given distribution
