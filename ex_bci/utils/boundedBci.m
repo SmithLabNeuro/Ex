@@ -20,7 +20,7 @@ digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 % or not.
 saveOnlineMatOrNot = expParams.saveOnlineMatFile;
 taskName = expParams.exFileName;
-onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {});
+onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {});
 trialIdx = 0;
 onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
 fullFileName = fullfile('bciOnlineMats', onlineMatFileName);
@@ -94,6 +94,8 @@ while true
          % Initialize arrays that we'll  track during trials
         currTrialSpikesArray = [];
         currTrialReturnVals = [];
+        % Initialize trial type to be 0
+        currTrialTypeIdx = 0;
     end
     
     if(~isempty(tstpCustomBciCode))
@@ -102,8 +104,15 @@ while true
         % Only pick up custom indices After the bound has started
         indicesForCustomCodesSentAfterBound = timePtCustomBciCode>timePtBoundStarted;
         tstpCustomBciCodeAfterBoundStart = tstpCustomBciCode(indicesForCustomCodesSentAfterBound);
-        if ~isempty(customBciCode)
-            customBciCodeAfterTrlStart = customBciCode(tstpCustomBciCodeAfterBoundStart)-20000;
+        if ~isempty(tstpCustomBciCodeAfterBoundStart)
+            % Set it to the first index if multiple codes sent for some
+            % reason
+            customBCICodeIdx = tstpCustomBciCodeAfterBoundStart(1);
+            % Make sure that customBCICodeIdx doesn't contain
+            % indices outside of customBCICode
+            if ~isempty(customBciCode) && (length(customBciCode) >= customBCICodeIdx)
+                customBciCodeAfterTrlStart = customBciCode(customBCICodeIdx)-20000;
+            end
         end
     end
     
@@ -121,7 +130,7 @@ while true
             disp('trial end')
             % Append to online BCI struct array the current trial's
             % information
-            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals);
+            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx);
             % Save copy of online mat at end of every trial
             if saveOnlineMatOrNot
                 save(fullFileName, 'onlineBCIMatStruct', '-v6');
@@ -177,6 +186,8 @@ while true
                 % Initialize arrays that we'll  track during BCI trials
                 currTrialSpikesArray = zeros(length(goodChannelNums), 0);
                 currTrialReturnVals = zeros(length(currReturn), 0);
+                % Trial Type set to zero if not initialized
+                currTrialTypeIdx = 0;
             end
             if ~isempty(tstpBciEnd)
                 timePtBciEnd = tmstpPrlEvt(tstpBciEnd);
@@ -253,7 +264,7 @@ while true
                     % Keep track of current spike counts and currReturn
                     currTrialSpikesArray(:, end+1) = meanSpikeCount;
                     currTrialReturnVals(:,end+1) = currReturn;
-                    
+                    currTrialTypeIdx = customBciCodeAfterTrlStart;
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
                     if size(uint8Msg, 1) ~= 1
