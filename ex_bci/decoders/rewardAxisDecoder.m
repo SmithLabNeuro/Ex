@@ -4,9 +4,9 @@ function newReturn = rewardAxisDecoder(meanSpikeCount, currReturn, modelParams, 
 % modelParams - info saved by calibration function
 % expParams - from bci_rewardAxisDecoder.xml
 
-persistent currSmoothedOneDimAxisProjs
+persistent currSmoothedOneDimAxisProjs 
 
-currRewardIdx = currReturn(3); % should be a reward state (ie, 1 or 3)
+currTrialRewardState = currReturn(3); % should be a reward state (ie, 1 or 3)
 
 % Grab decoder parameters 
 orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
@@ -14,7 +14,8 @@ estFAParams = modelParams.estFAParams;
 d = estFAParams.d; % mean spike count vector during calibration trials (useful for z-scoring too)
 currRewardAxisParams = modelParams.rewardAxisParams; % key should be reward idx and value should be struct containing SD and means
 
-requestedStateChangeBySD = expParams.targChangeByStd;
+smallStateChangeBySD = expParams.smallTargChangeByStd;
+largeStateChangeBySD = expParams.largeTargChangeByStd;
 
 % Zscoring parameters
 zScoreSpikesMat = modelParams.zScoreSpikesMat;
@@ -22,11 +23,10 @@ zScoreSpikesMuTerm = modelParams.zScoreSpikesMuTerm;
 
 % Exponential Smoothing parameters
 alpha = expParams.alpha;
-currRewardStructIdx = currRewardIdx;
+currRewardStructIdx = currTrialRewardState;
 % set it to the right index if reward idx is 3
 
-if currRewardIdx == 3
-%     currRewardIdx
+if currTrialRewardState == 3
     currRewardStructIdx = 2;
 end
 % meanSDStruct is a 1 x 2 struct array
@@ -43,11 +43,11 @@ currRewardAxisProjs = currRewardAxisParams.projVec'*newFaProjs; % scalar project
 
 % Determine the requested state and the appropriate initial seed value
 % If small, get it to go below the mean
-if currRewardIdx == 1
-    currRequestedRewardState = currRewardStats.mean - currRewardStats.sd*requestedStateChangeBySD;
+if currTrialRewardState == 1
+    currRequestedRewardState = currRewardStats.mean - currRewardStats.sd*smallStateChangeBySD;
 else
     % If large, get it to go above the mean
-    currRequestedRewardState =  currRewardStats.mean + requestedStateChangeBySD*currRewardStats.sd;
+    currRequestedRewardState =  currRewardStats.mean + largeStateChangeBySD*currRewardStats.sd;
 end
 % Set the currTargRange to be 1 times the absolute value of the requested
 % state. Have initial state start from opposite end for given distribution
@@ -63,7 +63,7 @@ end
 currSmoothedOneDimAxisProjs = (1-alpha)*currSmoothedOneDimAxisProjs + alpha*currRewardAxisProjs;
 
 % Determine the displacement of the current smoothed state from the requested state
-if currRewardIdx == 1
+if currTrialRewardState == 1
     newDispToRequestedState = currSmoothedOneDimAxisProjs - currRequestedRewardState;
 else
     newDispToRequestedState =  currRequestedRewardState - currSmoothedOneDimAxisProjs;
@@ -77,5 +77,8 @@ end
 if oneDimAxisRatio < 0
     oneDimAxisRatio = 0;
 end
-newReturn = [newDispToRequestedState; oneDimAxisRatio; currRewardIdx];
+newReturn = [newDispToRequestedState; oneDimAxisRatio];
+% newReturn'
+% currTrialRewardState
+
 

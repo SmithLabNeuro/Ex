@@ -72,7 +72,7 @@ params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds
 
 %% BCI params
 params.neuralRecordingSamplingFrequencyHz = 30000; % Ripple records at 30kHz
-params.nasNetFolderDataComputer = 'C:\Users\rigmdata\Documents\spikesort\nasnet\networks';
+params.nasNetFolderDataComputer = 'C:\Users\rigmdata\spikesort\nasnet\networks';
 params.bciDecoderBasePathDataComputer = 'X:\';
 params.nasNetFolderBciComputer = '/home/smithlab/spikesort/nasnet/networks';
 params.bciDecoderBasePathBciComputer = '/home/smithlab/bciParameters';
@@ -114,6 +114,7 @@ codes = struct();
 
 % trial boundaries
 codes.START_TRIAL = 1;
+codes.BCI_END = 249; % Use to indicate that this is end the BCI component of a trial. Useful when trial contains bci component and non-bci task (ie, reaching).
 codes.BACKGROUND_PROCESS_TRIAL = 250; % use to indicate this is a 'special' trial whose timing/results should not be analyzed--i.e. training a BCI decoder
 codes.SHOWEX_TIMINGERROR = 251;
 codes.BCI_ABORT = 252;  % use to indicate that BCI computer is not working
