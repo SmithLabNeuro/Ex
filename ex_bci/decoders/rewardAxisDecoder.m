@@ -32,6 +32,7 @@ if shamTrial
     % set return values to be the current bin of shamReturnVals
     newDispToRequestedState = shamReturnVals(1,shamReturnIdx);
     oneDimAxisRatio = shamReturnVals(2,shamReturnIdx);
+    shamReturnIdx = shamReturnIdx + 1;
 else
     % Grab decoder parameters 
     orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
