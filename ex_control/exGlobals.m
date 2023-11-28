@@ -72,7 +72,7 @@ params.outBufferSize = floor(params.sampleFreq * 10); % 10 seconds
 
 %% BCI params
 params.neuralRecordingSamplingFrequencyHz = 30000; % Ripple records at 30kHz
-params.nasNetFolderDataComputer = 'C:\Users\rigmdata\spikesort\nasnet\networks';
+params.nasNetFolderDataComputer = 'C:\Users\rigmdata\Documents\spikesort\nasnet\networks';
 params.bciDecoderBasePathDataComputer = 'X:\';
 params.nasNetFolderBciComputer = '/home/smithlab/spikesort/nasnet/networks';
 params.bciDecoderBasePathBciComputer = '/home/smithlab/bciParameters';
