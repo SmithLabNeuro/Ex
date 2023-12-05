@@ -4,35 +4,42 @@ function newReturn = rewardAxisDecoder(meanSpikeCount, currReturn, modelParams, 
 % modelParams - info saved by calibration function
 % expParams - from bci_rewardAxisDecoder.xml
 
-persistent currSmoothedOneDimAxisProjs shamReturnIdx
+persistent currSmoothedOneDimAxisProjs shamReturnBinIdx shamTrialReturnIdx
 
 currTrialRewardState = currReturn(3); % should be a reward state (ie, 1 or 3)
 currRewardStructIdx = currTrialRewardState;
-% set it to the right index if reward idx is 3
+% set it to the right index if reward idx is 3; code below doesn't matter
+% for sham trials
 if currTrialRewardState == 3
     currRewardStructIdx = 2;
 end
 
-shamTrial = false; % change when we know how to indicate sham trial from control computer
-if shamTrial
-    if isempty(shamReturnIdx)
-        shamReturnIdx = 1;
-    end
+% Currently set trialTypeIdx greater than or equal to 4 to be sham trial
+if currTrialRewardState >= 4
     % do sham
-    if currTrialRewardState == 1
+    if (currTrialRewardState - 3) == 1
         % select small
-        shams = modelParams.shamSmallTrialReturnVals;
+        potentialShamReturnVals = modelParams.shamSmallTrialReturnVals;
     else
         % select large
-        shams = modelParams.shamLargeTrialReturnVals;
+        potentialShamReturnVals = modelParams.shamLargeTrialReturnVals;
+    end
+    % Set the Bin index that you will select along with the sham trial you
+    % are showing
+    if isempty(shamReturnBinIdx)
+        shamTrialReturnIdx = randi(length(potentialShamReturnVals));
+        shamReturnBinIdx = 1;
     end
     % select random idx
-    shamIdx = randi(length(shams));
-    shamReturnVals = shams{shamIdx};
+    shamReturnVals = potentialShamReturnVals{shamTrialReturnIdx};
     % set return values to be the current bin of shamReturnVals
-    newDispToRequestedState = shamReturnVals(1,shamReturnIdx);
-    oneDimAxisRatio = shamReturnVals(2,shamReturnIdx);
-    shamReturnIdx = shamReturnIdx + 1;
+    newDispToRequestedState = shamReturnVals(1,shamReturnBinIdx);
+    oneDimAxisRatio = shamReturnVals(2,shamReturnBinIdx);
+    % Make sure that the indexed bin does not exceed the length of the
+    % returnVals
+    if shamReturnBinIdx <= (size(shamReturnVals,2) - 1)
+        shamReturnBinIdx = shamReturnBinIdx + 1;
+    end
 else
     % Grab decoder parameters 
     orthBeta = modelParams.orthBeta; % Will be projection matrix to project values into FA space, 10 x neurons
@@ -101,7 +108,6 @@ else
 end
 
 newReturn = [newDispToRequestedState; oneDimAxisRatio];
-% newReturn'
-% currTrialRewardState
+[newReturn; currTrialRewardState]'
 
 
