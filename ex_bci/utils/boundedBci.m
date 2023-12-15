@@ -16,23 +16,37 @@ digitalCodeBciStart = codes.(digitalCodeNameBciStart);
 digitalCodeNameBciEnd = expParams.bciEndCode;
 digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 
+% Keep track of BCI_Correct and BCI_Missed trials; needed for offline analysis 
+digitalCodeNameBciCorrect = expParams.bciCorrectCode;
+digitalCodeNameBciMissed = expParams.bciMissedCode;
+
+digitalCodeNameBciAbort= expParams.bciAbortCode;
+
+%digitalCodeNameBciIncorrect = expParams.bciIncorrectCode;
+digitalCodeBciCorrect = codes.(digitalCodeNameBciCorrect);
+digitalCodeBciMissed = codes.(digitalCodeNameBciMissed);
+digitalCodeBciAbort = codes.(digitalCodeNameBciAbort);
+
 % Determine whether online mat containing received spikes should be saved
 % or not.
 saveOnlineMatOrNot = expParams.saveOnlineMatFile;
 taskName = expParams.exFileName;
-onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {});
+onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {});
 trialIdx = 0;
 onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
-fullFileName = fullfile('bciOnlineMats', onlineMatFileName);
+fullFileName = fullfile('bciParameters/satchel', onlineMatFileName);
 fprintf('Online File saved at : %s \n', fullFileName)
 
 boundStarted = false;
 customBciCodeAfterTrlStart = [];
+bciTrialResult = [];
 timePtBoundStarted = [];
 timePtBoundEnded = [];
 bciStart = false;
 timePtBciStarted = [];
 timePtBciEnd = [];
+timePtBciResult = [];
+
 samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;%30000;
 binSizeMs = expParams.binSizeMs;%50;
 nasNetwork = expParams.nasNetwork;
@@ -76,6 +90,11 @@ while true
     tstpTrlEnd = find(prlEvents==digitalCodeTrialEnd);
     tstpBciStart = find(prlEvents==digitalCodeBciStart);
     tstpBciEnd = find(prlEvents==digitalCodeBciEnd);
+    % Find indices of prlEvents at which bciCorrect or bciIncorrect code is
+    % sent.
+    tstpBciCorrect = find(prlEvents == digitalCodeBciCorrect);
+    tstpBciMissed = find(prlEvents == digitalCodeBciMissed);
+    tstpBciAbort = find(prlEvents == digitalCodeBciAbort);
     % Find indices at which custom codes were sent
     tstpCustomBciCode = find((prlEvents>20000) & (prlEvents<20010));
     % Only keep custom BCI Codes that occur after current trial's start
@@ -94,15 +113,18 @@ while true
          % Initialize arrays that we'll  track during trials
         currTrialSpikesArray = [];
         currTrialReturnVals = [];
-        % Initialize trial type to be 0
+        % Initialize trial type and result to be 0
         currTrialTypeIdx = 0;
+        currTrialResult = 0;
     end
     
+    % Set the custom BCI Code
     if(~isempty(tstpCustomBciCode))
         % Find actual time points at which customBCICodes were sent
         timePtCustomBciCode = tmstpPrlEvt(tstpCustomBciCode);
         % Only pick up custom indices After the bound has started
         indicesForCustomCodesSentAfterBound = timePtCustomBciCode>timePtBoundStarted;
+        % Find Timestamps of custom bci code that are after bound start
         tstpCustomBciCodeAfterBoundStart = tstpCustomBciCode(indicesForCustomCodesSentAfterBound);
         if ~isempty(tstpCustomBciCodeAfterBoundStart)
             % Set it to the first index if multiple codes sent for some
@@ -113,6 +135,31 @@ while true
             if ~isempty(customBciCode) && (length(customBciCode) >= customBCICodeIdx)
                 customBciCodeAfterTrlStart = customBciCode(customBCICodeIdx)-20000;
             end
+        end
+    end
+    % Added by Chris 11-20-23
+%     % Check if either BCI correct or bci Missed is received
+    if(~isempty(tstpBciCorrect))
+        % Find actual time points at which BCI result was sent
+        timePtBciResult = tmstpPrlEvt(tstpBciCorrect);
+        % Only pick up result indices After the bound has started
+        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+        if(sum(indicesForResultsSentAfterBound)>0)
+            currTrialResult=digitalCodeBciCorrect;
+        end
+    elseif(~isempty(tstpBciMissed))
+        timePtBciResult = tmstpPrlEvt(tstpBciMissed);
+        % Only pick up custom indices After the bound has started
+        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+        if(sum(indicesForResultsSentAfterBound)>0)
+            currTrialResult=digitalCodeBciMissed;
+        end
+    elseif(~isempty(tstpBciAbort))
+        timePtBciResult = tmstpPrlEvt(tstpBciAbort);
+        % Only pick up custom indices After the bound has started
+        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+        if(sum(indicesForResultsSentAfterBound)>0)
+            currTrialResult=digitalCodeBciAbort;
         end
     end
     
@@ -130,7 +177,7 @@ while true
             disp('trial end')
             % Append to online BCI struct array the current trial's
             % information
-            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx);
+            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult);
             % Save copy of online mat at end of every trial
             if saveOnlineMatOrNot
                 save(fullFileName, 'onlineBCIMatStruct', '-v6');
@@ -186,6 +233,7 @@ while true
                 % Initialize arrays that we'll  track during BCI trials
                 currTrialSpikesArray = zeros(length(goodChannelNums), 0);
                 currTrialReturnVals = zeros(length(currReturn), 0);
+                currTrialResult = 0;
                 % Trial Type set to zero if not initialized
                 currTrialTypeIdx = 0;
             end
