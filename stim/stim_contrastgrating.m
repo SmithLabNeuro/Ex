@@ -24,13 +24,9 @@ if strcmp(optstr,'setup')
     %            (8) frames per contrast cycle
     %            (9) amplitdue of sine contrast
     %            (10) bool, use phase swap?
-    %            (11) base hue R
-    %            (12) base hue G
-    %            (13) base hue B
-    %            (14) new hue R
-    %            (15) new hue G
-    %            (16) new hue B
-    %            (17) hue alpha
+    %            (11) base hue H
+    %            (12) new hue H
+    %            (13) hues alpha
     
     angle = mod(180-a(2),360);
     f = a(3);
@@ -67,8 +63,14 @@ if strcmp(optstr,'setup')
     numFlashes = a(7);
     
     % color mask parameters
-    initialCol = [a(11:13),a(17)];
-    changedCol = a(14:17);
+    saturation = 1;
+    value = 0.67;
+    initialHsv = [a(11), saturation, value];
+    changedHsv = [a(12), saturation, value];
+    initialRgb = round(hsv2rgb(initialHsv)*255);
+    changedRgb = round(hsv2rgb(changedHsv)*255);
+    initialCol = [initialRgb, a(13)]; % RGBA
+    changedCol = [changedRgb, a(13)];
 
     dstRect=[0 0 visibleSize visibleSize];
     dstRect=CenterRect(dstRect, sv.screenRect) + [xCenter yCenter xCenter yCenter];
