@@ -100,13 +100,15 @@ udps = dsp.UDPSender('RemoteIPAddress', controlIPAddress, 'RemoteIPPort', udpPor
 socketsControlComm.receiver = udpr;
 socketsControlComm.sender = udps;
 
-pauseTime = 0.1;
+defaultPauseTime = .1;
+longPauseTime = 1;
+pauseTime = defaultPauseTime;
 dataPath = 'E:\';
 bciDecodersBasePath = params.bciDecoderBasePathDataComputer;
 bciDecodersParameterPath = fullfile(bciDecodersBasePath, params.bciDecoderXmlParamFolder);
 while true
     
-    msg = receiveMessageSendAck(socketsControlComm)
+    msg = receiveMessageSendAck(socketsControlComm);
 %     if isempty(msg)
 %         continue
     if strcmp(msg, 'record')
@@ -147,7 +149,7 @@ while true
         else
             sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
-        pauseTime = 1;
+        pauseTime = longPauseTime;
     elseif strcmp(msg, 'stopRecording')
         fileSavedInfo = xippmex('trial','stopped');
         relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', fileSavedInfo.incr_num)];
@@ -155,7 +157,7 @@ while true
 %         copyToRaptorRigM;
 %         copyToRaptor;
 %         disp('Copying done')
-        pauseTime = 0.1;
+        pauseTime = defaultPauseTime;
     elseif strcmp(msg, 'pauseRecording')
         fileSavedInfo = xippmex('trial','paused')
         relFlPath = [fileSavedInfo.filebase(length(dataPath)+1:end) sprintf('%04d', fileSavedInfo.incr_num-1)];
@@ -163,7 +165,7 @@ while true
 %         copyToRaptorRigM;
 %         copyToRaptor;
 %         disp('Copying done')
-        pauseTime = 0.1;
+        pauseTime = defaultPauseTime;
     elseif strcmp(msg, 'trainDecoder') || strcmp(msg, 'trainDecoderPause')
         % the code below is for training a BCI decoder when requested by
         % the control computer.
@@ -241,7 +243,7 @@ while true
             end
         end
         
-        pauseTime = 1;
+        pauseTime = longPauseTime;
     elseif strcmp(msg, 'sendDecoderParameters')
         filePausedInfo = xippmex('trial','paused')
         
@@ -288,7 +290,12 @@ while true
             sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
     elseif strcmp(msg, 'sessionEnd')
-        copyToRaptor;
+        addpath 'C:\Users\rigmdata\labcode\rigutils'
+        try
+            copyToRaptorRigM;
+        catch
+            copyToRaptor;
+        end
         close all;
 %         break;
     end
