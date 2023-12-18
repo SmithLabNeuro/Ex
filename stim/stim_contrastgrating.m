@@ -12,7 +12,7 @@ global objects;
 global sv;
 
 if strcmp(optstr,'setup')
-    a = sscanf(arg,'%i %f %f %i %i %i %i %i %f %i %i %i %i %i %i %i %i');
+    a = sscanf(arg,'%i %f %f %i %i %i %i %i %f %i %f %f %i');
     
     % arguments: (1) frameCount
     %            (2) angle
@@ -27,7 +27,7 @@ if strcmp(optstr,'setup')
     %            (11) base hue H
     %            (12) new hue H
     %            (13) hues alpha
-    
+    a
     angle = mod(180-a(2),360);
     f = a(3);
     xCenter = a(4);
@@ -102,8 +102,8 @@ elseif strcmp(optstr,'display')
     srcRect = [xOffset 0 xOffset + objects{objID}.size objects{objID}.size];
     targetPos = [sv.midScreen + [objects{objID}.x objects{objID}.y] - objects{objID}.rad,sv.midScreen + [objects{objID}.x objects{objID}.y] + objects{objID}.rad];
 
-    Screen('DrawTexture',w,objects{objID}.grating,srcRect,objects{objID}.dstRect,currAngle, [], currContrast);
-    Screen('DrawTexture',w,objects{objID}.mask,[0 0 objects{objID}.size objects{objID}.size],objects{objID}.dstRect,currAngle);
+    Screen('DrawTexture',w,objects{objID}.grating,srcRect,objects{objID}.dstRect,objects{objID}.angle, [], currContrast);
+    Screen('DrawTexture',w,objects{objID}.mask,[0 0 objects{objID}.size objects{objID}.size],objects{objID}.dstRect,objects{objID}.angle);
     Screen(w,'FillOval',currCol,targetPos);
 elseif strcmp(optstr,'cleanup')
     Screen('Close',objects{objID}.grating);
