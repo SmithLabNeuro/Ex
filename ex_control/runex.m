@@ -164,7 +164,8 @@ thisFile = mfilename('fullpath');
 [runexDirectory,~,~] = fileparts(thisFile); clear thisFile;
 % everything up to and including the last file separator:
 runexDirectory = regexp(runexDirectory,sprintf('.*(?!\\%c).*\\%c',filesep,filesep),'match'); 
-requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
+requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database','ex_control/communications'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
+%requiredDirectories = {'ex','ex_control','xml','xippmex','ex_control/database','ex_control/communications','ex_control/utils'}; % MATT 01.06.23 - added database because it was needed - how did this work before?
 for dx = 1:numel(requiredDirectories)
     addpath([runexDirectory{:},requiredDirectories{dx}]);
 end
@@ -317,7 +318,8 @@ end
     
 %% prompt for session number
 if useDatabase
-    disp(['Current session number = ',params.sessionNumber]);
+    %disp(['Current session number = ',params.sessionNumber]); % can't do this as it's not known from database yet
+    disp('Current session number will be found in the database');
 else
     if isfield(params,'sessionNumber')
         disp(['Current session number = ',num2str(params.sessionNumber)]);
@@ -486,6 +488,7 @@ retry = struct('CORRECT',       0,...
     'BROKE_FIX',     1,...
     'WRONG_TARG',    1,...
     'BROKE_TARG',    1,...
+    'BROKE_TASK',    0,...
     'MISSED',        1,...
     'FALSEALARM',    1,...
     'NO_CHOICE',     1,...
@@ -638,7 +641,7 @@ if fullScreen
     wins.textSize = 14;
     wins.lineSpacing = 1.6;
 else
-    wins.textSize = 11;
+    wins.textSize = 12;
     wins.lineSpacing = 1.2;
 end
 wins.trialData.lines = 21; % max number of lines to show
@@ -648,11 +651,12 @@ wins.trialData.displayLine = 2;
 wins.trialData.juiceLine = 3;
 wins.trialData.trialLine = 4;
 wins.trialData.promptLine = 5;
-wins.trialData.errorLine = 6;
+wins.trialData.statusLine = 6;
 wins.trialData.outcomesLine = 7;
 wins.trialData.userLine = 12;
+wins.trialData.exPrintLines=wins.trialData.lines-wins.trialData.userLine+1;
 wins.trialData.lineColor(wins.trialData.promptLine,:)=[102, 51, 153];
-wins.trialData.lineColor(wins.trialData.errorLine,:)=[170, 51, 106];
+wins.trialData.lineColor(wins.trialData.statusLine,:)=[170, 51, 106];
 wins.trialData.lineColor(wins.trialData.outcomesLine:wins.trialData.userLine-1,:)=repmat([50,50,50],wins.trialData.userLine - wins.trialData.outcomesLine,1);
 wins.controlResolution = wins.controlResolution(3:4);
 wins.displayResolution = [ts{1} ts{2}]; % from showex computer
@@ -709,7 +713,7 @@ Screen('CopyWindow',wins.eyeBG,wins.eye,wins.eyeDim,wins.eyeDim);
 
 %% initialize trialData and load appropriate default calibration:
 trialData = cell(wins.trialData.lines,1);
-exPrint = cell(wins.trialData.lines-wins.trialData.userLine+1,1);
+exPrint = cell(wins.trialData.exPrintLines,1);
 localCalibrationFilename = sprintf('%s_calibration.mat',params.machine);
 localCalibrationFilename = fullfile(params.localExDir,'control',localCalibrationFilename);
 if params.getEyes
@@ -782,6 +786,7 @@ KbQueueStart;
 % screen if there's a session number ambiguity
 if useDatabase
     [params.sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params);
+    disp(['Found session number ',num2str(params.sessionNumber),' in database']);
     notes = sessionNotes;
     if params.writeFile
         writeExperimentInfoToDatabase(params.sessionNumber, xmlParams, outfilename)
@@ -837,7 +842,7 @@ while true
                         [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                            trialData{wins.trialData.errorLine} = err.message;
+                            trialData{wins.trialData.statusLine} = err.message;
                             trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                             drawTrialData();
                         else
@@ -846,11 +851,11 @@ while true
                     end
                 end
             case 'x'
-                disp('hi');
                 if params.writeFile
                     trialDataWriteOut = cellfun(@(x) char(x), trialData, 'uni', 0);
                     if ~isempty(sqlDb)
-                        writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
+                        writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([1:wins.trialData.userLine-1]), '\n'));
+                        %writeExperimentInfoToDatabase([], xmlParams, outfilename, 'experiment_results', strjoin(trialDataWriteOut([2:3, 5:end]), '\n'));
                     end
                     % shut off recording
                     if recordingTrueFalse
@@ -858,7 +863,7 @@ while true
                             [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                         catch err
                             if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                                trialData{wins.trialData.errorLine} = err.message;
+                                trialData{wins.trialData.statusLine} = err.message;
                                 trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                                 drawTrialData();
                             else
@@ -882,6 +887,9 @@ while true
 end
 
 %% Clean up on exit:
+
+% clear persistent variables
+clear( xmlParams.exFileName )
 
 % Reset Priority and Verbosity, close sound
 cleanUp();
@@ -1060,16 +1068,22 @@ fclose all;
                     trialResult(trialResult==2) = codes.BROKE_FIX; %for backwards compatibility
                     trialResult(trialResult==3) = codes.IGNORED; %for backwards compatibility
                     trialResultStrings = exDecode(trialResult(:));
-
-%                     exPrint{1}='hi1';
-%                     exPrint{10}='hi2';
                     
                     % Copy the exPrint data (meant to be written from
                     % within an ex function) into trialData so it's printed
-                    if size(exPrint,1)~=(wins.trialData.lines-wins.trialData.userLine+1)
-                        warning('The size of the exPrint cell array was modified - this is not recommended');
+                    % first some argument checking
+                    % should we also make sure there are no numeric values?
+                    if size(exPrint,2)~=1
+                        warning('exPrint must be Nx1 - runex is overwriting it to avoid an error');
+                        exPrint = cell(wins.trialData.exPrintLines,1);
+                    elseif size(exPrint,1)>wins.trialData.exPrintLines
+                        warning('The size of the exPrint cell array was increased - runex is trimming it to avoid an error');
+                        exPrint = exPrint(1:wins.trialData.exPrintLines,1);
+                    elseif size(exPrint,1)<wins.trialData.exPrintLines
+                        warning('The size of the exPrint cell array was reduced - runex is overwriting it to avoid an error');
+                        exPrint = cell(wins.trialData.exPrintLines,1);
                     end
-                    % trialData user lines should get exPrint copied in
+                    % trialData user lines get exPrint copied in so it will print
                     trialData(wins.trialData.userLine:wins.trialData.lines) = exPrint;
                     
                     for ox = 1:numel(availableOutcomes) %new scoring -ACS 23Oct2012
@@ -1157,7 +1171,7 @@ fclose all;
             drawTrialData();
         catch err %Graceful error handling within runex
             trialData{wins.trialData.promptLine} = defaultRunexPrompt;
-            trialData{wins.trialData.errorLine} = sprintf('Error: %s. Quit to diagnose.', err.message);
+            trialData{wins.trialData.statusLine} = sprintf('Error: %s. Quit to diagnose.', err.message);
             trialMessage = -1;
             msg('all_off');
             drawTrialData();
@@ -1177,7 +1191,7 @@ fclose all;
                         [recordingTrueFalse, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, recordingTrueFalse, xmlParams, outfilename, defaultRunexPrompt); % see recording subfunction that communicates with data computer
                     catch err
                         if strcmp(err.identifier, 'communication:waitForData:communicationFailWithDataComputer')
-                            trialData{wins.trialData.errorLine} = err.message;
+                            trialData{wins.trialData.statusLine} = err.message;
                             trialData{wins.trialData.promptLine} = defaultRunexPrompt;
                             drawTrialData();
                         else

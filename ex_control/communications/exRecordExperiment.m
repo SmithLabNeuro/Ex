@@ -1,10 +1,10 @@
 %% function to initialize recording on the data computer using appropriate parameters
     function [isRecording, defaultRunexPrompt] = exRecordExperiment(socketsDatComp, isRecording, xmlParams, outfilename, defaultRunexPrompt)
-    global trialData
+    global trialData wins
         timeout = 10;
         
         promptSt = 'Communicating with data computer to start recording...';
-        trialData{4} = promptSt;
+        trialData{wins.trialData.promptLine} = promptSt;
         drawTrialData();
         
         if ~isRecording
@@ -27,7 +27,7 @@
         defaultRunexPrompt(promptSt:promptSt+length(currPrompt)-1) = [];
         defaultRunexPrompt = [defaultRunexPrompt(1:promptSt-1), nextPrompt, defaultRunexPrompt(promptSt:end)];
         isRecording = ~isRecording;
-        trialData{4} = defaultRunexPrompt;
+        trialData{wins.trialData.promptLine} = defaultRunexPrompt;
         drawTrialData();
 
     end

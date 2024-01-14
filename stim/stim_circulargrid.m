@@ -1,7 +1,7 @@
-function stim_squaregrid(optstr,w,objID,arg)
-%function stim_radialcheck(optstr,w,objID,arg)
+function stim_circulargrid(optstr,w,objID,arg)
+%function stim_circulargrid(optstr,w,objID,arg)
 %
-% showex helper function for 'radialcheck' stim class
+% showex helper function for 'circulargrid' stim class
 %
 % Each helper function has to have the ability to do 3 things:
 % (1) parse the input arguments from the 'set' command and precompute
@@ -12,16 +12,17 @@ function stim_squaregrid(optstr,w,objID,arg)
 global objects sv;
 
 if strcmp(optstr,'setup')
-    a = sscanf(arg,'%i %i %i %i %f %i %i %i');
+    a = sscanf(arg,'%i %i %i %i %f %i %i %i %i');
     % arguments: (1) FrameCount
     %            (2) screenYpix
-    %            (3) width (rcircles)
+    %            (3) rcircles
     %            (4) tcircles
     %            (5) alpha (0-255)
     %            (6) stimX
     %            (7) stimY
     %            (8) color option: 0 for black and white only; 1 for random
     %            color
+    %            (9) cue type (1,2,3 => S, M, L)
     [xCenter, yCenter] = RectCenter(sv.screenRect);
     screenNumber = max(Screen('Screens'));
     white = WhiteIndex(screenNumber);
@@ -32,16 +33,37 @@ if strcmp(optstr,'setup')
     rcycles = a(3);
     tcycles = a(4);
     stimX = a(6);
-    stimY = a(7);
-    xylim = 2 * pi * rcycles;
-    [x, y] = meshgrid(-xylim: 2 * xylim / (screenYpix - 1): xylim,...
-        -xylim: 2 * xylim / (screenYpix - 1): xylim);
-    at = atan2(y, x);
-    checks = ((1 + sign(sin(at * tcycles) + eps)...
-        .* sign(sin(sqrt(x.^2 + y.^2)))) / 2) * (white - black) + black;
-  circle = x.^2 + y.^2 >= xylim^2;
-    %circle = abs(x) <=xylim & abs(y)<=xylim;
-    checks = circle .* checks + grey * ~circle;
+    stimY = -a(7);
+    xylim = 5;
+  
+    cuetype = a(9);
+    if(cuetype == 1)
+        checks = [0,1,1,1,1;...
+                  0,1,0,0,0;...
+                  0,1,1,1,0;...
+                  0,0,0,1,0;...
+                  1,1,1,1,0];
+    elseif(cuetype == 2)
+        checks = [1,0,0,0,1;...
+                  1,1,0,1,1;...
+                  1,0,1,0,1;...
+                  1,0,0,0,1;...
+                  1,0,0,0,1];
+    elseif(cuetype == 3)
+        checks = [1,0,0,0,0;...
+                  1,0,0,0,0;...
+                  1,0,0,0,0;...
+                  1,1,1,1,1;...
+                  1,1,1,1,1];
+    elseif(cuetype == 4)
+        checks = [1,1,1,1,1;...
+                  0,0,1,0,0;...
+                  0,0,1,0,0;...
+                  1,1,1,0,0;...
+                  1,1,1,0,0];
+    end
+    checks = 1-checks;
+    checks = checks.*255;
     
     not_checks=255-checks;
     cblank=zeros(size(checks));
@@ -85,17 +107,20 @@ if strcmp(optstr,'setup')
     end
     baseRect = [0 0 screenYpix screenYpix];
     dstRects(:, 1) = CenterRectOnPointd(baseRect, xCenter +stimX,yCenter+stimY);
-    
+    % Create a separate oval rectangle that's larger than the rectangle for
+    % the grid
+    baseOvalRect = [0, 0, screenYpix*sqrt(2), screenYpix*sqrt(2)];
+    ovalRects(:,1) = CenterRectOnPointd(baseOvalRect, xCenter+stimX,yCenter+stimY);
     if numel(a)<8 || a(8) == 0
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1),'checks',color_checks{1},'position',dstRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{1},'position',dstRects, 'ovalPosition', ovalRects);
     else
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1),'checks',color_checks{randi(5)},'position',dstRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{randi(5)},'position',dstRects, 'ovalPosition', ovalRects);
     end
 elseif strcmp(optstr,'display')
     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
     radialCheckerboardTexture  = Screen('MakeTexture', w, objects{objID}.checks);
-     Screen('DrawTexture', w, radialCheckerboardTexture,[],objects{objID}.position);
-    %Screen('Flip', w);
+    Screen('FillOval', w, objects{objID}.col, objects{objID}.ovalPosition);
+    Screen('DrawTexture', w, radialCheckerboardTexture,[],objects{objID}.position);
 elseif strcmp(optstr,'cleanup')
     % nothing necessary for this stim class
 else

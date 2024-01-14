@@ -1,5 +1,5 @@
 function [sessionNumber, sessionNotes] = writeExperimentSessionToDatabase(sqlDb, params)
-global trialData typingNotes
+global trialData wins typingNotes
 if isempty(sqlDb)
     error('No database linked, so nothing written to database.')
 end
@@ -69,9 +69,9 @@ elseif ~isempty(infoPossiblyRelated)
         sessionAllInfo = sqlDb.fetch(sprintf('SELECT session_number, ifnull(notes,"") FROM experiment_session LEFT OUTER JOIN experiment_info ON experiment_info.session = experiment_session.session_number WHERE experiment_info.rowid = %d AND experiment_info.animal=''%s''', infoId, params.SubjectID));
         sessionNumberCheck = sessionAllInfo{1};
         
-        currPrompt = trialData{4};
+        currPrompt = trialData{wins.trialData.statusLine};
         promptSt = sprintf('%s was run (session %d) less than %d hours ago--is this a new session? ''y'' for new session/''n'' if same session.', params.SubjectID, sessionNumberCheck, numHoursUnclearIfNewSession);
-        trialData{4} = promptSt;
+        trialData{wins.trialData.statusLine} = promptSt;
         drawTrialData();
         sessionNumClarified = false;
         while ~sessionNumClarified
@@ -108,7 +108,7 @@ elseif ~isempty(infoPossiblyRelated)
                 end
             end
         end
-        trialData{4} = currPrompt;
+        trialData{wins.trialData.statusLine} = currPrompt;
         drawTrialData;
         
     else
