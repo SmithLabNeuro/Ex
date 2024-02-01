@@ -26,7 +26,6 @@ if strcmp(optstr,'setup')
     [xCenter, yCenter] = RectCenter(sv.screenRect);
     screenNumber = max(Screen('Screens'));
     white = WhiteIndex(screenNumber);
-    black = BlackIndex(screenNumber);
     grey = white / 2;
     stimname = mfilename;
     screenYpix = a(2);
@@ -105,24 +104,30 @@ if strcmp(optstr,'setup')
         end
         color_checks{i} = cat(3,color_checks{i},ctrans);
     end
-    baseRect = [0 0 screenYpix screenYpix];
+    
+    baseRect = [0 0 screenYpix*sqrt(2) screenYpix*sqrt(2)]; % length of the rectangle = sqrt(2)*radius of circle
     dstRects(:, 1) = CenterRectOnPointd(baseRect, xCenter +stimX,yCenter+stimY);
     % Create a separate oval rectangle that's larger than the rectangle for
     % the grid
-    baseOvalRect = [0, 0, screenYpix*sqrt(2), screenYpix*sqrt(2)];
+    baseOvalRect = [0, 0, screenYpix*2, screenYpix*2]; % 2*radius of  circle
     ovalRects(:,1) = CenterRectOnPointd(baseOvalRect, xCenter+stimX,yCenter+stimY);
     if numel(a)<8 || a(8) == 0
         objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{1},'position',dstRects, 'ovalPosition', ovalRects);
+    elseif numel(a)<8 || a(8) == 2
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{2},'position',dstRects, 'ovalPosition', ovalRects);
     else
         objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{randi(5)},'position',dstRects, 'ovalPosition', ovalRects);
     end
-elseif strcmp(optstr,'display')
+    
     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
     radialCheckerboardTexture  = Screen('MakeTexture', w, objects{objID}.checks);
+    objects{objID}.radialCheckerboardTexture = radialCheckerboardTexture;
+    
+elseif strcmp(optstr,'display')
     Screen('FillOval', w, objects{objID}.col, objects{objID}.ovalPosition);
-    Screen('DrawTexture', w, radialCheckerboardTexture,[],objects{objID}.position);
+    Screen('DrawTexture', w, objects{objID}.radialCheckerboardTexture,[],objects{objID}.position);
 elseif strcmp(optstr,'cleanup')
-    % nothing necessary for this stim class
+    Screen('Close',objects{objID}.radialCheckerboardTexture);
 else
     error('Invalid option string passed into stim_*.m function');
 end
