@@ -27,7 +27,6 @@ if strcmp(optstr,'setup')
     %            (11) base hue H
     %            (12) new hue H
     %            (13) hues alpha
-    a
     angle = mod(180-a(2),360);
     f = a(3);
     xCenter = a(4);
