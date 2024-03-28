@@ -1020,6 +1020,12 @@ fclose all;
                         sendStruct(e(I));
                     end
                     
+                    % if desired, send an alignment pulse out the digital
+                    % port here
+                    if params.alignPulseEnabled
+                        unixSendPulse(params.alignPulseChan,params.alignPulseDuration);
+                    end
+                    
                     e = num2cell(e);
                     for I = 1:numel(e)
                         e{I} = exCatstruct(xmlParams,e{I});
