@@ -98,7 +98,7 @@ params.digOut4 = 22; % C6
 %% alignment pulse params
 params.alignPulseEnabled = false; % true to enable, false to disable
 params.alignPulseChan = params.digOut2; % use one of the digOut options
-params.alignPulseDuration = 10; % in ms
+params.alignPulseDuration = 100; % in ms
 
 %% used by plotEyes to smooth eye movements - currently just a mean of last
 % 'n' data points
