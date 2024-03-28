@@ -16,18 +16,23 @@ if decoderTrained
     receivedMsgCasted = typecast(uint8(receivedMsg),'double');
     % targetLatentVal = receivedMsgCasted(1);
 
-    if bciAlgoType==1
-        nextStimParam(1) = receivedMsgCasted(1);
-    elseif bciAlgoType==2
-        nextStimParam(2) = receivedMsgCasted(1);
-    elseif bciAlgoType==3
-        nextStimParam(3) = receivedMsgCasted(1);
-    elseif bciAlgoType==4
-        nextStimParam(4) = receivedMsgCasted(1);
-    end
-    % nextStimParam = receivedMsgCasted(1);
     isGreedy = receivedMsgCasted(2);
     bciTrialCnt = receivedMsgCasted(3);
+    
+    if isGreedy == 2 % trial where some communication error happened. so don't update algo 3 or 4 values
+        nextStimParam(1) = receivedMsgCasted(1);
+    else
+        if bciAlgoType==1
+            nextStimParam(1) = receivedMsgCasted(1);
+        elseif bciAlgoType==2
+            nextStimParam(2) = receivedMsgCasted(1);
+        elseif bciAlgoType==3
+            nextStimParam(3) = receivedMsgCasted(1);
+        elseif bciAlgoType==4
+            nextStimParam(4) = receivedMsgCasted(1);
+        end
+    end
+    % nextStimParam = receivedMsgCasted(1);
     % targetLatentVal = receivedMsgCasted(3);
     % zPostMean = receivedMsgCasted(4);
     % bciTrialCnt = receivedMsgCasted(5);
