@@ -12,7 +12,7 @@ global objects;
 global sv;
 
 if strcmp(optstr,'setup')
-    a = sscanf(arg,'%i %f %f %i %i %i %i %i %f %i');
+    a = sscanf(arg,'%i %f %f %i %i %i %i %i %f %i %f %f %i');
     
     % arguments: (1) frameCount
     %            (2) angle
@@ -24,9 +24,10 @@ if strcmp(optstr,'setup')
     %            (8) frames per contrast cycle
     %            (9) amplitdue of sine contrast
     %            (10) bool, use phase swap?
-    
+    %            (11) base hue H
+    %            (12) new hue H
+    %            (13) hues alpha
     angle = mod(180-a(2),360);
-    mult_angle = [0, angle];
     f = a(3);
     xCenter = a(4);
     yCenter = -a(5); % flip y coordinate so '-' is down
@@ -60,14 +61,24 @@ if strcmp(optstr,'setup')
     startPhase = 0;
     numFlashes = a(7);
     
+    % color mask parameters
+    saturation = 1;
+    value = 0.67;
+    initialHsv = [a(11), saturation, value];
+    changedHsv = [a(12), saturation, value];
+    initialRgb = round(hsv2rgb(initialHsv)*255);
+    changedRgb = round(hsv2rgb(changedHsv)*255);
+    initialCol = [initialRgb, a(13)]; % RGBA
+    changedCol = [changedRgb, a(13)];
+
     dstRect=[0 0 visibleSize visibleSize];
     dstRect=CenterRect(dstRect, sv.screenRect) + [xCenter yCenter xCenter yCenter];
     stimname = mfilename;
     objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), ...
-        'angles',mult_angle,'size',visibleSize,'x',xCenter,'y',yCenter,'phaseOffset',[0, ceil(ppc/2)],'phaseIdx',1,'usePhaseSwap',logical(a(10)),...
+        'angle',angle,'size',visibleSize,'x',xCenter,'y',yCenter,'phaseOffset',[0, ceil(ppc/2)],'phaseIdx',1,'usePhaseSwap',logical(a(10)),...
         'sineAmp',amplitude,'sineStep',contrastStepRad,'sinePhase',startPhase,'numFlashes',numFlashes,'numSteps',a(8),...
         'grating',gratingTex, 'mask',maskTex, ...
-        'ppc',ppc,'dstRect',dstRect);
+        'ppc',ppc,'dstRect',dstRect,'initialCol',initialCol,'changedCol',changedCol,'rad',rad);
 elseif strcmp(optstr,'display')
     % check if contrast is 0 and phase needs to be swapped
     if objects{objID}.usePhaseSwap
@@ -78,19 +89,21 @@ elseif strcmp(optstr,'display')
             end
         end
     end
-    % check if angle needs to be rotated
+    % check if color needs to be changed
     if objects{objID}.frame >= (objects{objID}.numSteps) * (2 * objects{objID}.numFlashes - 1)
-        currAngle = objects{objID}.angles(2);
+        currCol = objects{objID}.changedCol;
     else
-        currAngle = objects{objID}.angles(1);
+        currCol = objects{objID}.initialCol;
     end
     currContrast = objects{objID}.sineAmp * cos(objects{objID}.sineStep * objects{objID}.frame + objects{objID}.sinePhase) + (1 - objects{objID}.sineAmp);
 
     xOffset = objects{objID}.phaseOffset(objects{objID}.phaseIdx);
     srcRect = [xOffset 0 xOffset + objects{objID}.size objects{objID}.size];
-    
-    Screen('DrawTexture',w,objects{objID}.grating,srcRect,objects{objID}.dstRect,currAngle, [], currContrast);
-    Screen('DrawTexture',w,objects{objID}.mask,[0 0 objects{objID}.size objects{objID}.size],objects{objID}.dstRect,currAngle);
+    targetPos = [sv.midScreen + [objects{objID}.x objects{objID}.y] - objects{objID}.rad,sv.midScreen + [objects{objID}.x objects{objID}.y] + objects{objID}.rad];
+
+    Screen('DrawTexture',w,objects{objID}.grating,srcRect,objects{objID}.dstRect,objects{objID}.angle, [], currContrast);
+    Screen('DrawTexture',w,objects{objID}.mask,[0 0 objects{objID}.size objects{objID}.size],objects{objID}.dstRect,objects{objID}.angle);
+    Screen(w,'FillOval',currCol,targetPos);
 elseif strcmp(optstr,'cleanup')
     Screen('Close',objects{objID}.grating);
     Screen('Close',objects{objID}.mask);
