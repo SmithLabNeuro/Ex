@@ -108,6 +108,6 @@ else
 end
 
 newReturn = [newDispToRequestedState; oneDimAxisRatio];
-[newReturn; currTrialRewardState]'
+[newReturn; currTrialRewardState]';
 
 

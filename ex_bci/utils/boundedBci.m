@@ -31,10 +31,14 @@ digitalCodeBciAbort = codes.(digitalCodeNameBciAbort);
 % or not.
 saveOnlineMatOrNot = expParams.saveOnlineMatFile;
 taskName = expParams.exFileName;
-onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {});
+onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {});
 trialIdx = 0;
 onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
-fullFileName = fullfile('bciParameters/satchel', onlineMatFileName);
+onlineMatDir = sprintf('bciParameters/%s', expParams.subject);
+if not(isfolder(onlineMatDir))
+    mkdir(onlineMatDir)
+end
+fullFileName = fullfile(onlineMatDir, onlineMatFileName);
 fprintf('Online File saved at : %s \n', fullFileName)
 
 boundStarted = false;
@@ -116,6 +120,7 @@ while true
         % Initialize trial type and result to be 0
         currTrialTypeIdx = 0;
         currTrialResult = 0;
+        currTrialBCIParams = [];
     end
     
     % Set the custom BCI Code
@@ -177,7 +182,7 @@ while true
             disp('trial end')
             % Append to online BCI struct array the current trial's
             % information
-            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult);
+            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
             % Save copy of online mat at end of every trial
             if saveOnlineMatOrNot
                 save(fullFileName, 'onlineBCIMatStruct', '-v6');
@@ -236,6 +241,8 @@ while true
                 currTrialResult = 0;
                 % Trial Type set to zero if not initialized
                 currTrialTypeIdx = 0;
+                % Set BCITrialParams to -99999
+                currTrialBCIParams = [];
             end
             if ~isempty(tstpBciEnd)
                 timePtBciEnd = tmstpPrlEvt(tstpBciEnd);
@@ -312,6 +319,9 @@ while true
                     % Keep track of current spike counts and currReturn
                     currTrialSpikesArray(:, end+1) = meanSpikeCount;
                     currTrialReturnVals(:,end+1) = currReturn;
+                    % Specific to reward axis BCI (make this more
+                    % generalizable)
+                    currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
                     currTrialTypeIdx = customBciCodeAfterTrlStart;
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
