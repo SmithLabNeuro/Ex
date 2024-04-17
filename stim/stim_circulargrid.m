@@ -7,8 +7,7 @@ function stim_circulargrid(optstr,w,objID,arg)
 % (1) parse the input arguments from the 'set' command and precompute
 % anything that is necessary for that stimulus
 % (2) issue the display commands for that object
-% (3) clean up after that object is displayed (not sca
-always necessary)
+% (3) clean up after that object is displayed (not always necessary)
 
 global objects sv;
 
