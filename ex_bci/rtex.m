@@ -4,8 +4,6 @@ global params codes
 exGlobals;
 xippmex('close');
 disp('closed any existing xippmex connection')
-clear closedLoopEpsGreedy
-
 %% setup xippmex connection for neural data
 if nargin<1 || isempty(connectionType)
     connectionType = 'tcp';

@@ -25,8 +25,18 @@ if strcmp(optstr,'setup')
     xPos = a(2);
     yPos = -a(3);
     
-    outerRad = a(4);
-    innerRad = outerRad - a(5);
+    % double check for integers and less than 0 radii
+    outerRad = round(a(4));
+    innerRad = round(outerRad - a(5));
+    
+    if outerRad <= 0
+        outerRad = 0;
+        innerRad = 0;
+    end
+    if innerRad <= 0
+        innerRad = 0;
+    end
+    
     
     objects{objID} = struct('type', stimname(6:end),'frame',0,'fc',a(1),'x',xPos, ...
         'y',yPos,'outerRad',outerRad,'innerRad',innerRad,'col',a(6:end));

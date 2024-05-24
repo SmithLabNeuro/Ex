@@ -133,3 +133,5 @@ channelsRemove = [channelsRemove channelNumbersNotUse];
 
 nevLabelledData(ismember(nevLabelledData(:, 1), channelsRemove), :) = [];
 trimmedDat = nev2dat(nevLabelledData, 'nevreadflag', true);
+
+

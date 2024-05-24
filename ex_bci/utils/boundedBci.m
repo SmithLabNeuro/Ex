@@ -213,7 +213,7 @@ while true
                     % END DEBUGGING
                     
                     % run the BCI decoder
-                    currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams, binNum);
+                    currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams, binNum, controlCompSocket);
                     
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
@@ -226,7 +226,7 @@ while true
 
                     % the current bin is now what was the next bin before
                     binSpikeCountOverall = binSpikeCountNextOverall;
-                    
+
                     % zero out the counts for the next bin
                     binSpikeCountNextOverall(:) = 0;
                     timePtBinStart = timePtBinStart+samplesPerBin;
