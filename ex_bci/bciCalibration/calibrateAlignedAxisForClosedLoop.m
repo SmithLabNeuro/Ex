@@ -69,7 +69,7 @@ neuralSignalForBciEnd = codes.(trainParams.calibrateEndCode);% [CURSOR_OFF CORRE
 neuralSignalForPreStart = codes.(trainParams.preActStartCode);
 neuralSignalForPreEnd = codes.(trainParams.preActEndCode);
 
-% these are the codes to indicate the stard/end of pre uStim period
+% these are the codes to indicate the stard/end of post uStim period
 neuralSignalForPostStart = codes.(trainParams.postActStartCode);
 neuralSignalForPostEnd = codes.(trainParams.postActEndCode);
 
@@ -105,8 +105,9 @@ elseif ischar(trainParams.trainingResultCodes)
 end
 trainTrialsResultCode = cellfun(@(x) any(ismember(x(:, 2), resultCodesForTrialsToKeep)), {trimmedDat.event});
 trainTrialsStimChan = cellfun(@(x) any(ismember(x.trial.xippmexStimChan, trainParams.traininguStimChan)), {trimmedDat.params});
+bciuStimChanTrialsForInit = cellfun(@(x) any(ismember(x.trial.xippmexStimChan, trainParams.bciuStimChan)), {trimmedDat.params});
 trainTrials = trainTrialsResultCode & trainTrialsStimChan;
-
+bciInitTrials = trainTrialsResultCode & bciuStimChanTrialsForInit;
 
 %% Fit FA
 % find FA axis along which the closed loop algorothm controls the activity
@@ -129,12 +130,12 @@ binnedSpikesValidAllConcat(:,sum(binnedSpikesValidAllConcat)==0) = [];
 
 rng(0); % random number generator
 % numLatents = trainParams.numberFaLatents; % this is how many latents we'll project to, no matter what...
-numLatents = 5;
+numLatents = trainParams.numberFaLatents;
 [estParams, ~] = fastfa(binnedSpikesValidAllConcat', numLatents);
 
 latents = estParams.L; % W
-[LOrthForAlignment, silde, vilde] = svd(latents);
-LOrthForAlignment = LOrthForAlignment(:, 1:numLatents);
+%  [LOrthForAlignment, silde, vilde] = svd(latents);
+% LOrthForAlignment = LOrthForAlignment(:, 1:numLatents);
 
 %% Align axes
 load(['E:\wakko\offlineModel\' trainParams.offlineModelFile '.mat'])
@@ -155,6 +156,8 @@ O = UU*VV';
 alignedLOnline = LOnline * O';
 estParams.LOriginal = estParams.L;
 estParams.L = alignedLOnline;
+LOfflineCommon = LOffline(channelsKeepIndOff,:);
+alignedLOnlineCommon = LOnline(channelsKeepIndOn,:)* O';
 
 % get posterior for each trial
 
@@ -192,83 +195,128 @@ estParams.L = alignedLOnline;
 %% Compute the posterior mean
 % Find pre uStim spike activity
 % bciStimValidTrials = ~cellfun('isempty', bciEndIndex) & ~cellfun('isempty', bciStartIndex) & ~cellfun('isempty', bciStartIndex);
+
+% binnedSpikesPre = cellfun(...
+%         @(trialSpikeTimes, chanNums, preStartEndTime)... all the inputs
+%         ... adding binSizeSamples ensures that the last point is used
+%         histcounts2(trialSpikeTimes, chanNums, preStartEndTime(1):binSizeSamples:preStartEndTime(end)+binSizeSamples/2, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
+%         spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), preStartEndTimes(bciValidTrials), 'uni', 0);
+
 binnedSpikesPre = cellfun(...
         @(trialSpikeTimes, chanNums, preStartEndTime)... all the inputs
         ... adding binSizeSamples ensures that the last point is used
         histcounts2(trialSpikeTimes, chanNums, preStartEndTime(1):binSizeSamples:preStartEndTime(end)+binSizeSamples/2, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
-        spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), preStartEndTimes(bciValidTrials), 'uni', 0);
+        spikeTimes(bciInitTrials), spikeChannels(bciInitTrials), preStartEndTimes(bciInitTrials), 'uni', 0);
 binnedSpikesPre = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesPre, 'uni', 0);
 binnedSpikesPreConcat = cat(1, binnedSpikesPre{:});
 
 % Find post uStim spike activity
+% binnedSpikesPost = cellfun(...
+%         @(trialSpikeTimes, chanNums, postStartEndTime)... all the inputs
+%         ... adding binSizeSamples ensures that the last point is used
+%         histcounts2(trialSpikeTimes, chanNums, postStartEndTime(1):binSizeSamples:postStartEndTime(end)+binSizeSamples/2, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
+%         spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), postStartEndTimes(bciValidTrials), 'uni', 0);
 binnedSpikesPost = cellfun(...
         @(trialSpikeTimes, chanNums, postStartEndTime)... all the inputs
         ... adding binSizeSamples ensures that the last point is used
         histcounts2(trialSpikeTimes, chanNums, postStartEndTime(1):binSizeSamples:postStartEndTime(end)+binSizeSamples/2, 1:max(channelsKeep)+1),... histcounts2 bins things in 50ms bins and groups by channel; note that ending on the last time point means we might miss the last bin, but that's fine here
-        spikeTimes(bciValidTrials), spikeChannels(bciValidTrials), postStartEndTimes(bciValidTrials), 'uni', 0);
+        spikeTimes(bciInitTrials), spikeChannels(bciInitTrials), postStartEndTimes(bciInitTrials), 'uni', 0);
+    
 binnedSpikesPost = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesPost, 'uni', 0);
 binnedSpikesPostConcat = cat(1, binnedSpikesPost{:});
 
 
-[zPre, ~, ~] = fastfa_estep(binnedSpikesPreConcat', estParams);
-[zPost, ~, ~] = fastfa_estep(binnedSpikesPostConcat(1:5:end,:)', estParams);
-posteriorPre = zPre.mean(); % 5D
-posteriorPre = svT * posteriorPre; % 2D
-posteriorPost = zPost.mean(); % 5D 
-posteriorPost = svT * posteriorPost; % 2D
-L = estParams.L;
-
-
-% find zilde for each uStim pattern:
-stimChanCellPerTrial = cellfun(@(dS) regexp(dS, 'xippmexStimChanUpdated*=(\d*\s*\d*);*', 'tokens'), {trimmedDat.text});
-
-% temporary comment out the below line?
-% stimChanByTrial = cellfun(@(stimChan) str2num(stimChan{1}), stimChanCellPerTrial, 'uni', 0);
-stimChanByTrial = stimChanCellPerTrial;
-stimChanByTrial = stimChanByTrial(bciValidTrials); % drop invalid trials
-stimChanByTrial = cat(2, stimChanByTrial{:});
-uniqueStimChanByTrial = unique([stimChanByTrial]);
-
-targetDim = trainParams.targetLatentDim;
-bciuStimChan = trainParams.bciuStimChan;
-posts = zeros(length(bciuStimChan),length(targetDim));
-pres = zeros(length(bciuStimChan),length(targetDim));
-pushes = zeros(length(bciuStimChan),length(targetDim));
-exploredCntInCalib = zeros(length(bciuStimChan),1);
+if length(binnedSpikesPreConcat)==0 % i.e. no uStim trials during calibration
+    posteriorPre = zeros(length(trainParams.targetLatentDim),1);
+    posteriorPost = zeros(length(trainParams.targetLatentDim),1);
+else
+    [zPre, ~, ~] = fastfa_estep(binnedSpikesPreConcat', estParams);
+    % [zPost, ~, ~] = fastfa_estep(binnedSpikesPostConcat(1:5:end,:)', estParams);
+    [zPost, ~, ~] = fastfa_estep(binnedSpikesPostConcat', estParams);
+    posteriorPre = zPre.mean(); % 5D
+    % posteriorPre = svT * posteriorPre; % 2D
+    posteriorPost = zPost.mean(); % 5D 
+    % posteriorPost = svT * posteriorPost; % 2D
+    L = estParams.L;
+end
 
 % Create all uStim patterns with the number of uStim electrodes
 if trainParams.numElec == 1 % singlet
    elecPatterns = cell(96, 1);
    elecPatternsInd = 1;
     for i=1:96
-        elecPatterns{elecPatternsInd, 1} = num2str(i);
+        % elecPatterns{elecPatternsInd, 1} = num2str(i); % when using 1-96
+        elecPatterns{elecPatternsInd, 1} = num2str(i+128); % when using 129-224
         elecPatternsInd = elecPatternsInd + 1;
     end
+%    elecPatterns = cell(192, 1);
+%    elecPatternsInd = 1;
+%     for i=1:192
+%         if i<=96
+%             elecPatterns{elecPatternsInd, 1} = num2str(i+128);
+%         else
+%             elecPatterns{elecPatternsInd, 1} = num2str(i+32);
+%         end
+%         elecPatternsInd = elecPatternsInd + 1;
+%     end
+
 elseif trainParams.numElec == 2 % doublet
-   elecPatterns = cell(4560, 1);
-   % elecPatternsIndex = zeros(4560, 2);
+   % option1) load all valid doublet patterns
+   load(['E:\wakko\valid_patterns\valid_doublet_RPFC.mat'], 'validPatterns')
+   elecPatterns = cell(length(validPatterns), 1);
    elecPatternsInd = 1;
-   for i=1:96
-       for j=1:96
-           if i>=j
-               continue
-           end
-           elecPatterns{elecPatternsInd, 1} = [num2str(i) '  ' num2str(j)];
-           % elecPatterns(elecPatternsInd, 1) = i;
-           % elecPatterns(elecPatternsInd, 2) = j;
-           elecPatternsInd = elecPatternsInd + 1;
-       end
+   for validPattern=validPatterns
+       i = validPattern(1);
+       j = validPattern(2);
+       elecPatterns{elecPatternsInd, 1} = [num2str(i) '  ' num2str(j)];
+       elecPatternsInd = elecPatternsInd + 1;
    end
+       
+   % option2) generate all doublet patterns
+%    elecPatterns = cell(4560, 1);
+%    % elecPatternsIndex = zeros(4560, 2);
+%    elecPatternsInd = 1;
+%    for i=1:96
+%        for j=1:96
+%            if i>=j
+%                continue
+%            end
+%            elecPatterns{elecPatternsInd, 1} = [num2str(i) '  ' num2str(j)];
+%            % elecPatterns(elecPatternsInd, 1) = i;
+%            % elecPatterns(elecPatternsInd, 2) = j;
+%            elecPatternsInd = elecPatternsInd + 1;
+%        end
+%    end
 end
+
+% find zilde for each uStim pattern:
+% stimChanCellPerTrial = cellfun(@(dS) regexp(dS, 'xippmexStimChanUpdated*=(\d*\s*\d*);*', 'tokens'), {trimmedDat.text});
+stimChanCellPerTrial = cellfun(@(dS) regexp(dS, 'xippmexStimChan*=(\d*\s*\d*);*', 'tokens'), {trimmedDat.text});
+
+% temporary comment out the below line?
+% stimChanByTrial = cellfun(@(stimChan) str2num(stimChan{1}), stimChanCellPerTrial, 'uni', 0);
+stimChanByTrial = stimChanCellPerTrial;
+% stimChanByTrial = stimChanByTrial(bciValidTrials); % drop invalid trials not inclided in trainParams.traininguStimChan
+stimChanByTrial = stimChanByTrial(bciInitTrials); % drop invalid trials not inclided in trainParams.bciuStimChan
+stimChanByTrial = cat(2, stimChanByTrial{:});
+uniqueStimChanByTrial = unique([stimChanByTrial]);
+
+targetDim = trainParams.targetLatentDim;
+% bciuStimChan = trainParams.bciuStimChan;
+posts = zeros(length(elecPatterns),length(targetDim));
+pres = zeros(length(elecPatterns),length(targetDim));
+pushes = zeros(length(elecPatterns),length(targetDim));
+exploredCntInCalib = zeros(length(elecPatterns),1);
 
 % Initialize the prediction with offline prediction values
 % offPred = offlineDat.offPred;
-postsWithOff = offPred;
-exploredCntInCalibOff = zeros(length(bciuStimChan),1);
+postsWithOff = offPred(:,targetDim);
+exploredCntInCalibOff = zeros(length(elecPatterns),1);
 
 for i=1:length(uniqueStimChanByTrial)
+    % no prediction update for no uStim trials
     % if uniqueStimChanByTrial(i)==0
-    if strcmp(uniqueStimChanByTrial(i), '0')||strcmp(uniqueStimChanByTrial(i), '0  0')
+    if strcmp(uniqueStimChanByTrial(i), '0')||strcmp(uniqueStimChanByTrial(i), '0  0')||strcmp(uniqueStimChanByTrial(i), '0  0  0')
         continue
     end
     % curr_idx = stimChanByTrial==uniqueStimChanByTrial(i);
@@ -301,18 +349,19 @@ end
 % Initialize the ONLINE prediction table for un-tested uStim patterns
 % Substitite the mean latent values for un-tested uStim patterns
 % for i=targetDim
-for i=1:length(targetDim)
-    pres(pres(:,i)==0,i) = mean(posteriorPre(targetDim(i),:));
-    posts(posts(:,i)==0,i) = mean(posteriorPost(targetDim(i),:));
-    pushes(pushes(:,i)==0,i) = mean(posteriorPost(targetDim(i),:)) - mean(posteriorPre(targetDim(i),:));
-end    
-
+if trainParams.initializeOnPredWithMean
+    for i=1:length(targetDim)
+        pres(pres(:,i)==0,i) = mean(posteriorPre(targetDim(i),:));
+        posts(posts(:,i)==0,i) = mean(posteriorPost(targetDim(i),:));
+        pushes(pushes(:,i)==0,i) = mean(posteriorPost(targetDim(i),:)) - mean(posteriorPre(targetDim(i),:));
+    end    
+end
 %%
 % output: directions for task in save file
 subjectCamelCase = lower(subject);
 subjectCamelCase(1) = upper(subjectCamelCase(1));
 bciDecoderSaveName = sprintf('%s%sFAaxisForClosedLoopStim_%s.mat', subjectCamelCase(1:2), datestr(today, 'yymmdd'), datestr(now, 'HH-MM-SS'));
 %save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'M0', 'M1', 'M2', 'intuitiveAxisPreferredAngle', 'rotMat', 'neuralEngagementAxisInNeuralSpace', 'axisOrthToNeuralEngagementInNeuralSpace', 'channelsKeep', 'nevFilebase', 'nevFilesForTrain', 'includeBaseForTrain', 'nasNetName');
-save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'channelsKeep', 'pres', 'posts', 'postsWithOff', 'pushes', 'exploredCntInCalib', 'exploredCntInCalibOff', 'estParams', 'binnedSpikesValidAllConcat', 'binnedSpikesPreConcat', 'binnedSpikesPostConcat', 'subject', 'O');
+save(fullfile(bciDecoderSaveFolder, bciDecoderSaveName), 'channelsKeep', 'pres', 'posts', 'postsWithOff', 'pushes', 'exploredCntInCalib', 'exploredCntInCalibOff', 'estParams', 'binnedSpikesValidAllConcat', 'binnedSpikesPreConcat', 'binnedSpikesPostConcat', 'subject', 'O', 'LOffline', 'alignedLOnline', 'LOfflineCommon', 'alignedLOnlineCommon');
 decoderFileLocationAndName = fullfile(bciDecoderRelativeSaveFolder, bciDecoderSaveName);
 
