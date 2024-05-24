@@ -8,7 +8,11 @@ function sendCode(code)
 
     % some checks on codes that are sent
     assert(isnumeric(code),'sendCode: code must be numeric');
-    assert(all(code>=0 & code<=2^16),'sendCode: code must be zero to 2^16');
+    %assert(code>=0 && code<=2^16,'sendCode: code must be zero to 2^16'); % YUKI 2023.02.12
+    
+    % possible alternative assertions:
+    %assert(isvector(code));
+    %assert(numel(code)==sum(code>=0) & numel(code)==sum(code<=2^16));
     
     if params.sendingCodes
         % new comedi-based Linux digital output function
