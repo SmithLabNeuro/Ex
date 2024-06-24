@@ -82,17 +82,25 @@ params.bciDecoderXmlParamFolder = 'bciXmlParams';
 params.extent = 250; % spacing of calibration dots in pixels
 params.calibX = [-1 0 1] * params.extent;
 params.calibY = [1 0 -1] * params.extent;
-% juice-related params
+
+%% juice-related params
 params.juiceX = 1; % number of times juice is repeated
 params.juiceInterval = 150; % in ms
 params.juiceTTLDuration = 30; % in ms, must be >= 1 to give juice
 params.juiceChan = 18; % C2, C1/C0 are used for strobe
-% other TTL output parameters - C3-C7 are available, bits 19-23
+
+%% other TTL output parameters - C3-C7 are available, bits 19-23
 params.digOut1 = 19; % this is C3, typically used for microstim
 params.digOut2 = 20; % C4
 params.digOut3 = 21; % C5
 params.digOut4 = 22; % C6
-% used by plotEyes to smooth eye movements - currently just a mean of last
+
+%% alignment pulse params
+params.alignPulseEnabled = false; % true to enable, false to disable
+params.alignPulseChan = params.digOut2; % use one of the digOut options (need actual out "21")
+params.alignPulseDuration = 100; % in ms
+
+%% used by plotEyes to smooth eye movements - currently just a mean of last
 % 'n' data points
 params.eyeSmoothing = 5; % 0 for no smoothing, numbers >= 1 are in msec
 params.eyeHistoryBufferSize = 200; %in samples (duration depends on how fast "samp" is called)
@@ -220,6 +228,8 @@ codes.BCI_MISSED = 162 ; % BCI task (vs. non-BCI behavior) performed incorrectly
 codes.CORRECT_REJECT = 163 ;
 codes.LATE_CHOICE = 164 ;
 codes.BROKE_TASK = 165;
+codes.PURSUIT_TARG = 166;
+codes.BROKE_PURSUIT = 167;
 
 %%
 % retry.CORRECT = 0 ;	% Independent of whether reward is given

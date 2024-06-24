@@ -888,6 +888,9 @@ end
 
 %% Clean up on exit:
 
+% clear persistent variables
+clear( xmlParams.exFileName )
+
 % Reset Priority and Verbosity, close sound
 cleanUp();
 
@@ -1026,6 +1029,13 @@ fclose all;
                         e{I}.ordering = ordering;
                     end
                     e = cell2mat(e);
+                    
+                    % if desired, send an alignment pulse out the digital
+                    % port here
+                    if params.alignPulseEnabled
+                        unixSendPulse(params.alignPulseChan,params.alignPulseDuration);
+                    end                    
+                    
                     try
                         if isfield(e,'juiceX')
                             params.juiceX = e(1).juiceX;
