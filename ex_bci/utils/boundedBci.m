@@ -16,12 +16,41 @@ digitalCodeBciStart = codes.(digitalCodeNameBciStart);
 digitalCodeNameBciEnd = expParams.bciEndCode;
 digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 
+% Keep track of BCI_Correct and BCI_Missed trials; needed for offline analysis 
+digitalCodeNameBciCorrect = expParams.bciCorrectCode;
+digitalCodeNameBciMissed = expParams.bciMissedCode;
+
+digitalCodeNameBciAbort= expParams.bciAbortCode;
+
+%digitalCodeNameBciIncorrect = expParams.bciIncorrectCode;
+digitalCodeBciCorrect = codes.(digitalCodeNameBciCorrect);
+digitalCodeBciMissed = codes.(digitalCodeNameBciMissed);
+digitalCodeBciAbort = codes.(digitalCodeNameBciAbort);
+
+% Determine whether online mat containing received spikes should be saved
+% or not.
+saveOnlineMatOrNot = expParams.saveOnlineMatFile;
+taskName = expParams.exFileName;
+onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {});
+trialIdx = 0;
+onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
+onlineMatDir = sprintf('bciParameters/%s', expParams.subject);
+if not(isfolder(onlineMatDir))
+    mkdir(onlineMatDir)
+end
+fullFileName = fullfile(onlineMatDir, onlineMatFileName);
+fprintf('Online File saved at : %s \n', fullFileName)
+
 boundStarted = false;
+customBciCodeAfterTrlStart = [];
+bciTrialResult = [];
 timePtBoundStarted = [];
 timePtBoundEnded = [];
 bciStart = false;
 timePtBciStarted = [];
 timePtBciEnd = [];
+timePtBciResult = [];
+
 samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;%30000;
 binSizeMs = expParams.binSizeMs;%50;
 nasNetwork = expParams.nasNetwork;
@@ -53,29 +82,90 @@ binNum = -1;
 modelParams = [];
 loopTmTotalSec = 0;
 while true
-    
     loopTmStart = tic;
     % check for messages or BCI end between trials...
     [bciEnd, ctrlMsg] = checkIfBciEndOrMsg(controlCompSocket);
-    if bciEnd
-        break
-    end
-    % check the start of the trial using codes sent to Ripple
+    % check the start of thectrlMsg trial using codes sent to Ripple
     [count,tmstpPrlEvt,events]=xippmex('digin');
+    % Is a buffer where we get some codes at a time (Not continuous access
+    % to whole Nev)
     prlEvents = [events.parallel];
     tstpTrlStart = find(prlEvents==digitalCodeTrialStart);
     tstpTrlEnd = find(prlEvents==digitalCodeTrialEnd);
     tstpBciStart = find(prlEvents==digitalCodeBciStart);
     tstpBciEnd = find(prlEvents==digitalCodeBciEnd);
-    
+    % Find indices of prlEvents at which bciCorrect or bciIncorrect code is
+    % sent.
+    tstpBciCorrect = find(prlEvents == digitalCodeBciCorrect);
+    tstpBciMissed = find(prlEvents == digitalCodeBciMissed);
+    tstpBciAbort = find(prlEvents == digitalCodeBciAbort);
+    % Find indices at which custom codes were sent
+    tstpCustomBciCode = find((prlEvents>20000) & (prlEvents<20010));
+    % Only keep custom BCI Codes that occur after current trial's start
+    % timestamp
+    customBciCode = prlEvents(((prlEvents>20000) & (prlEvents<20010)));
     if length(tstpTrlStart)>1
         disp('missed a trial')
         tstpTrlStart = tstpTrlStart(end);
+        % Force increment trial counter if missed 
+        trialIdx = trialIdx + 1; 
     end
     if ~isempty(tstpTrlStart)
         disp('trial start')
         timePtBoundStarted = tmstpPrlEvt(tstpTrlStart);
         boundStarted = true;
+         % Initialize arrays that we'll  track during trials
+        currTrialSpikesArray = [];
+        currTrialReturnVals = [];
+        % Initialize trial type and result to be 0
+        currTrialTypeIdx = 0;
+        currTrialResult = 0;
+        currTrialBCIParams = [];
+    end
+    
+    % Set the custom BCI Code
+    if(~isempty(tstpCustomBciCode))
+        % Find actual time points at which customBCICodes were sent
+        timePtCustomBciCode = tmstpPrlEvt(tstpCustomBciCode);
+        % Only pick up custom indices After the bound has started
+        indicesForCustomCodesSentAfterBound = timePtCustomBciCode>timePtBoundStarted;
+        % Find Timestamps of custom bci code that are after bound start
+        tstpCustomBciCodeAfterBoundStart = tstpCustomBciCode(indicesForCustomCodesSentAfterBound);
+        if ~isempty(tstpCustomBciCodeAfterBoundStart)
+            % Set it to the first index if multiple codes sent for some
+            % reason
+            customBCICodeIdx = tstpCustomBciCodeAfterBoundStart(1);
+            % Make sure that customBCICodeIdx doesn't contain
+            % indices outside of customBCICode
+            if ~isempty(customBciCode) && (length(customBciCode) >= customBCICodeIdx)
+                customBciCodeAfterTrlStart = customBciCode(customBCICodeIdx)-20000;
+            end
+        end
+    end
+    % Added by Chris 11-20-23
+%     % Check if either BCI correct or bci Missed is received
+    if(~isempty(tstpBciCorrect))
+        % Find actual time points at which BCI result was sent
+        timePtBciResult = tmstpPrlEvt(tstpBciCorrect);
+        % Only pick up result indices After the bound has started
+        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+        if(sum(indicesForResultsSentAfterBound)>0)
+            currTrialResult=digitalCodeBciCorrect;
+        end
+    elseif(~isempty(tstpBciMissed))
+        timePtBciResult = tmstpPrlEvt(tstpBciMissed);
+        % Only pick up custom indices After the bound has started
+        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+        if(sum(indicesForResultsSentAfterBound)>0)
+            currTrialResult=digitalCodeBciMissed;
+        end
+    elseif(~isempty(tstpBciAbort))
+        timePtBciResult = tmstpPrlEvt(tstpBciAbort);
+        % Only pick up custom indices After the bound has started
+        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+        if(sum(indicesForResultsSentAfterBound)>0)
+            currTrialResult=digitalCodeBciAbort;
+        end
     end
     
     if length(tstpTrlEnd)>1
@@ -89,8 +179,16 @@ while true
     
     if timePtBoundEnded > timePtBoundStarted
         if boundStarted
-%             save('/home/smithlab/tempChecker.mat', 'binCntNasTrial', 'allTmstmpAll');
             disp('trial end')
+            % Append to online BCI struct array the current trial's
+            % information
+            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
+            % Save copy of online mat at end of every trial
+            if saveOnlineMatOrNot
+                save(fullFileName, 'onlineBCIMatStruct', '-v6');
+            end
+            % Increment trial counter at end
+            trialIdx = trialIdx + 1; 
         end
         if bciStart
             % DEBUGGING
@@ -102,12 +200,13 @@ while true
             binNum = -1;
         end
         boundStarted = false;
+        customBciCodeAfterTrlStart = [];
         bciStart = false;
         currReturn = expParams.initReturn';
         clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
     end
   
-    if boundStarted
+    if boundStarted      
         [modelParams, updatedReturn] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
         if ~isempty(updatedReturn)
             currReturn = updatedReturn;
@@ -121,7 +220,7 @@ while true
         prevTmstpInit = tmstpInit;
         prevWaveforms = waveforms;
         [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
-
+    
         if ~isempty(modelParams)
             % in case we have two starts/ends, we only want the start related to the current trial
                         
@@ -136,10 +235,14 @@ while true
                 binSpikeCountNextOverall = zeros(length(goodChannelNums), 1);
                 bciStart = true;
                 bciJustStarted = true; % important for grabbing any early spikes
-                % DEBUGGING
-%                 binSpkCntTrial = zeros(length(goodChannelNums), 0);
-%                 allTmstmpTrl = [];
-                % END DEBUGGING
+                % Initialize arrays that we'll  track during BCI trials
+                currTrialSpikesArray = zeros(length(goodChannelNums), 0);
+                currTrialReturnVals = zeros(length(currReturn), 0);
+                currTrialResult = 0;
+                % Trial Type set to zero if not initialized
+                currTrialTypeIdx = 0;
+                % Set BCITrialParams to -99999
+                currTrialBCIParams = [];
             end
             if ~isempty(tstpBciEnd)
                 timePtBciEnd = tmstpPrlEvt(tstpBciEnd);
@@ -169,14 +272,14 @@ while true
                 % allTmstps is being used to check bin turnover, rather
                 % than counting spikes, so we want to see as many
                 % timestamps as possible here, so as not to miss a bin
-                % (bonus that BCI_CURSOR_POS should always be getting sent
+                % (bonus that BCI_CURSOR_POS shoutimePtBciEndld always be getting sent
                 % within 50ms, so tmstpPrlEvt is definitely going to give
                 % good bin cutoffs)
                 allTmstps = cat(2, tmstpInit{:}, tmstpPrlEvt);
                 if any(allTmstps>(timePtBinStart+2*samplesPerBin))
                     % this might happen if the recorded waveforms include
                     % the next bin, and also have waveforms from two bins
-                    % after, but we're noting we should really expect at
+                    % after, but we're noting we should re    ally expect at
                     % most samples in the next bin
                     fprintf('furthest out sample (shooould be less than %d at most) is %d\n', 2*samplesPerBin, max(allTmstps)-timePtBinStart)
                 end
@@ -199,7 +302,7 @@ while true
                     % vanishingly unlikely that we miss something...
                     [~,tmstpInit, waveforms, ~]=xippmex('spike',okelecs,zeros(1,length(okelecs)));
                     % DEBUGGING
-%                     allTmstmpTrl = [allTmstmpTrl tmstpInit(goodChannelInds)];
+%                     allTmstmpTrl = [allTmstmpTrl tmstpIn    it(goodChannelInds)];
                     % END DEBUGGING
                     [countsPerChannel, countsPerChannelNextBin] = countBinnedSpikesPerChannel(tmstpInit, goodChannelInds, timePtBinStart, samplesPerBin, nasNetParams, waveforms, gamma);
                     % scoop up last current bin spikes and grow the next
@@ -208,13 +311,18 @@ while true
                     binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
                     
                     meanSpikeCount = mean(binSpikeCountOverall,2);
-                    % DEBUGGING
-%                     binSpkCntTrial = [binSpkCntTrial meanSpikeCount];
-                    % END DEBUGGING
                     
                     % run the BCI decoder
-                    currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams);
+                    currReturnSend = [currReturn; customBciCodeAfterTrlStart];
+                    currReturn = bciDecoderFunction(meanSpikeCount, currReturnSend, modelParams, expParams);
                     
+                    % Keep track of current spike counts and currReturn
+                    currTrialSpikesArray(:, end+1) = meanSpikeCount;
+                    currTrialReturnVals(:,end+1) = currReturn;
+                    % Specific to reward axis BCI (make this more
+                    % generalizable)
+                    currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
+                    currTrialTypeIdx = customBciCodeAfterTrlStart;
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
                     if size(uint8Msg, 1) ~= 1
@@ -224,6 +332,9 @@ while true
                     end
                     matlabUDP2('send',controlCompSocket.sender, msgToSend);
 
+                    % Keep track of currMeanSpikes and currReturn
+                    
+                    
                     % the current bin is now what was the next bin before
                     binSpikeCountOverall = binSpikeCountNextOverall;
                     
@@ -238,10 +349,6 @@ while true
             % after a full bin happened
             if timePtBciEnd > timePtBciStarted
                 if bciStart
-                    % DEBUGGING
-%                     binCntNasTrial = [binCntNasTrial binSpkCntTrial];
-%                     allTmstmpAll = [allTmstmpAll {allTmstmpTrl}];
-                    % END DEBUGGING
                     fprintf('bci end in trial after %d bins\n', binNum)
                     binNum = -1;
                 end
@@ -259,7 +366,4 @@ while true
         end
     end
 end
-
-% DEBUGGING
-% save('/home/smithlab/tempChecker.mat', 'binCntNasTrial', 'allTmstmpAll');
-% END DEBUGGING
+end

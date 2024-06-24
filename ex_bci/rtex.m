@@ -82,6 +82,8 @@ while true
         [~,machineInit] = system('hostname');
         machine = lower(deblank(cell2mat(regexp(machineInit,'^[^\.]+','match'))));
         [~, expParams, ~, ~] = readExperiment(bciParamFile, subject, machine);
+        % Save the subject in the struct
+        expParams.subject = subject;
         bciWrapper = str2func([expParams(1).bciStyle 'Bci']);
         % bciFunction does ALL the work, and when it finished it pops us
         % back out here
