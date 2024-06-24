@@ -17,4 +17,3 @@ function sendCode(code)
     
     thisTrialCodes(end+1:end+length(code),:) = [code(:) ones(length(code),1).*toc(trialTic)];
 end
-q
