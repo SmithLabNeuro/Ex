@@ -20,5 +20,11 @@ end
 
 
 if ~success
-    success = -1;
+    % Don't penalize for samples being dropped
+    if any(isnan(relPos))
+        success = 1;
+    else
+        success = -1;
+    
+    end
 end
