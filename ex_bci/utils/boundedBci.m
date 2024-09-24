@@ -1,6 +1,8 @@
 function boundedBci(controlCompSocket, expParams, okelecs)
 
 global params codes
+saveOnlineMatOrNot = expParams.saveOnlineMatFile; 
+
 digitalCodeNameBciStartsAfter = expParams.bciStartsAfterCode;
 digitalCodeTrialStart = codes.(digitalCodeNameBciStartsAfter);% could be START_TRIAL
 digitalCodeNameBciEndsBy = expParams.bciEndsByCode;
@@ -19,7 +21,6 @@ digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 % Keep track of BCI_Correct and BCI_Missed trials; needed for offline analysis 
 digitalCodeNameBciCorrect = expParams.bciCorrectCode;
 digitalCodeNameBciMissed = expParams.bciMissedCode;
-
 digitalCodeNameBciAbort= expParams.bciAbortCode;
 
 %digitalCodeNameBciIncorrect = expParams.bciIncorrectCode;
@@ -29,17 +30,18 @@ digitalCodeBciAbort = codes.(digitalCodeNameBciAbort);
 
 % Determine whether online mat containing received spikes should be saved
 % or not.
-saveOnlineMatOrNot = expParams.saveOnlineMatFile;
-taskName = expParams.exFileName;
-onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {});
-trialIdx = 0;
-onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
-onlineMatDir = sprintf('bciParameters/%s', expParams.subject);
-if not(isfolder(onlineMatDir))
-    mkdir(onlineMatDir)
+if saveOnlineMatOrNot
+    taskName = expParams.exFileName;
+    onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {});
+    trialIdx = 0;
+    onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
+    onlineMatDir = sprintf('bciParameters/%s', expParams.subject);
+    if not(isfolder(onlineMatDir))
+        mkdir(onlineMatDir)
+    end
+    fullFileName = fullfile(onlineMatDir, onlineMatFileName);
+    fprintf('Online File saved at : %s \n', fullFileName)
 end
-fullFileName = fullfile(onlineMatDir, onlineMatFileName);
-fprintf('Online File saved at : %s \n', fullFileName)
 
 boundStarted = false;
 customBciCodeAfterTrlStart = [];
@@ -180,15 +182,16 @@ while true
     if timePtBoundEnded > timePtBoundStarted
         if boundStarted
             disp('trial end')
-            % Append to online BCI struct array the current trial's
-            % information
-            onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
             % Save copy of online mat at end of every trial
             if saveOnlineMatOrNot
+                % Append to online BCI struct array the current trial's
+                % information
+                onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
                 save(fullFileName, 'onlineBCIMatStruct', '-v6');
+                % Increment trial counter at end
+                trialIdx = trialIdx + 1; 
             end
-            % Increment trial counter at end
-            trialIdx = trialIdx + 1; 
+            
         end
         if bciStart
             % DEBUGGING
@@ -317,12 +320,14 @@ while true
                     currReturn = bciDecoderFunction(meanSpikeCount, currReturnSend, modelParams, expParams);
                     
                     % Keep track of current spike counts and currReturn
-                    currTrialSpikesArray(:, end+1) = meanSpikeCount;
-                    currTrialReturnVals(:,end+1) = currReturn;
-                    % Specific to reward axis BCI (make this more
-                    % generalizable)
-                    currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
-                    currTrialTypeIdx = customBciCodeAfterTrlStart;
+                    if saveOnlineMatOrNot
+                        currTrialSpikesArray(:, end+1) = meanSpikeCount;
+                        currTrialReturnVals(:,end+1) = currReturn;
+                        % Specific to reward axis BCI (make this more
+                        % generalizable)
+                        currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
+                        currTrialTypeIdx = customBciCodeAfterTrlStart;
+                    end
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
                     if size(uint8Msg, 1) ~= 1
