@@ -76,7 +76,8 @@ params.nasNetFolderDataComputer = 'C:\Users\rigmdata\Documents\spikesort\nasnet\
 params.bciDecoderBasePathDataComputer = 'X:\';
 params.nasNetFolderBciComputer = '/home/smithlab/spikesort/nasnet/networks';
 params.bciDecoderBasePathBciComputer = '/home/smithlab/bciParameters';
-params.bciDecoderXmlParamFolder = 'bciXmlParams';
+% params.bciDecoderXmlParamFolder = 'Ex/ex_bci/bciXmlParams'; % for demo
+params.bciDecoderXmlParamFolder = 'Ex_local/bci/bciXmlParams'; % for non-demo
 
 %% calibration params
 params.extent = 250; % spacing of calibration dots in pixels

@@ -1,7 +1,16 @@
 function boundedBci(controlCompSocket, expParams, okelecs)
 
 global params codes
-saveOnlineMatOrNot = expParams.saveOnlineMatFile; 
+if isfield(expParams.saveOnlineMatFile)
+    saveOnlineMatFile = expParams.saveOnlineMatFile; 
+else
+    saveOnlineMatFile = false;
+end
+if isfield(expParams.refreshOutputEachTrial)
+    refreshOutput = expParams.refreshOutputEachTrial;
+else
+    refreshOutput = true; % default for bounded BCI is not to keep params across trials
+end
 
 digitalCodeNameBciStartsAfter = expParams.bciStartsAfterCode;
 digitalCodeTrialStart = codes.(digitalCodeNameBciStartsAfter);% could be START_TRIAL
@@ -18,24 +27,24 @@ digitalCodeBciStart = codes.(digitalCodeNameBciStart);
 digitalCodeNameBciEnd = expParams.bciEndCode;
 digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 
-% Keep track of BCI_Correct and BCI_Missed trials; needed for offline analysis 
-digitalCodeNameBciCorrect = expParams.bciCorrectCode;
-digitalCodeNameBciMissed = expParams.bciMissedCode;
-digitalCodeNameBciAbort= expParams.bciAbortCode;
-
-%digitalCodeNameBciIncorrect = expParams.bciIncorrectCode;
-digitalCodeBciCorrect = codes.(digitalCodeNameBciCorrect);
-digitalCodeBciMissed = codes.(digitalCodeNameBciMissed);
-digitalCodeBciAbort = codes.(digitalCodeNameBciAbort);
-
 % Determine whether online mat containing received spikes should be saved
 % or not.
-if saveOnlineMatOrNot
+if saveOnlineMatFile
+    % Keep track of BCI_Correct and BCI_Missed trials; needed for offline analysis 
+    digitalCodeNameBciCorrect = expParams.bciCorrectCode;
+    digitalCodeNameBciMissed = expParams.bciMissedCode;
+    digitalCodeNameBciAbort= expParams.bciAbortCode;
+
+    %digitalCodeNameBciIncorrect = expParams.bciIncorrectCode;
+    digitalCodeBciCorrect = codes.(digitalCodeNameBciCorrect);
+    digitalCodeBciMissed = codes.(digitalCodeNameBciMissed);
+    digitalCodeBciAbort = codes.(digitalCodeNameBciAbort);
+    
     taskName = expParams.exFileName;
     onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {});
     trialIdx = 0;
     onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
-    onlineMatDir = sprintf('bciParameters/%s', expParams.subject);
+    onlineMatDir = sprintf('%s/%s',params.bciDecoderBasePathBciComputer, expParams.subject);
     if not(isfolder(onlineMatDir))
         mkdir(onlineMatDir)
     end
@@ -62,7 +71,7 @@ gamma = expParams.gamma;
 
 bciDecoderFunctionName = expParams.name;
 bciDecoderFunction = str2func(bciDecoderFunctionName);
-clear(bciDecoderFunctionName); % make sure it's fresh
+if refreshOutput, clear(bciDecoderFunctionName); end % make sure it's fresh
 
 msPerS = 1000;
 samplesPerBin = binSizeMs/msPerS*samplesPerSecond;
@@ -96,11 +105,13 @@ while true
     tstpTrlEnd = find(prlEvents==digitalCodeTrialEnd);
     tstpBciStart = find(prlEvents==digitalCodeBciStart);
     tstpBciEnd = find(prlEvents==digitalCodeBciEnd);
-    % Find indices of prlEvents at which bciCorrect or bciIncorrect code is
-    % sent.
-    tstpBciCorrect = find(prlEvents == digitalCodeBciCorrect);
-    tstpBciMissed = find(prlEvents == digitalCodeBciMissed);
-    tstpBciAbort = find(prlEvents == digitalCodeBciAbort);
+    if saveOnlineMatFile
+        % Find indices of prlEvents at which bciCorrect or bciIncorrect code is
+        % sent.
+        tstpBciCorrect = find(prlEvents == digitalCodeBciCorrect);
+        tstpBciMissed = find(prlEvents == digitalCodeBciMissed);
+        tstpBciAbort = find(prlEvents == digitalCodeBciAbort);
+    end
     % Find indices at which custom codes were sent
     tstpCustomBciCode = find((prlEvents>20000) & (prlEvents<20010));
     % Only keep custom BCI Codes that occur after current trial's start
@@ -144,29 +155,31 @@ while true
             end
         end
     end
-    % Added by Chris 11-20-23
-%     % Check if either BCI correct or bci Missed is received
-    if(~isempty(tstpBciCorrect))
-        % Find actual time points at which BCI result was sent
-        timePtBciResult = tmstpPrlEvt(tstpBciCorrect);
-        % Only pick up result indices After the bound has started
-        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
-        if(sum(indicesForResultsSentAfterBound)>0)
-            currTrialResult=digitalCodeBciCorrect;
-        end
-    elseif(~isempty(tstpBciMissed))
-        timePtBciResult = tmstpPrlEvt(tstpBciMissed);
-        % Only pick up custom indices After the bound has started
-        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
-        if(sum(indicesForResultsSentAfterBound)>0)
-            currTrialResult=digitalCodeBciMissed;
-        end
-    elseif(~isempty(tstpBciAbort))
-        timePtBciResult = tmstpPrlEvt(tstpBciAbort);
-        % Only pick up custom indices After the bound has started
-        indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
-        if(sum(indicesForResultsSentAfterBound)>0)
-            currTrialResult=digitalCodeBciAbort;
+    if saveOnlineMatFile
+        % Added by Chris 11-20-23
+    %     % Check if either BCI correct or bci Missed is received
+        if(~isempty(tstpBciCorrect))
+            % Find actual time points at which BCI result was sent
+            timePtBciResult = tmstpPrlEvt(tstpBciCorrect);
+            % Only pick up result indices After the bound has started
+            indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+            if(sum(indicesForResultsSentAfterBound)>0)
+                currTrialResult=digitalCodeBciCorrect;
+            end
+        elseif(~isempty(tstpBciMissed))
+            timePtBciResult = tmstpPrlEvt(tstpBciMissed);
+            % Only pick up custom indices After the bound has started
+            indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+            if(sum(indicesForResultsSentAfterBound)>0)
+                currTrialResult=digitalCodeBciMissed;
+            end
+        elseif(~isempty(tstpBciAbort))
+            timePtBciResult = tmstpPrlEvt(tstpBciAbort);
+            % Only pick up custom indices After the bound has started
+            indicesForResultsSentAfterBound = timePtBciResult>timePtBoundStarted;
+            if(sum(indicesForResultsSentAfterBound)>0)
+                currTrialResult=digitalCodeBciAbort;
+            end
         end
     end
     
@@ -183,7 +196,7 @@ while true
         if boundStarted
             disp('trial end')
             % Save copy of online mat at end of every trial
-            if saveOnlineMatOrNot
+            if saveOnlineMatFile
                 % Append to online BCI struct array the current trial's
                 % information
                 onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
@@ -206,7 +219,7 @@ while true
         customBciCodeAfterTrlStart = [];
         bciStart = false;
         currReturn = expParams.initReturn';
-        clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
+        if refreshOutput, clear(bciDecoderFunctionName); end % in a bounded BCI, we clear persistent variables after the end of the bound
     end
   
     if boundStarted      
@@ -317,10 +330,10 @@ while true
                     
                     % run the BCI decoder
                     currReturnSend = [currReturn; customBciCodeAfterTrlStart];
-                    currReturn = bciDecoderFunction(meanSpikeCount, currReturnSend, modelParams, expParams);
+                    currReturn = bciDecoderFunction(meanSpikeCount, currReturnSend, modelParams, expParams, binNum, controlCompSocket);
                     
                     % Keep track of current spike counts and currReturn
-                    if saveOnlineMatOrNot
+                    if saveOnlineMatFile
                         currTrialSpikesArray(:, end+1) = meanSpikeCount;
                         currTrialReturnVals(:,end+1) = currReturn;
                         % Specific to reward axis BCI (make this more
@@ -359,7 +372,7 @@ while true
                 end
                 bciStart = false;
                 currReturn = expParams.initReturn';
-                clear(bciDecoderFunctionName); % in a bounded BCI, we clear persistent variables after the end of the bound
+                if refreshOutput, clear(bciDecoderFunctionName); end % in a bounded BCI, we clear persistent variables after the end of the bound
             end
         end
     end
