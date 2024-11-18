@@ -1,4 +1,4 @@
-function newVelocity = kalmanVelocityDecoder(meanSpikeCount, currVelocity, modelParams, expParams)
+function newVelocity = kalmanVelocityDemoDecoder(meanSpikeCount, currVelocity, modelParams, expParams)
 
 M0 = modelParams.M0;
 M1 = modelParams.M1;

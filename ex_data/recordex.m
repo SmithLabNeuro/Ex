@@ -92,7 +92,7 @@ fprintf('xippmex running\n')
 % into there
 udpPortFromControlReceive = 4245;
 udpPortFromControlSend = 4246;
-controlIPAddress = '128.2.245.223';
+controlIPAddress = '128.2.245.212';
 maxNumBytes = 2000; % this value mimics matlabUDP2.h; should be enough
 udpr = dsp.UDPReceiver('RemoteIPAddress', controlIPAddress, 'LocalIPPort', udpPortFromControlReceive, 'MaximumMessageLength', maxNumBytes);
 udps = dsp.UDPSender('RemoteIPAddress', controlIPAddress, 'RemoteIPPort', udpPortFromControlSend);
@@ -290,7 +290,7 @@ while true
             sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
     elseif strcmp(msg, 'sessionEnd')
-        addpath 'C:\Users\rigmdata\labcode\rigutils'
+        addpath 'C:\Users\rigmdata\Documents\labcode\rigutils'
         try
             copyToRaptorRigM;
         catch
