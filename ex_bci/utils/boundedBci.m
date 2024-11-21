@@ -1,12 +1,12 @@
 function boundedBci(controlCompSocket, expParams, okelecs)
 
 global params codes
-if isfield(expParams.saveOnlineMatFile)
+if isfield(expParams, "saveOnlineMatFile")
     saveOnlineMatFile = expParams.saveOnlineMatFile; 
 else
     saveOnlineMatFile = false;
 end
-if isfield(expParams.refreshOutputEachTrial)
+if isfield(expParams, "refreshOutputEachTrial")
     refreshOutput = expParams.refreshOutputEachTrial;
 else
     refreshOutput = true; % default for bounded BCI is not to keep params across trials
