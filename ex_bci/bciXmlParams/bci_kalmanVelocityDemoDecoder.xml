@@ -1,0 +1,33 @@
+<stimulus name="kalmanVelocityDemoDecoder" ex="kalmanVelocityDemoBci" repeats="1" bciStyle="bounded" bgColor="128 128 128">  <!--.-->
+    <params>
+        <!-- these are for ensuring the BCI only happens during a trial -->
+        <saveOnlineMatFile>0</saveOnlineMatFile>
+        <bciStartsAfterCode>'START_TRIAL'</bciStartsAfterCode>
+        <bciEndsByCode>'END_TRIAL'</bciEndsByCode>
+        <!-- these tell us when to actually start/stop binning spikes -->
+        <bciStartCode>'ALIGN'</bciStartCode>
+        <bciEndCode>'BCI_END'</bciEndCode>
+        <bciCorrectCode>'BCI_CORRECT'</bciCorrectCode>
+        <bciMissedCode>'BCI_MISSED'</bciMissedCode>
+        <bciAbortCode>'BCI_ABORT'</bciAbortCode>
+        <binSizeMs>50</binSizeMs>
+        <nasNetwork>'UberNet_N50_L1'</nasNetwork>
+        <initReturn>[0;0]</initReturn> <!-- the initial velocity, but 'initReturn' is how the feedback variable is called for boundedBcis -->
+        <!-- the below are for training the decoder -->
+        <!--M1 below -->
+        <gamma>0.0</gamma>
+        <rippleChannelNumbersInBci>[257:384]'</rippleChannelNumbersInBci>
+        <kalmanQ>100e3</kalmanQ>
+        <numberFaLatents>10</numberFaLatents>
+        <zScoreLatents>false</zScoreLatents>
+        <zScoreSpikes>true</zScoreSpikes>
+        <velocityToCalibrateWith>'intended'</velocityToCalibrateWith><!--as set up, the decoder saves 'good channel numbers' which are a subset of these training channels, so the info on 'channels to use' arrives indirectly to the actual BCI-->
+        <coincTimeMs>0.5</coincTimeMs><!-- if spikes from two channels are within this many milliseconds of each other, they count as coincident-->
+        <coincThresh>0.2</coincThresh><!-- if >coincThresh fraction of spikes are coincident between two channels, we remove one of them-->
+        <firingRateThreshold>1</firingRateThreshold><!-- Hz -->
+        <fanoFactorThreshold>8</fanoFactorThreshold><!-- var/mean, Hz -->
+        <cursorPositionCode>'BCI_CURSOR_POS'</cursorPositionCode>
+        <trainingResultCodes>{'CORRECT'; 'LATE_CHOICE'}</trainingResultCodes>
+        <!--<trainingResultCodes>{'CORRECT'}</trainingResultCodes>-->
+    </params>
+</stimulus>

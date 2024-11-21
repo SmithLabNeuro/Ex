@@ -1,4 +1,5 @@
 function rtex(connectionType, inputBciParamFile)
+cd('/home/smithlab/') % ensure we are in proper directory otherwise stuff will error
 
 global params codes
 exGlobals;
@@ -75,13 +76,14 @@ while true
     end
     if ~isempty(bciParamFile)
         if ~exist(bciParamFile, 'file')
-            decoderParameterLocation = params.bciDecoderBasePathBciComputer;
             xmlParameterFolder = params.bciDecoderXmlParamFolder;
-            bciParamFile = fullfile(decoderParameterLocation, xmlParameterFolder, bciParamFile);
+            bciParamFile = fullfile(pwd, xmlParameterFolder, bciParamFile);
         end
         [~,machineInit] = system('hostname');
         machine = lower(deblank(cell2mat(regexp(machineInit,'^[^\.]+','match'))));
         [~, expParams, ~, ~] = readExperiment(bciParamFile, subject, machine);
+        % Save the subject in the struct
+        expParams.subject = subject;
         bciWrapper = str2func([expParams(1).bciStyle 'Bci']);
         % bciFunction does ALL the work, and when it finished it pops us
         % back out here

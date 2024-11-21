@@ -1,4 +1,4 @@
-function [trimmedDat, channelsKeep] = preprocessDat(datStruct, nevLabelledData, channelNumbersUse, binSizeMs, frThresh, ffThresh, coincThresh, coincidenceTimeMs)
+function [trimmedDat, channelsKeep, chansRemovedByFRFilter, chansRemovedByFFFilter, chansRemovedByCCFilter] = preprocessDat(datStruct, nevLabelledData, channelNumbersUse, binSizeMs, frThresh, ffThresh, coincThresh, coincidenceTimeMs)
 % this function is responsible for:
 % - removing low firing rate channels
 % - removing high fano factor channels
@@ -116,7 +116,13 @@ end
 
 % now we can remove any remaining firing rate and fano factor issue
 % channels
-chanRemoveLogical = chanFR < frThresh | chanFF > ffThresh | ~ismember(channelNumbersUse, chansRemaining);
+% Channels that lie below the FR filter
+chansRemovedByFRFilter = chanFR < frThresh;
+% Channels that have too high a Fano factor
+chansRemovedByFFFilter = chanFF > ffThresh;
+% Channels that have are highly coincident
+chansRemovedByCCFilter = ~ismember(channelNumbersUse, chansRemaining);
+chanRemoveLogical = chansRemovedByFRFilter | chansRemovedByFFFilter | chansRemovedByCCFilter;
 channelsRemove = channelNumbersUse(chanRemoveLogical);
 channelsKeep = channelNumbersUse(~chanRemoveLogical);
 

@@ -121,13 +121,23 @@ binnedSpikesAll = cellfun(@(bS) bS(:, channelsKeep), binnedSpikesAll, 'uni', 0);
 binnedSpikesAllConcat = cat(1, binnedSpikesAll{:});
 numLatents = trainParams.numberFaLatents; % this is how many latents we'll project to, no matter what...
 if trainParams.zScoreSpikes
+    % Corresponds to 1/sigma for each neurons
     zScoreSpikesMat = diag(1./std(binnedSpikesAllConcat, [], 1));
+    % Corresponds to mu/sigma for each neuron (should be a 1 x
+    % num_channels)
+    zScoreSpikesMuTerm =  mean(binnedSpikesAllConcat)./std(binnedSpikesAllConcat, [], 1);
 else
-    zScoreSpikesMat = eye(size(binnedSpikesAllConcat, 2));
+    % Identity matrix if not z-scoring
+    zScoreSpikesMat =  eye(size(binnedSpikesAllConcat, 2));
+    % zeros if not z-scoring
+    zScoreSpikesMuTerm = zeros(size(mean(binnedSpikesAllConcat))); 
 end
-binnedSpikesAllConcat = binnedSpikesAllConcat * zScoreSpikesMat;
+
+binnedSpikesAllConcat = binnedSpikesAllConcat*zScoreSpikesMat - zScoreSpikesMuTerm;
+% Perform FA on all concatenated spikes
 [estParams, ~] = fastfa(binnedSpikesAllConcat', numLatents);
 [~, ~, beta] = fastfa_estep(binnedSpikesAllConcat', estParams);
+
 
 bciValidTrials = ~cellfun('isempty', bciEndIndex) & ~cellfun('isempty', bciStartIndex) & trainTrials;
 binnedSpikesBci = cell(size(spikeTimes));

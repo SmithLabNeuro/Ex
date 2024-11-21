@@ -290,7 +290,7 @@ while true
             sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
     elseif strcmp(msg, 'sessionEnd')
-        addpath 'C:\Users\rigmdata\labcode\rigutils'
+        addpath 'C:\Users\rigmdata\Documents\labcode\rigutils'
         try
             copyToRaptorRigM;
         catch
