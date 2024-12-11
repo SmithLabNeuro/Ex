@@ -23,10 +23,6 @@ if strcmp(optstr,'setup')
     %            (8) color option: 0 for black and white only; 1 for random
     %            color
     %            (9) cue type (1,2,3 => S, M, L)
-    %            BG Colors (rgb values for bottom 3 values)
-    %            (10) Bg color R
-    %            (11) BG Color G
-    %            (12) BG Color B
     [xCenter, yCenter] = RectCenter(sv.screenRect);
     screenNumber = max(Screen('Screens'));
     white = WhiteIndex(screenNumber);
@@ -38,7 +34,9 @@ if strcmp(optstr,'setup')
     stimX = a(6);
     stimY = -a(7);
     xylim = 5;
+  
     cuetype = a(9);
+
     if numel(a) < 10
         stimBGColor = white;
     else
@@ -120,9 +118,6 @@ if strcmp(optstr,'setup')
     ctemp2(ctemp2==0)=0.2*255;
     color_checks{5}=cat(3,ctemp1,ctemp2,not_checks);
     
-    %black-gray
-    color_checks{6} = cat(3,floor(checks/2),floor(checks/2),floor(checks/2));
-    
     
     for i = 1:length(color_checks)
         for n = 1:size(checks,1)
@@ -142,16 +137,13 @@ if strcmp(optstr,'setup')
     baseOvalRect = [0, 0, screenYpix*2, screenYpix*2]; % 2*radius of  circle
     ovalRects(:,1) = CenterRectOnPointd(baseOvalRect, xCenter+stimX,yCenter+stimY);
     if numel(a)<8 || a(8) == 0
-        % text is black and background is white
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{1},'position',dstRects, 'ovalPosition', ovalRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{1},'position',dstRects, 'ovalPosition', ovalRects);
     elseif numel(a)<8 || a(8) == 2
-        % text is red-green
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{2},'position',dstRects, 'ovalPosition', ovalRects);
-    elseif numel(a)<8 || a(8) == 3
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{6},'position',dstRects, 'ovalPosition', ovalRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{2},'position',dstRects, 'ovalPosition', ovalRects);
     else
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{randi(5)},'position',dstRects, 'ovalPosition', ovalRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{randi(5)},'position',dstRects, 'ovalPosition', ovalRects);
     end
+    
     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
     radialCheckerboardTexture  = Screen('MakeTexture', w, objects{objID}.checks);
     objects{objID}.radialCheckerboardTexture = radialCheckerboardTexture;

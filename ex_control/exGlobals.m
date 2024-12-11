@@ -76,7 +76,8 @@ params.nasNetFolderDataComputer = 'C:\Users\rigmdata\Documents\spikesort\nasnet\
 params.bciDecoderBasePathDataComputer = 'X:\';
 params.nasNetFolderBciComputer = '/home/smithlab/spikesort/nasnet/networks';
 params.bciDecoderBasePathBciComputer = '/home/smithlab/bciParameters';
-params.bciDecoderXmlParamFolder = 'bciXmlParams';
+% params.bciDecoderXmlParamFolder = 'Ex/ex_bci/bciXmlParams'; % for demo
+params.bciDecoderXmlParamFolder = 'Ex_local/bci/bciXmlParams'; % for non-demo
 
 %% calibration params
 params.extent = 250; % spacing of calibration dots in pixels
@@ -228,8 +229,6 @@ codes.BCI_MISSED = 162 ; % BCI task (vs. non-BCI behavior) performed incorrectly
 codes.CORRECT_REJECT = 163 ;
 codes.LATE_CHOICE = 164 ;
 codes.BROKE_TASK = 165;
-codes.PURSUIT_TARG = 166;
-codes.BROKE_PURSUIT = 167;
 
 %%
 % retry.CORRECT = 0 ;	% Independent of whether reward is given
