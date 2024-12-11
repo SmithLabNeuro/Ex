@@ -1,4 +1,4 @@
-function decoderFileLocationAndName = calibrateKalmanVelocityDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject)
+function decoderFileLocationAndName = calibrateKalmanVelocityDemoDecoderForBci(~, nevFilebase, nevFilesForTrain, trainParams, subject)
 
 global params codes
 
