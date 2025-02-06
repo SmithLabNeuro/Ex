@@ -1,4 +1,4 @@
-function nextStimParam = requestNextStimParam(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, bciSockets)
+function nextStimParam = requestNextStimParam(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, numValidPatterns, bciSockets)
 
 if decoderTrained
     timePassed = 0;
@@ -16,11 +16,22 @@ if decoderTrained
     receivedMsgCasted = typecast(uint8(receivedMsg),'double');
     % targetLatentVal = receivedMsgCasted(1);
 
-    isGreedy = receivedMsgCasted(2);
-    bciTrialCnt = receivedMsgCasted(3);
+    if length(receivedMsgCasted)<2 % not enough length of Msg to assign nextStimParam
+        isGreedy = 2; % invalid trial
+    else
+        isGreedy = receivedMsgCasted(2);
+    end
+    if receivedMsgCasted(1)>numValidPatterns(bciAlgoType) % selected pattern is out of the valid pattern index range
+        isGreedy = 2; % invalid trial
+    end
+    if length(receivedMsgCasted)<3 % not enough length of Msg to assign bciTrialCnt
+        bciTrialCnt = 0; % invalid trial
+    else
+        bciTrialCnt = receivedMsgCasted(3);
+    end
     
-    if isGreedy == 2 % trial where some communication error happened. so don't update algo 3 or 4 values
-        nextStimParam(1) = receivedMsgCasted(1);
+    if isGreedy == 2 % trial where some communication error happened. so don't update epsilon greedy values
+        rms(1) = receivedMsgCasted(1);
     else
         if bciAlgoType==1
             nextStimParam(1) = receivedMsgCasted(1);
@@ -50,12 +61,13 @@ if decoderTrained
     sendStruct(bciParams);
     
     % flash the buffer in case multiple messages were sent
-    receivedMsg = matlabUDP2('receive',bciSockets.receiver);
-    while ~isempty(receivedMsg)
-        pause(0.01) % 10ms
-        timePassed = timePassed+10; % ms
-        receivedMsg = matlabUDP2('receive',bciSockets.receiver);
-    end
+    flashBuffer(bciSockets);
+%     receivedMsg = matlabUDP2('receive',bciSockets.receiver);
+%     while ~isempty(receivedMsg)
+%         pause(0.01) % 10ms
+%         timePassed = timePassed+10; % ms
+%         receivedMsg = matlabUDP2('receive',bciSockets.receiver);
+%     end
 % else
     % nextStimParam = nextStimParamOrig;
 %     if bciAlgoType==1
