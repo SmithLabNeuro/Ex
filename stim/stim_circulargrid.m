@@ -23,6 +23,10 @@ if strcmp(optstr,'setup')
     %            (8) color option: 0 for black and white only; 1 for random
     %            color
     %            (9) cue type (1,2,3 => S, M, L)
+    %            (10) BG Color R
+    %            (11) BG Color G
+    %            (12) BG Color B
+    %            (13) Length of Rectangle
     [xCenter, yCenter] = RectCenter(sv.screenRect);
     screenNumber = max(Screen('Screens'));
     white = WhiteIndex(screenNumber);
@@ -39,8 +43,10 @@ if strcmp(optstr,'setup')
 
     if numel(a) < 10
         stimBGColor = white;
+        rectLength = screenYpix;
     else
         stimBGColor = [a(10) a(11) a(12)];
+        rectLength = a(13);
     end
     if(cuetype == 1)
         checks = [0,1,1,1,1;...
@@ -118,6 +124,8 @@ if strcmp(optstr,'setup')
     ctemp2(ctemp2==0)=0.2*255;
     color_checks{5}=cat(3,ctemp1,ctemp2,not_checks);
     
+    % black-gray 
+    color_checks{6} = cat(3, floor(checks/2), floor(checks/2), floor(checks/2));
     
     for i = 1:length(color_checks)
         for n = 1:size(checks,1)
@@ -130,18 +138,20 @@ if strcmp(optstr,'setup')
         color_checks{i} = cat(3,color_checks{i},ctrans);
     end
     
-    baseRect = [0 0 screenYpix*sqrt(2) screenYpix*sqrt(2)]; % length of the rectangle = sqrt(2)*radius of circle
+    baseRect = [0 0 rectLength*sqrt(2) rectLength*sqrt(2)]; % length of the rectangle = sqrt(2)*radius of circle
     dstRects(:, 1) = CenterRectOnPointd(baseRect, xCenter +stimX,yCenter+stimY);
     % Create a separate oval rectangle that's larger than the rectangle for
     % the grid
     baseOvalRect = [0, 0, screenYpix*2, screenYpix*2]; % 2*radius of  circle
     ovalRects(:,1) = CenterRectOnPointd(baseOvalRect, xCenter+stimX,yCenter+stimY);
     if numel(a)<8 || a(8) == 0
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{1},'position',dstRects, 'ovalPosition', ovalRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{1},'position',dstRects, 'ovalPosition', ovalRects);
     elseif numel(a)<8 || a(8) == 2
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{2},'position',dstRects, 'ovalPosition', ovalRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{2},'position',dstRects, 'ovalPosition', ovalRects);
+    elseif numel(a)<8 || a(8) == 3
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{6},'position',dstRects, 'ovalPosition', ovalRects);
     else
-        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', white, 'checks',color_checks{randi(5)},'position',dstRects, 'ovalPosition', ovalRects);
+        objects{objID} = struct('type',stimname(6:end),'frame',0,'fc',a(1), 'col', stimBGColor, 'checks',color_checks{randi(5)},'position',dstRects, 'ovalPosition', ovalRects);
     end
     
     Screen('BlendFunction', w, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
