@@ -1,0 +1,64 @@
+<stimulus name="kalmanVelocityDemoBci" repeats="10" ex="ex_kalmanVelocityDemoBci" bgColor="128 128 128">
+    <params type="blank" runline="stimLength">
+        <!-- Joystick parameters - do not change -->
+        <joystickName>'DragonRise'</joystickName>
+        <angleTolerance>0.5</angleTolerance>
+        
+        <!-- BCI parameters - do not change -->
+        <bciBinsize>50</bciBinsize>
+        <bciMaxPixelDist>400</bciMaxPixelDist>
+        <useBci>true</useBci>
+        <bciDecoderParamFile>'bci_kalmanVelocityDemoDecoder.xml'</bciDecoderParamFile>
+        <decoderCalibrationFunctionName>'calibrateKalmanVelocityDemoDecoderForBci'</decoderCalibrationFunctionName><!-- Specify the function that will be used for training new decoder -->
+        <bciCalibration_trainAfterBlock>[2 3 4 5 6 7]'</bciCalibration_trainAfterBlock>
+        <bciCalibration_trainNextBlockDecoderUsingSegments>{1; 2; [2 3]; [2 3 4]; [2 3 4 5]; [2 3 4 5 6]}</bciCalibration_trainNextBlockDecoderUsingSegments>
+        <bciCalibration_centerToTargetBciScaleBySegment>[0; 1; 1; 1; 1; 1; 1]</bciCalibration_centerToTargetBciScaleBySegment>
+        <bciCalibration_orthogonalBciScaleBySegment>[0; 0; 0.2; 0.4; 0.6; 0.8; 1]</bciCalibration_orthogonalBciScaleBySegment>
+        <bciCalibration_centerToOutVelForAssistBySegment>[400; 0; 0; 0; 0; 0; 0]</bciCalibration_centerToOutVelForAssistBySegment> 
+        <!--bciCalibration_bciDecoderFile parameter can be 'trainNew' to go through the calibration process, 
+        the pathway (as a string) to a decoder as saved in the database to use that decoder,
+        or 'useLastTrained' to grab the last trained decoder from the database (though use this with caution)-->
+        <bciCalibration_bciDecoderFile>'trainNew'</bciCalibration_bciDecoderFile>
+        
+        <!-- task object locations, windows, etc. -->
+        <bgColor>[128 128 128]'</bgColor>
+        <fixX>0</fixX>
+        <fixY>0</fixY>
+        <fixColor>[0 0 255]'</fixColor>
+        <fixRad>20</fixRad>
+        <joystickHoldTolerance>35</joystickHoldTolerance>
+        <heJoystickMinHoldAngle>3.5</heJoystickMinHoldAngle>
+        <joystickXYDown>[nan;nan]<joystickXYDown>
+        <heJoystickMinHoldAngleDuringMovement>0</heJoystickMinHoldAngleDuringMovement><!--this is the required twist angle for the Hall effect joystick *once movementBciTime has started*-->
+        <targRad>35</targRad>
+        <targetDistance>300</targetDistance>
+        <targColor>[255 255 255]'</targColor>
+        <cursorRad>20</cursorRad>
+        <targWinCursRad>50</targWinCursRad>
+        <cursorColor>[255 0 0]'</cursorColor>
+        
+        <!-- Task timing -->
+        <timeToStaticJoystickGrab>1000</timeToStaticJoystickGrab>
+        <fixationJoystickHold>500</fixationJoystickHold>
+        <delayPeriodMs>0</delayPeriodMs>
+        <freezePeriod>200</freezePeriod>
+        <bciMovementTime>3000</bciMovementTime>
+        <calibrationMovementTime>800</calibrationMovementTime>
+        <holdHeMsDuringCalibrationMovement>800</holdHeMsDuringCalibrationMovement>
+        <holdHeMsDuringBciMovement>0</holdHeMsDuringBciMovement><!--this is a hold/center/twist time for the Hall effect joystick *once movementBciTime has started*-->
+        <punishmentTimeOutMs>1000</punishmentTimeOutMs>
+        <interTrialInterval>500</interTrialInterval>
+        
+        <targetAngle>[0:45:315]</targetAngle>
+        
+        
+        <retry_LATE_CHOICE>0</retry_LATE_CHOICE><!-- LATE_CHOICE is a completed trial during calibration, as he lasted the full cursor movement period -->
+        <retry_FALSE_START>1</retry_FALSE_START><!-- FALSE_START in this task means he reacted too fast, so he should retry the trial -->
+        <retry_BROKE_TASK>1</retry_BROKE_TASK><!-- BROKE_TASK means he aborted the trial, needs to redo -->
+        
+        
+    </params>
+    <randoms>
+        
+    </randoms>
+</stimulus>

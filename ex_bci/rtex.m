@@ -1,4 +1,5 @@
 function rtex(connectionType, inputBciParamFile)
+cd('/home/smithlab/') % ensure we are in proper directory otherwise stuff will error
 
 global params codes
 exGlobals;
@@ -75,9 +76,8 @@ while true
     end
     if ~isempty(bciParamFile)
         if ~exist(bciParamFile, 'file')
-            decoderParameterLocation = params.bciDecoderBasePathBciComputer;
             xmlParameterFolder = params.bciDecoderXmlParamFolder;
-            bciParamFile = fullfile(decoderParameterLocation, xmlParameterFolder, bciParamFile);
+            bciParamFile = fullfile(pwd, xmlParameterFolder, bciParamFile);
         end
         [~,machineInit] = system('hostname');
         machine = lower(deblank(cell2mat(regexp(machineInit,'^[^\.]+','match'))));

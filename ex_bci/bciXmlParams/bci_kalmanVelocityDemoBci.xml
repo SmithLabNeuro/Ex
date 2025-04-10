@@ -1,0 +1,27 @@
+<stimulus name="bci_kalmanVelocityDemoBci" repeats="10" ex="ex_kalmanVelocityDemoBci" bgColor="128 128 128">
+    <params>
+        <!-- these are for ensuring the BCI only happens during a trial -->
+        <bciStartsAfterCode>'START_TRIAL'</bciStartsAfterCode>
+        <bciEndsByCode>'END_TRIAL'</bciEndsByCode>
+        <!-- these tell us when to actually start/stop binning spikes -->
+        <bciStartCode>'CURSOR_ON'</bciStartCode>
+        <timeBeforeMs>0</timeBeforeMs>
+        <timeAfterMs>400</timeAfterMs>
+        <binSizeMs>50</binSizeMs>
+        <assumedCursorSpeed>400</assumedCursorSpeed>
+        <nasNetwork>'MotorNet'</nasNetwork>
+        <initReturn>[0;0]</initReturn> <!-- the initial velocity, but 'initReturn' is how the feedback variable is called for boundedBcis -->
+        <!-- the below are for training the decoder -->
+        <!--M1 below --><gamma>0.2</gamma>
+        <rippleChannelNumbersInBci>[257:384]'</rippleChannelNumbersInBci>
+        <kalmanQ>100e3</kalmanQ>
+        <numberFaLatents>10</numberFaLatents>
+        <coincTimeMs>0.5</coincTimeMs><!-- if spikes from two channels are within this many milliseconds of each other, they count as coincident-->
+        <coincThresh>0.2</coincThresh><!-- if >coincThresh fraction of spikes are coincident between two channels, we remove one of them-->
+        <firingRateThreshold>1</firingRateThreshold><!-- Hz -->
+        <fanoFactorThreshold>8</fanoFactorThreshold><!-- var/mean, Hz -->
+        <cursorPositionCode>'BCI_CURSOR_POS'</cursorPositionCode>
+        <trainingResultCodes>{'CORRECT'}</trainingResultCodes>
+        <!--<trainingResultCodes>{'CORRECT'}</trainingResultCodes>-->
+    </params>
+</stimulus>
