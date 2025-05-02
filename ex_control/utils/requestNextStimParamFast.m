@@ -8,7 +8,8 @@ if decoderTrained
         pause(0.001) % 1ms
         timePassed = timePassed+1; % ms
         if timePassed>40
-            nextStimParam = 1;
+            % nextStimParam = 1;
+            nextStimParam = randsample(1:15504,1); % randomly choose one uStim pattern among all 5 elec uStim
             overTime = 1;
             disp('over 40ms')
             break

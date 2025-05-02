@@ -41,6 +41,8 @@ if decoderTrained
             nextStimParam(3) = receivedMsgCasted(1);
         elseif bciAlgoType==4
             nextStimParam(4) = receivedMsgCasted(1);
+        elseif bciAlgoType==5
+            nextStimParam(5) = receivedMsgCasted(1);
         end
     end
     % nextStimParam = receivedMsgCasted(1);
