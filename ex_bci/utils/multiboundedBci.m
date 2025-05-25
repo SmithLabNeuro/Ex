@@ -45,6 +45,7 @@ timePtBciStarted = [];
 timePtBciEnd = [];
 timePtPreEnd = [];
 timePtPostEnd = [];
+trialIdx = 0;
 
 samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;%30000;
 binSizeMs = expParams.binSizeMs;%50;
@@ -56,9 +57,9 @@ gamma = expParams.gamma;
 
 bciDecoderFunctionName = expParams.name;
 % bciDecoderFunctionNamePre = strcat(bciDecoderFunctionName, 'Pre');
-bciDecoderFunctionNamePre = strcat(bciDecoderFunctionName, 'PreWithModel');
+bciDecoderFunctionNamePre = strcat(bciDecoderFunctionName, 'PreWithModelMultiChan');
 % bciDecoderFunctionNamePost = strcat(expParams.name, 'Post');
-bciDecoderFunctionNamePost = strcat(expParams.name, 'PostWithModel');
+bciDecoderFunctionNamePost = strcat(expParams.name, 'PostWithModelMultiChan');
 % bciDecoderFunction = str2func(bciDecoderFunctionName);
 bciDecoderFunctionPre = str2func(bciDecoderFunctionNamePre);
 bciDecoderFunctionPost = str2func(bciDecoderFunctionNamePost);
