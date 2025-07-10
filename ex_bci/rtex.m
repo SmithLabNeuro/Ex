@@ -81,6 +81,7 @@ while true
         end
         [~,machineInit] = system('hostname');
         machine = lower(deblank(cell2mat(regexp(machineInit,'^[^\.]+','match'))));
+        fprintf('Reading BCI Param xml file from: %s \n', bciParamFile);
         [~, expParams, ~, ~] = readExperiment(bciParamFile, subject, machine);
         % Save the subject in the struct
         expParams.subject = subject;

@@ -61,8 +61,9 @@ bciStart = false;
 timePtBciStarted = [];
 timePtBciEnd = [];
 
-% BCI Decoder function initial output 
+% Initialize BCI Decoder inputs
 currReturn = expParams.initReturn'; % i.e. [0,0] if velocity
+currTrialTaskParams = [];
 
 % Variables for reading in spike counts from NEV
 binSizeMs = expParams.binSizeMs;
@@ -178,7 +179,7 @@ while true
                 % Append to online BCI struct array the current trial's
                 % information
                 onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
-                save(fullFileName, 'onlineBCIMatStruct', '-v6');
+                save(fullFileName, 'onlineBCIMatStruct', 'expParams', '-v6');
                 % Increment trial counter at end
                 trialIdx = trialIdx + 1; 
             end
@@ -198,9 +199,11 @@ while true
         currReturn = expParams.initReturn';
         if refreshOutput, clear(bciDecoderFunctionName); end % in a bounded BCI, we clear persistent variables after the end of the bound
     end
-  
+    
+    % Trial has started (not necessarily BCI period). This check is so
+    % that we make sure BCI doesn't start in the inter-trial period.
     if boundStarted      
-        [modelParams, updatedReturn] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
+        [modelParams, updatedReturn, currTrialTaskParams] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
         if ~isempty(updatedReturn)
             currReturn = updatedReturn;
         end
