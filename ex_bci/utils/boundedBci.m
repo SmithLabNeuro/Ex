@@ -109,18 +109,6 @@ while true
     tstpTrlEnd = find(prlEvents==digitalCodeTrialEnd);
     tstpBciStart = find(prlEvents==digitalCodeBciStart);
     tstpBciEnd = find(prlEvents==digitalCodeBciEnd);
-    if saveOnlineMatFile
-        % Find indices of prlEvents at which bciCorrect or bciIncorrect code is
-        % sent.
-        tstpBciCorrect = find(prlEvents == digitalCodeBciCorrect);
-        tstpBciMissed = find(prlEvents == digitalCodeBciMissed);
-        tstpBciAbort = find(prlEvents == digitalCodeBciAbort);
-    end
-    % Find indices at which custom codes were sent
-    tstpCustomBciCode = find((prlEvents>20000) & (prlEvents<20010));
-    % Only keep custom BCI Codes that occur after current trial's start
-    % timestamp
-    customBciCode = prlEvents(((prlEvents>20000) & (prlEvents<20010)));
     if length(tstpTrlStart)>1
         disp('missed a trial')
         tstpTrlStart = tstpTrlStart(end);
@@ -140,26 +128,12 @@ while true
         currTrialBCIParams = [];
     end
     
-    % Set the custom BCI Code
-    if(~isempty(tstpCustomBciCode))
-        % Find actual time points at which customBCICodes were sent
-        timePtCustomBciCode = tmstpPrlEvt(tstpCustomBciCode);
-        % Only pick up custom indices After the bound has started
-        indicesForCustomCodesSentAfterBound = timePtCustomBciCode>timePtBoundStarted;
-        % Find Timestamps of custom bci code that are after bound start
-        tstpCustomBciCodeAfterBoundStart = tstpCustomBciCode(indicesForCustomCodesSentAfterBound);
-        if ~isempty(tstpCustomBciCodeAfterBoundStart)
-            % Set it to the first index if multiple codes sent for some
-            % reason
-            customBCICodeIdx = tstpCustomBciCodeAfterBoundStart(1);
-            % Make sure that customBCICodeIdx doesn't contain
-            % indices outside of customBCICode
-            if ~isempty(customBciCode) && (length(customBciCode) >= customBCICodeIdx)
-                customBciCodeAfterTrlStart = customBciCode(customBCICodeIdx)-20000;
-            end
-        end
-    end
     if saveOnlineMatFile
+        % Find indices of prlEvents at which bciCorrect or bciIncorrect code is
+        % sent.
+        tstpBciCorrect = find(prlEvents == digitalCodeBciCorrect);
+        tstpBciMissed = find(prlEvents == digitalCodeBciMissed);
+        tstpBciAbort = find(prlEvents == digitalCodeBciAbort);
         % Added by Chris 11-20-23
     %     % Check if either BCI correct or bci Missed is received
         if(~isempty(tstpBciCorrect))
@@ -220,7 +194,6 @@ while true
             binNum = -1;
         end
         boundStarted = false;
-        customBciCodeAfterTrlStart = [];
         bciStart = false;
         currReturn = expParams.initReturn';
         if refreshOutput, clear(bciDecoderFunctionName); end % in a bounded BCI, we clear persistent variables after the end of the bound
@@ -340,12 +313,6 @@ while true
                     if saveOnlineMatFile
                         currTrialSpikesArray(:, end+1) = meanSpikeCount;
                         currTrialReturnVals(:,end+1) = currReturn;
-                        % TODO: Make sure to figure out how to make it more
-                        % generalizable
-                        % Specific to reward axis BCI (make this more
-                        % generalizable)
-%                         currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
-%                         currTrialTypeIdx = customBciCodeAfterTrlStart;
                     end
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
@@ -355,9 +322,6 @@ while true
                         msgToSend = uint8Msg;
                     end
                     matlabUDP2('send',controlCompSocket.sender, msgToSend);
-
-                    % Keep track of currMeanSpikes and currReturn
-                    
                     
                     % the current bin is now what was the next bin before
                     binSpikeCountOverall = binSpikeCountNextOverall;
