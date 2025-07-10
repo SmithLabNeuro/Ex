@@ -12,37 +12,35 @@ else
     refreshOutput = true; % default for bounded BCI is not to keep params across trials
 end
 
+%% Keep track of digital trial codes
+% Codes relevant for the trial
 digitalCodeNameBciStartsAfter = expParams.bciStartsAfterCode;
-digitalCodeTrialStart = codes.(digitalCodeNameBciStartsAfter);% could be START_TRIAL
 digitalCodeNameBciEndsBy = expParams.bciEndsByCode;
+digitalCodeTrialStart = codes.(digitalCodeNameBciStartsAfter);% could be START_TRIAL
 digitalCodeTrialEnd = codes.(digitalCodeNameBciEndsBy);% could be END_TRIAL
 
-% this could be the code associated with FIX_OFF or TARG_OFF for example,
-% or it could be a BCI specific code. Leaving it open which would be
-% best... these are distinct from trial start/end, because *those* allow us
-% to explore stuff in the intertrial period, while these tell us to focus
-% on the BCI
+% Codes relevant for BCI period
 digitalCodeNameBciStart = expParams.bciStartCode;
 digitalCodeBciStart = codes.(digitalCodeNameBciStart);
 digitalCodeNameBciEnd = expParams.bciEndCode;
 digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 
-% Determine whether online mat containing received spikes should be saved
-% or not.
+%% Initialize online BCI mat struct
 if saveOnlineMatFile
     % Keep track of BCI_Correct and BCI_Missed trials; needed for offline analysis 
     digitalCodeNameBciCorrect = expParams.bciCorrectCode;
     digitalCodeNameBciMissed = expParams.bciMissedCode;
     digitalCodeNameBciAbort= expParams.bciAbortCode;
 
-    %digitalCodeNameBciIncorrect = expParams.bciIncorrectCode;
     digitalCodeBciCorrect = codes.(digitalCodeNameBciCorrect);
     digitalCodeBciMissed = codes.(digitalCodeNameBciMissed);
     digitalCodeBciAbort = codes.(digitalCodeNameBciAbort);
     
     taskName = expParams.exFileName;
-    onlineBCIMatStruct = struct('trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, 'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {});
-    trialIdx = 0;
+    onlineBCIMatStruct = struct(...
+        'trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, ...
+        'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {}...
+    );
     onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
     onlineMatDir = sprintf('%s/%s',params.bciDecoderBasePathBciComputer, expParams.subject);
     if not(isfolder(onlineMatDir))
@@ -92,6 +90,7 @@ binNum = -1;
 % prlEvents = [events.parallel];
 modelParams = [];
 loopTmTotalSec = 0;
+trialIdx = 0;
 while true
     loopTmStart = tic;
     % check for messages or BCI end between trials...
@@ -336,10 +335,12 @@ while true
                     if saveOnlineMatFile
                         currTrialSpikesArray(:, end+1) = meanSpikeCount;
                         currTrialReturnVals(:,end+1) = currReturn;
+                        % TODO: Make sure to figure out how to make it more
+                        % generalizable
                         % Specific to reward axis BCI (make this more
                         % generalizable)
-                        currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
-                        currTrialTypeIdx = customBciCodeAfterTrlStart;
+%                         currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
+%                         currTrialTypeIdx = customBciCodeAfterTrlStart;
                     end
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
