@@ -18,6 +18,9 @@ if ~isempty(ctrlMsg)
         parameterValue = modelParams.(parameterName);
         sendMessageWaitAck(controlCompSocket, typecast(parameterValue,'uint8'));
     else
-        updatedReturn = typecast(uint8(ctrlMsg), 'double')';
+        %updatedReturn = typecast(uint8(ctrlMsg), 'double')';
+        %updatedReturn = char(ctrlMsg);
+        %updatedReturn = ctrlMsg;
+        updatedReturn = uint8(ctrlMsg);
     end
 end
