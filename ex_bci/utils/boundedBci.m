@@ -51,6 +51,8 @@ if saveOnlineMatFile
     fprintf('Online File saved at : %s \n', fullFileName)
 end
 
+%% Initialize variables for identifying spikes during start and end of bounded period
+
 boundStarted = false;
 customBciCodeAfterTrlStart = [];
 timePtBoundStarted = [];
@@ -59,20 +61,28 @@ bciStart = false;
 timePtBciStarted = [];
 timePtBciEnd = [];
 
-samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;
-binSizeMs = expParams.binSizeMs;
-nasNetwork = expParams.nasNetwork;
+% BCI Decoder function initial output 
 currReturn = expParams.initReturn'; % i.e. [0,0] if velocity
+
+% Variables for reading in spike counts from NEV
+binSizeMs = expParams.binSizeMs;
+samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;
+msPerS = 1000;
+samplesPerBin = binSizeMs/msPerS*samplesPerSecond;
+
+% NASNet-specific variables
+nasNetwork = expParams.nasNetwork;
 [nasNetParams.w1, nasNetParams.b1, nasNetParams.w2, nasNetParams.b2] = loadNasNet(nasNetwork);
 gamma = expParams.gamma;
 
+% Keep track of bci decoder file that will be applied to incoming spike
+% counts
 bciDecoderFunctionName = expParams.name;
 bciDecoderFunction = str2func(bciDecoderFunctionName);
 if refreshOutput, clear(bciDecoderFunctionName); end % make sure it's fresh
 
-msPerS = 1000;
-samplesPerBin = binSizeMs/msPerS*samplesPerSecond;
-
+% Keep track of binned spike counts at current time step and the following
+% timestep
 binSpikeCountOverall = zeros(length(okelecs),1);
 binSpikeCountNextOverall = zeros(length(okelecs), 1);
 
@@ -84,8 +94,6 @@ waveforms = [];
 binNum = -1;
 
 % grab events
-% [count,tmstp,events]=xippmex('digin');
-% prlEvents = [events.parallel];
 modelParams = [];
 trialIdx = 0;
 while true
