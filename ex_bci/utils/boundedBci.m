@@ -26,6 +26,7 @@ digitalCodeNameBciEnd = expParams.bciEndCode;
 digitalCodeBciEnd = codes.(digitalCodeNameBciEnd);
 
 %% Initialize online BCI mat struct
+
 if saveOnlineMatFile
     % Keep track of BCI_Correct and BCI_Missed trials; needed for offline analysis 
     digitalCodeNameBciCorrect = expParams.bciCorrectCode;
@@ -52,16 +53,14 @@ end
 
 boundStarted = false;
 customBciCodeAfterTrlStart = [];
-bciTrialResult = [];
 timePtBoundStarted = [];
 timePtBoundEnded = [];
 bciStart = false;
 timePtBciStarted = [];
 timePtBciEnd = [];
-timePtBciResult = [];
 
-samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;%30000;
-binSizeMs = expParams.binSizeMs;%50;
+samplesPerSecond = params.neuralRecordingSamplingFrequencyHz;
+binSizeMs = expParams.binSizeMs;
 nasNetwork = expParams.nasNetwork;
 currReturn = expParams.initReturn'; % i.e. [0,0] if velocity
 [nasNetParams.w1, nasNetParams.b1, nasNetParams.w2, nasNetParams.b2] = loadNasNet(nasNetwork);
@@ -76,7 +75,6 @@ samplesPerBin = binSizeMs/msPerS*samplesPerSecond;
 
 binSpikeCountOverall = zeros(length(okelecs),1);
 binSpikeCountNextOverall = zeros(length(okelecs), 1);
-delValues = '';
 
 % DEBUGGING
 binCntNasTrial = {};
@@ -89,7 +87,6 @@ binNum = -1;
 % [count,tmstp,events]=xippmex('digin');
 % prlEvents = [events.parallel];
 modelParams = [];
-loopTmTotalSec = 0;
 trialIdx = 0;
 while true
     loopTmStart = tic;
