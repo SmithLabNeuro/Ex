@@ -203,7 +203,7 @@ while true
     % Trial has started (not necessarily BCI period). This check is so
     % that we make sure BCI doesn't start in the inter-trial period.
     if boundStarted      
-        [modelParams, updatedReturn, currTrialTaskParams] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
+        [modelParams, updatedReturn] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
         if ~isempty(updatedReturn)
             currReturn = updatedReturn;
         end
