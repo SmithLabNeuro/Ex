@@ -54,7 +54,6 @@ end
 %% Initialize variables for identifying spikes during start and end of bounded period
 
 boundStarted = false;
-customBciCodeAfterTrlStart = [];
 timePtBoundStarted = [];
 timePtBoundEnded = [];
 bciStart = false;
@@ -127,6 +126,7 @@ while true
         currTrialTypeIdx = 0;
         currTrialResult = 0;
         currTrialBCIParams = [];
+        currTrialTaskParams = [];
     end
     
     if saveOnlineMatFile
@@ -197,15 +197,20 @@ while true
         boundStarted = false;
         bciStart = false;
         currReturn = expParams.initReturn';
+        currTrialTaskParams = [];
         if refreshOutput, clear(bciDecoderFunctionName); end % in a bounded BCI, we clear persistent variables after the end of the bound
     end
     
     % Trial has started (not necessarily BCI period). This check is so
     % that we make sure BCI doesn't start in the inter-trial period.
     if boundStarted      
-        [modelParams, updatedReturn] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
+        [modelParams, updatedReturn, taskParamReceived] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
         if ~isempty(updatedReturn)
-            currReturn = updatedReturn;
+            if taskParamReceived
+                currTrialTaskParams = updatedReturn;
+            else
+                currReturn = updatedReturn;
+            end
         end
         
         % buffering issues cause weird timing--specifically, some channels
@@ -309,9 +314,12 @@ while true
                     meanSpikeCount = mean(binSpikeCountOverall,2);
                     
                     % run the BCI decoder
-                    currReturnSend = [currReturn; customBciCodeAfterTrlStart];
-                    currReturn = bciDecoderFunction(meanSpikeCount, currReturnSend, modelParams, expParams, binNum, controlCompSocket);
-                    
+                    if isempty(currTrialTaskParams)
+                        currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams, binNum, controlCompSocket);
+                    else
+                        currReturn = bciDecoderFunction(meanSpikeCount, currReturn, currTrialTaskParams, modelParams, expParams, binNum, controlCompSocket);
+                    end
+   
                     % Keep track of current spike counts and currReturn
                     if saveOnlineMatFile
                         currTrialSpikesArray(:, end+1) = meanSpikeCount;
