@@ -21,6 +21,6 @@ if ~isempty(ctrlMsg)
         %updatedReturn = typecast(uint8(ctrlMsg), 'double')';
         %updatedReturn = char(ctrlMsg);
         %updatedReturn = ctrlMsg;
-        updatedReturn = uint8(ctrlMsg);
+        updatedReturn = typecast(uint8(ctrlMsg), 'double')';
     end
 end

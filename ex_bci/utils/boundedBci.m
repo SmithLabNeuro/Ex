@@ -336,10 +336,6 @@ while true
                     if saveOnlineMatFile
                         currTrialSpikesArray(:, end+1) = meanSpikeCount;
                         currTrialReturnVals(:,end+1) = currReturn;
-                        % Specific to reward axis BCI (make this more
-                        % generalizable)
-                        currTrialBCIParams = [expParams.smallTargChangeByStd, expParams.largeTargChangeByStd];
-                        currTrialTypeIdx = customBciCodeAfterTrlStart;
                     end
                     % prep the message to send
                     uint8Msg = typecast(currReturn, 'uint8');
