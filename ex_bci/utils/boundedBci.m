@@ -40,7 +40,7 @@ if saveOnlineMatFile
     taskName = expParams.exFileName;
     onlineBCIMatStruct = struct(...
         'trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, ...
-        'trialType', {}, 'bciTrialResult', {}, 'bciTrialParams', {}...
+        'trialTaskParams', {}, 'bciTrialResult', {}, 'bciTrialParams', {}...
     );
     onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
     onlineMatDir = sprintf('%s/%s',params.bciDecoderBasePathBciComputer, expParams.subject);
@@ -122,8 +122,6 @@ while true
          % Initialize arrays that we'll  track during trials
         currTrialSpikesArray = [];
         currTrialReturnVals = [];
-        % Initialize trial type and result to be 0
-        currTrialTypeIdx = 0;
         currTrialResult = 0;
         currTrialBCIParams = [];
         currTrialTaskParams = [];
@@ -178,7 +176,9 @@ while true
             if saveOnlineMatFile
                 % Append to online BCI struct array the current trial's
                 % information
-                onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , 'trialReturnVals', currTrialReturnVals, 'trialType', currTrialTypeIdx, 'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
+                onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , ...
+                    'trialTaskParams', currTrialTaskParams, 'trialReturnVals',currTrialReturnVals, ...
+                    'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
                 save(fullFileName, 'onlineBCIMatStruct', 'expParams', '-v6');
                 % Increment trial counter at end
                 trialIdx = trialIdx + 1; 
@@ -240,8 +240,6 @@ while true
                 currTrialSpikesArray = zeros(length(goodChannelNums), 0);
                 currTrialReturnVals = zeros(length(currReturn), 0);
                 currTrialResult = 0;
-                % Trial Type set to zero if not initialized
-                currTrialTypeIdx = 0;
                 % Set BCITrialParams to -99999
                 currTrialBCIParams = [];
             end
