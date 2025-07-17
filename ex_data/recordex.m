@@ -105,7 +105,7 @@ longPauseTime = 1;
 pauseTime = defaultPauseTime;
 dataPath = 'E:\';
 bciDecodersBasePath = params.bciDecoderBasePathDataComputer;
-bciDecodersParameterPath = fullfile(bciDecodersBasePath, params.bciDecoderXmlParamFolder);
+bciDecodersParameterPath = fullfile(params.bciDecoderXmlParamFolder);
 while true
     
     msg = receiveMessageSendAck(socketsControlComm);
@@ -273,6 +273,17 @@ while true
         else
             sendMessageWaitAck(socketsControlComm, uint8(recordingInfo.status));
         end
+        
+    elseif strcmp(msg, 'loadAndSendParamSavedInDecoderFile')
+                
+        decoderTrainParameterFile = receiveMessageSendAck(socketsControlComm);
+        decoderTrainParameterFilepath = fullfile(params.bciDecoderBasePathDataComputer, decoderTrainParameterFile);
+        decoderSavedParams = load(decoderTrainParameterFilepath);
+        fieldName = receiveMessageSendAck(socketsControlComm);
+
+        sendMessageWaitAck(socketsControlComm, num2str(decoderSavedParams.(fieldName)));
+        
+             
     elseif strcmp(msg, 'restartPausedRecording')
         recordingInfo = xippmex('trial','paused') % this is how you restart a pause?
         if ~strcmp(recordingInfo.status, 'recording')
