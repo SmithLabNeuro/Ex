@@ -1,0 +1,23 @@
+<stimulus name="angletuning" repeats="10" ex="ex_SimpleTaskDemo" bgColor="128 128 128">
+  <params>
+    <distance>[171]</distance>
+    <angle>0:45:315</angle>
+    <size>15</size>
+    <fixX>0</fixX>
+    <fixY>0</fixY>
+    <fixRad>5</fixRad>
+    <fixColor>[0;0;255]</fixColor>
+    <targetColor>[255;0;100]</targetColor>
+    <timeToFix>1000</timeToFix>
+    <targetDuration>100</targetDuration>
+    <noFixTimeout>2000</noFixTimeout>
+    <noChoiceTimeout>2000</noChoiceTimeout>
+    <preTargetFixation>200</preTargetFixation>
+    <saccadeInitiate>500</saccadeInitiate>
+    <saccadeTime>200</saccadeTime>
+    <stayOnTarget>150</stayOnTarget>
+  </params>
+  <randoms>
+    <postTargetFixation>[500:100:900]</postTargetFixation>
+  </randoms>
+</stimulus>                                      
