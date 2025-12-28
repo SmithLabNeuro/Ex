@@ -30,6 +30,6 @@ if ~isempty(ctrlMsg)
         updatedReturn = typecast(uint8(ctrlMsg), 'double')';
         
     else
-        updateReturn = uint8(ctrlMsg);
+        updatedReturn = uint8(ctrlMsg);
     end
 end
