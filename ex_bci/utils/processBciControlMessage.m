@@ -30,5 +30,8 @@ if ~isempty(ctrlMsg)
         taskParamReceived = true;
     elseif ~ischar(ctrlMsg)
         updatedReturn = typecast(uint8(ctrlMsg), 'double')';
+        
+    else
+        updatedReturn = uint8(ctrlMsg);
     end
 end
