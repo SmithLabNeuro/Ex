@@ -203,7 +203,7 @@ while true
     
     % Trial has started (not necessarily BCI period). This check is so
     % that we make sure BCI doesn't start in the inter-trial period.
-    if boundStarted      
+    if boundStarted   
         [modelParams, updatedReturn, taskParamReceived] = processBciControlMessage(controlCompSocket, ctrlMsg, modelParams);
         if ~isempty(updatedReturn)
             if taskParamReceived
@@ -310,21 +310,20 @@ while true
                     binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
                     
                     meanSpikeCount = mean(binSpikeCountOverall,2);
-                    
                     % run the BCI decoder
                     if isempty(currTrialTaskParams)
                         currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams, binNum, controlCompSocket);
                     else
-                        currReturn = bciDecoderFunction(meanSpikeCount, currReturn, currTrialTaskParams, modelParams, expParams, binNum, controlCompSocket);
+                        currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams, binNum, controlCompSocket, currTrialTaskParams);
                     end
-   
+                    
                     % Keep track of current spike counts and currReturn
                     if saveOnlineMatFile
                         currTrialSpikesArray(:, end+1) = meanSpikeCount;
                         currTrialReturnVals(:,end+1) = currReturn;
                     end
                     % prep the message to send
-                    uint8Msg = typecast(currReturn, 'uint8');
+                    uint8Msg = typecast([currReturn; binNum], 'uint8');
                     if size(uint8Msg, 1) ~= 1
                         msgToSend = uint8Msg';
                     else
