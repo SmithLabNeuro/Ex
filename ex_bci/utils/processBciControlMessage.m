@@ -22,8 +22,10 @@ if ~isempty(ctrlMsg)
         % Assumes task parameters will be sent as char arrays that will
         % then be converted into uint8 and then doubles.
         receivedParameters = receiveMessageSendAck(controlCompSocket);
-        updatedReturn = double(uint8(receivedParameters));
-        sprintf('got the parameters %s', sprintf('%i ', updatedReturn))
+        %updatedReturn = double(uint8(receivedParameters));
+        updatedReturn = receivedParameters;
+        %sprintf('got the parameters %s', sprintf('%i ', updatedReturn))
+        sprintf(['got the parameters: ', updatedReturn])
         sendMessageWaitAck(controlCompSocket, uint8(receivedParameters));
         taskParamReceived = true;
     elseif ~ischar(ctrlMsg)
