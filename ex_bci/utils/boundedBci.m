@@ -40,8 +40,8 @@ if saveOnlineMatFile
     taskName = expParams.exFileName;
     onlineBCIMatStruct = struct(...
         'trialIdx', {}, 'trialSpikes', {}, 'trialReturnVals', {}, ...
-        'trialTaskParams', {}, 'bciTrialResult', {}, 'bciTrialParams', {}...
-    );
+        'trialTaskParams', {}, 'bciTrialResult', {}, 'bciTrialParams', {},...
+    'currloopTime',{});
     onlineMatFileName= sprintf('%s_%s_%sOnlineDat.mat', datestr(today, 'yyyymmdd'), datestr(now, 'HH-MM-SS'), taskName);
     onlineMatDir = sprintf('%s/%s',params.bciDecoderBasePathBciComputer, expParams.subject);
     if not(isfolder(onlineMatDir))
@@ -94,10 +94,20 @@ waveforms = [];
 binNum = -1;
 
 % grab events
-modelParams = [];
+
+if ~isfield(expParams,'initialModel')
+    expParams.initialModel = 'empty';
+end
+
+switch expParams.initialModel
+    case 'empty'        
+    modelParams = [];
+    case 'allAssist'
+    modelParams.channelsKeep = [];
+    modelParams.decoderType = 'null';
 trialIdx = 0;
 while true
-    loopTmStart = tic;
+    loopTmStart = tic();
     % check for messages or BCI end between trials...
     [bciEnd, ctrlMsg] = checkIfBciEndOrMsg(controlCompSocket);
     % check the start of thectrlMsg trial using codes sent to Ripple
@@ -125,6 +135,8 @@ while true
         currTrialResult = 0;
         currTrialBCIParams = [];
         currTrialTaskParams = [];
+        currloopMesssge = [];
+        
     end
     
     if saveOnlineMatFile
@@ -178,7 +190,8 @@ while true
                 % information
                 onlineBCIMatStruct(end+1) = struct('trialIdx', trialIdx, 'trialSpikes', currTrialSpikesArray , ...
                     'trialTaskParams', currTrialTaskParams, 'trialReturnVals',currTrialReturnVals, ...
-                    'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams);
+                    'bciTrialResult', currTrialResult,'bciTrialParams', currTrialBCIParams,...
+                    'currloopTime',currloopMesssge);
                 save(fullFileName, 'onlineBCIMatStruct', 'expParams', '-v6');
                 % Increment trial counter at end
                 trialIdx = trialIdx + 1; 
@@ -239,6 +252,8 @@ while true
                 % Initialize arrays that we'll  track during BCI trials
                 currTrialSpikesArray = zeros(length(goodChannelNums), 0);
                 currTrialReturnVals = zeros(length(currReturn), 0);
+                currloopMesssge = 0;
+
                 currTrialResult = 0;
                 % Set BCITrialParams to -99999
                 currTrialBCIParams = [];
@@ -257,6 +272,7 @@ while true
                     % edges it'll be needed
                     binSpikeCountNextOverall = binSpikeCountNextOverall + countsPerChannelNextBin;
                     bciJustStarted = false;
+                    startBCITic = tic;
                 end
                 
                 % DEBUGGING
@@ -311,6 +327,8 @@ while true
                     
                     meanSpikeCount = mean(binSpikeCountOverall,2);
                     % run the BCI decoder
+                    binNum = binNum+1; % keep track of bin number
+
                     if isempty(currTrialTaskParams)
                         currReturn = bciDecoderFunction(meanSpikeCount, currReturn, modelParams, expParams, binNum, controlCompSocket);
                     else
@@ -321,6 +339,7 @@ while true
                     if saveOnlineMatFile
                         currTrialSpikesArray(:, end+1) = meanSpikeCount;
                         currTrialReturnVals(:,end+1) = currReturn;
+                        currloopMesssge(end+1) = toc(startBCITic);
                     end
                     % prep the message to send
                     uint8Msg = typecast([currReturn; binNum], 'uint8');
@@ -337,7 +356,6 @@ while true
                     % zero out the counts for the next bin
                     binSpikeCountNextOverall(:) = 0;
                     timePtBinStart = timePtBinStart+samplesPerBin;
-                    binNum = binNum+1; % keep track of bin number
                 end
             end
             
