@@ -1,4 +1,4 @@
-function [nextStimParam, overTime] = requestNextStimParamFast(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, bciSockets)
+function [nextStimParam, overTime] = requestNextStimParamFast(decoderTrained, nextStimParam, bciAlgoType, bciSockets)
 
 % Request and receive a uStim parameter using pre-uStim state from bci
 % computer. This function is called during a brief computation period after
@@ -18,7 +18,8 @@ if decoderTrained
         % if a message is not sent by bci comp within maxWaitTime, break
         if timePassed>maxWaitTime
             % nextStimParam = 1;
-            nextStimParam = randsample(1:15504,1); % randomly choose one uStim pattern among all 5 elec uStim
+            % nextStimParam = randsample(1:15504,1); % randomly choose one uStim pattern among all 5 elec uStim
+            nextStimParam = randsample(1:64,1); % randomly choose one uStim pattern among 64 single elec uStim
             overTime = 1;
             disp('pre-uStim computation over time')
             break
@@ -39,10 +40,15 @@ if decoderTrained
         if bciAlgoType==4
             nextStimParam = receivedMsgCasted(1);
         elseif bciAlgoType==5
-            nextStimParam = receivedMsgCasted(2);
+            nextStimParam = receivedMsgCasted(1);
+        elseif bciAlgoType==6
+            nextStimParam = receivedMsgCasted(1);
+        elseif bciAlgoType==7
+            nextStimParam = receivedMsgCasted(1);
         end
     end
-
+    
+    disp(nextStimParam)
     % flash the buffer in case multiple messages were sent
     flashBuffer(bciSockets);
 end

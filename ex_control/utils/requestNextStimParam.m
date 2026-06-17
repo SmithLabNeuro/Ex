@@ -1,9 +1,12 @@
-function nextStimParam = requestNextStimParam(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, numValidPatterns, bciSockets)
+function nextStimParam = requestNextStimParam(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, numValidPatterns, bciSockets, targetStateIndex)
 
 % Request and receive a uStim parameter for the next trial from bci
-% computer. This function is called at the end of a trial (which includes 
-% both correct and incorrect trials as long as they are completed until uStim offset). 
+% computer. This function is called at the end of a trial (which includes
+% both correct and incorrect trials as long as they are completed until uStim offset).
 % During calibration trials, this function does not do anything.
+%
+% For algo 3 (MiSO), updates the specific target's stim pattern using targetStateIndex.
+% For other algos (1,2,4,5,6), updates all targets with the same value.
 
 if decoderTrained % i.e., closed-loop trials
     
@@ -40,16 +43,23 @@ if decoderTrained % i.e., closed-loop trials
     if isGreedy == 2 % trial where some communication error happened. so don't update next uStim parameter value
         rms(1) = receivedMsgCasted(1);
     else
-        if bciAlgoType==1
-            nextStimParam(1) = receivedMsgCasted(1);
-        elseif bciAlgoType==2
-            nextStimParam(2) = receivedMsgCasted(1);
-        elseif bciAlgoType==3
-            nextStimParam(3) = receivedMsgCasted(1);
-        elseif bciAlgoType==4
-            nextStimParam(4) = receivedMsgCasted(1);
-        elseif bciAlgoType==5
-            nextStimParam(5) = receivedMsgCasted(1);
+        % For algo 3, 7, and 8, update only the specific target's entry
+        % For other algos, update all targets with the same value
+        if bciAlgoType == 3
+            % Update only the specific target for algo 3
+            nextStimParam{targetStateIndex, 3} = receivedMsgCasted(1);
+        elseif bciAlgoType == 7
+            % Update only the specific target for algo 7 (per-target OMiSO+)
+            nextStimParam{targetStateIndex, 7} = receivedMsgCasted(1);
+        elseif bciAlgoType == 8
+            % Update only the specific target for algo 8 (Greedy from Initial, per-target)
+            nextStimParam{targetStateIndex, 8} = receivedMsgCasted(1);
+        else
+            % For algos 1,2,4,5,6: update all targets with the same value
+            numTargets = size(nextStimParam, 1);
+            for targetIdx = 1:numTargets
+                nextStimParam{targetIdx, bciAlgoType} = receivedMsgCasted(1);
+            end
         end
     end
     
