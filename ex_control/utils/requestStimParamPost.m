@@ -1,4 +1,4 @@
-function nextStimParam = requestNextStimParam(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, numValidPatterns, bciSockets, targetStateIndex)
+function nextStimParam = requestStimParamPost(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, numValidPatterns, bciSockets, targetStateIndex)
 
 % Request and receive a uStim parameter for the next trial from bci
 % computer. This function is called at the end of a trial (which includes

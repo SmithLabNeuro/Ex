@@ -1,4 +1,4 @@
-function [nextStimParam, overTime] = requestNextStimParamFast(decoderTrained, nextStimParam, bciAlgoType, bciSockets)
+function [nextStimParam, overTime] = requestStimParamPre(decoderTrained, nextStimParam, bciAlgoType, bciSockets)
 
 % Request and receive a uStim parameter using pre-uStim state from bci
 % computer. This function is called during a brief computation period after
