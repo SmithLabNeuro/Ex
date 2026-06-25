@@ -1,4 +1,9 @@
-function receivedMsgCasted = sendTrialParam(decoderTrained, nextStimParamOrig, nextStimParam, bciAlgoType, numValidPatterns, bciSockets)
+function receivedMsgCasted = sendTrialParam(decoderTrained, bciSockets)
+% sendTrialParam - Wait for and receive a message from BCI computer
+%
+% Inputs:
+%   decoderTrained - boolean, true if in closed-loop trials
+%   bciSockets     - struct with sender/receiver socket info
 
 if decoderTrained % i.e., closed-loop trials
     
