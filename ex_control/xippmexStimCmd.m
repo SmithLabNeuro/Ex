@@ -14,8 +14,8 @@ function [stim_cmd] = xippmexStimCmd(stim_chan,pulse_width,stim_freq,stim_dur,st
 if pulse_width ~= 250
     error('Why mess with this? Just use 250 for pulse_width');
 end
-if stim_freq ~= 350
-    error('Why mess with this? Just use 350 for stim_freq');
+if stim_freq >= 350
+    error('Why mess with this? Just use 350 or less for stim_freq');
 end
 if stim_dur <= 0 || stim_dur > 500
     error('Are you trying to fry things? Keep stim_dur between 0 and 500');
@@ -49,7 +49,18 @@ delay_length = clock_cycle / 32; % length of a single unit of delay in microseco
 % for micro+stim it's hard set to 7.5, for micro2/nano2+stim it's
 % adjustable
 %1 = 1 uA/step, 2 = 2 uA/step, 3 = 5 uA/step, 4 = 10 uA/step, 5 = 20 uA/step
-%step_size = 7.5; % uA of each step built into the micro+stim
+step_size_option = 3;
+if step_size_option==1
+    step_size = 1.0;
+elseif step_size_option==2
+    step_size = 2.0;
+elseif step_size_option==3
+    step_size = 5.0;
+elseif step_size_option==4
+    step_size = 10;
+elseif step_size_option==5
+    step_size = 20;
+end
 
 % loop and set 5uA/step for all channels
 disableTimeout = 1;
@@ -59,9 +70,8 @@ for I=1:numel(stim_chan)
         assert(toc(disableStart)<disableTimeout,'xippmexStimCmd:disableTimeout','Timeout disabling stimulation to set step size');
         xippmex('stim','enable',0);
     end;
-    xippmex('stim','res',stim_chan(I),3);
+    xippmex('stim','res',stim_chan(I),step_size_option);
 end
-step_size = 5.0; % uA of each step built into the micro+stim
 
 % convert our stim duration/freq to what the micro+stim wants
 stim_clockticks = (stim_dur * 1000) / clock_cycle;
