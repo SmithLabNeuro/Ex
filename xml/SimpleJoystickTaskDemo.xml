@@ -1,0 +1,28 @@
+<stimulus name="SimpleJoystickTaskDemo" repeats="10" ex="ex_SimpleJoystickTaskDemo" bgColor="128 128 128">
+  <params>
+    <!-- Joystick-specific parameters -->
+    <joystickWinRad>35</joystickWinRad>
+    <screenPixelLimit>400</screenPixelLimit>
+    <!-- General task parameters -->
+    <distance>[300]</distance>
+    <angle>0:45:315</angle>
+    <size>40</size>
+    <fixX>0</fixX>
+    <fixY>0</fixY>
+    <fixRad>5</fixRad>
+    <cursorRad>7</cursorRad>
+    <fixColor>[0;0;255]</fixColor>
+    <targetColor>[255;255;255]</targetColor>
+    <cursorColor>[0;100;25]</cursorColor>
+    <timeToFix>1000</timeToFix>
+    <noFixTimeout>2000</noFixTimeout>
+    <noChoiceTimeout>2000</noChoiceTimeout>
+    <preTargetFixation>500</preTargetFixation>
+    <joystickInitiate>500</joystickInitiate>
+    <joystickTime>500</joystickTime>
+    <stayOnTarget>150</stayOnTarget>
+  </params>
+  <randoms>
+    <postTargetFixation>[500:100:900]</postTargetFixation>
+  </randoms>
+</stimulus>                                      
