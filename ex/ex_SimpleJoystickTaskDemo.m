@@ -65,11 +65,11 @@ joystickHEAcqPosArgs = {e.fixX, e.fixY, e.joystickWinRad, e.screenPixelLimit};
 % for holding fixation, we want the joystick to be in the fixation window
 joystickHEHoldMsArgs = [joystickHEAcqPosArgs, cursorObjID, e.cursorRad, cursorColor, false]; % the last argument is a flag to draw the cursor or not
 % for moving the joystick from the initial fixation position, also uses the cursor parameters to draw the cursor on the screen
-joystickHEMoveArgs = {[e.fixX, e.fixY], e.joystickWinRad, e.screenPixelLimit, cursorObjId, e.cursorRad, cursorColor};
+joystickHEMoveArgs = {[e.fixX, e.fixY], e.joystickWinRad, e.screenPixelLimit, cursorObjID, e.cursorRad, cursorColor};
 % for moving the joystick to the target, also uses the cursor parameters to draw the cursor on the screen
-joystickHETargetArgs = {newX, newY, cursorObjID, e.cursorRad, cursorColor, e.targWinRad, e.screenPixelLimit};
+joystickHETargetArgs = {newX, newY, cursorObjID, e.cursorRad, cursorColor, e.size, e.screenPixelLimit};
 % for holding the joystick in the target window, also uses the cursor parameters to draw the cursor on the screen
-joystickHEHoldTargetArgs = {newX, newY, e.targWinRad, e.screenPixelLimit, cursorObjID, e.cursorRad, cursorColor, true, e.stayOnTarget};
+joystickHEHoldTargetArgs = {newX, newY, e.size, e.screenPixelLimit, cursorObjID, e.cursorRad, cursorColor, true, e.stayOnTarget};
 
 %% This part of the function has some communication with showex.
 
@@ -163,10 +163,10 @@ end
 msgAndWait('obj_on 2');
 sendCode(codes.TARG_ON);
 
-% this is to keep the target on for a specified duration of time. 
+% this is to keep the target on for a specified duration of time, before allowing movement. 
 % since the behavior doesn't change (still fixating), the same event checker functions are used 
-joystickHEHoldMsArgs{end} = e.targetDuration; % update the time to hold fixation during target flash
-[heldFixation, ~] = waitForEvent(e.targetDuration, {@joystickHold, @fixationHold}, {joystickHEHoldMsArgs, fixationArgs});
+joystickHEHoldMsArgs{end} = e.postTargetFixation; % update the time to hold fixation during target flash
+[heldFixation, ~] = waitForEvent(e.postTargetFixation, {@joystickHold, @fixationHold}, {joystickHEHoldMsArgs, fixationArgs});
 if ~heldFixation
     sendCode(codes.BROKE_FIX);
     msgAndWait('all_off');
@@ -177,9 +177,11 @@ if ~heldFixation
     return;
 end
 
-% Now, turn off the fixation point. This is the cue to let the subject make
-% a saccade to the remembered target location
-msgAndWait('obj_off 1');
+% Now, turn off the fixation point and turn on the cursor. 
+% This is the cue to let the subject make a movement to the target location
+msgAndWait('obj_on 3'); % turn on cursor
+sendCode(codes.CURSOR_ON);
+msgAndWait('obj_off 1'); % turn off fixation point
 sendCode(codes.FIX_OFF);
 
 % Again, use a waitForMS, but in a different way. Here, we wait for the
@@ -191,6 +193,7 @@ if ~reacted
     sendCode(codes.NO_CHOICE);
     msgAndWait('all_off');
     sendCode(codes.FIX_OFF);
+    sendCode(codes.CURSOR_OFF);
     waitForMS(e.noChoiceTimeout); % Here we have a specific pause related to this condition, which we call a timeout
     result = codes.NO_CHOICE;
     return;
@@ -209,6 +212,7 @@ if ~reachTarget
     sendCode(codes.NO_CHOICE);
     msgAndWait('all_off');
     sendCode(codes.FIX_OFF);
+    sendCode(codes.CURSOR_OFF);
     waitForMS(e.noChoiceTimeout); % timeout
     result = codes.NO_CHOICE;
     return;
@@ -225,6 +229,7 @@ if ~heldTarget
     sendCode(codes.BROKE_TARG);
     msgAndWait('all_off');
     sendCode(codes.FIX_OFF);
+    sendCode(codes.CURSOR_OFF);
     result = codes.BROKE_TARG;
     return;
 end
@@ -238,6 +243,11 @@ sendCode(codes.REWARD);
 % Go ahead and reward the subject at this point - success!
 giveJuice();
 result = codes.CORRECT;
+
+% turn everything off at the end of the trial
+msgAndWait('all_off');
+sendCode(codes.FIX_OFF);
+sendCode(codes.CURSOR_OFF);
 
 % It may be convenient to have a little bit of time between trials just to
 % keep things from going too fast. So this is an optional parameter for

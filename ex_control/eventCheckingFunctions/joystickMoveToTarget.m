@@ -29,4 +29,4 @@ success = distToTarget < targWinRad; % 1 or 0
 cursorPosDisp = round(cursorPos); % round to prevent display computer from erroring
 msgStr = sprintf('set %d oval 0 %i %i %i %i %i %i', [cursorObjectId cursorPosDisp(1) cursorPosDisp(2) cursorR cursorColorDisp(1) cursorColorDisp(2) cursorColorDisp(3)]);
 
-fixWinOutput = {[targX cursorPosDisp(1)], [targY cursorPosDisp(2)], [targWinCursRad cursorR], winColors};
+fixWinOutput = {[targX cursorPosDisp(1)], [targY cursorPosDisp(2)], [targWinRad cursorR], winColors};
