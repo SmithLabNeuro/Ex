@@ -42,11 +42,11 @@ else
 end
 
 % this draws on the control computer to show where the cursor is relative to the hold position
-numWindows = 3;
-maxSizeInfoVals = 3;
+numWindows = 2;
+maxSizeInfoVals = 2;
 sizeInfo = nan(maxSizeInfoVals, numWindows);
 sizeInfo(1:length(distanceTolerance),1) = distanceTolerance;
 sizeInfo(1:length(cursorR),2) = cursorR;
-fixWinOutput = {[positionXHold cursorPosDisp(1) cursorPosDisp(1)], [positionYHold cursorPosDisp(2) cursorPosDisp(2)], sizeInfo,winColors};
+fixWinOutput = {[positionXHold cursorPosDisp(1)], [positionYHold cursorPosDisp(2)], sizeInfo,winColors};
 
 end
