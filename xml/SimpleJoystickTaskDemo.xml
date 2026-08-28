@@ -10,15 +10,14 @@
     <fixX>0</fixX>
     <fixY>0</fixY>
     <fixRad>5</fixRad>
-    <cursorRad>5</cursorRad>
+    <cursorRad>7</cursorRad>
     <fixColor>[0;0;255]</fixColor>
-    <targetColor>[255;0;100]</targetColor>
-    <cursorColor>[0;255;0]</cursorColor>
+    <targetColor>[255;255;255]</targetColor>
+    <cursorColor>[0;100;25]</cursorColor>
     <timeToFix>1000</timeToFix>
-    <targetDuration>100</targetDuration>
     <noFixTimeout>2000</noFixTimeout>
     <noChoiceTimeout>2000</noChoiceTimeout>
-    <preTargetFixation>200</preTargetFixation>
+    <preTargetFixation>500</preTargetFixation>
     <joystickInitiate>500</joystickInitiate>
     <joystickTime>500</joystickTime>
     <stayOnTarget>150</stayOnTarget>
